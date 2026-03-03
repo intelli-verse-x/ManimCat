@@ -45,7 +45,7 @@ export async function generateInitialCode(
         temperature: AI_TEMPERATURE,
         max_tokens: MAX_TOKENS
       },
-      { fallbackToNonStream: true }
+      { fallbackToNonStream: true, usageLabel: 'retry-initial' }
     )
 
     if (!content) {
@@ -104,7 +104,7 @@ export async function retryCodeGeneration(
         temperature: AI_TEMPERATURE,
         max_tokens: MAX_TOKENS
       },
-      { fallbackToNonStream: true }
+      { fallbackToNonStream: true, usageLabel: `retry-${attempt}` }
     )
 
     if (!content) {

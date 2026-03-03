@@ -1,9 +1,11 @@
 import OpenAI from 'openai'
 import { createLogger } from '../utils/logger'
+import { recordJobTokenUsage } from './job-log-context'
 
 interface ChatCompletionTextOptions {
   fallbackToNonStream?: boolean
   allowPartialOnStreamError?: boolean
+  usageLabel?: string
 }
 
 type ChatCompletionRequest = Omit<OpenAI.Chat.Completions.ChatCompletionCreateParams, 'stream'>
@@ -15,6 +17,7 @@ export interface ChatCompletionTextResult {
 }
 
 const logger = createLogger('OpenAIStream')
+const INCLUDE_STREAM_USAGE = process.env.OPENAI_STREAM_INCLUDE_USAGE === 'true'
 
 interface MessageStats {
   messageCount: number
@@ -92,6 +95,20 @@ function getErrorMeta(error: unknown): Record<string, unknown> {
   return meta
 }
 
+function shouldRetryWithoutStreamUsageOption(error: unknown): boolean {
+  if (!(error instanceof OpenAI.APIError)) {
+    return false
+  }
+
+  const message = (error.message || '').toLowerCase()
+  return (
+    message.includes('stream_options') ||
+    message.includes('include_usage') ||
+    message.includes('unknown parameter') ||
+    message.includes('unsupported')
+  )
+}
+
 export async function createChatCompletionText(
   client: OpenAI,
   request: ChatCompletionRequest,
@@ -117,15 +134,52 @@ export async function createChatCompletionText(
   let chunkCount = 0
   let firstChunkAt: number | null = null
   let content = ''
+  let streamUsage:
+    | {
+        prompt_tokens?: unknown
+        completion_tokens?: unknown
+        total_tokens?: unknown
+      }
+    | undefined
 
   try {
-    const stream = await client.chat.completions.create({
-      ...request,
-      stream: true
-    })
+    let usageTrackingEnabled = INCLUDE_STREAM_USAGE
+    const createStream = async (includeUsage: boolean) => {
+      const streamRequest: OpenAI.Chat.Completions.ChatCompletionCreateParams = {
+        ...request,
+        stream: true
+      }
+      if (includeUsage) {
+        ;(streamRequest as { stream_options?: { include_usage: boolean } }).stream_options = {
+          include_usage: true
+        }
+      }
+      return client.chat.completions.create(streamRequest)
+    }
+
+    let stream: AsyncIterable<OpenAI.Chat.Completions.ChatCompletionChunk>
+    try {
+      stream = await createStream(usageTrackingEnabled)
+    } catch (error) {
+      if (usageTrackingEnabled && shouldRetryWithoutStreamUsageOption(error)) {
+        logger.warn('OpenAI stream usage option unsupported, retrying without usage tracking', {
+          model,
+          ...getErrorMeta(error)
+        })
+        usageTrackingEnabled = false
+        stream = await createStream(false)
+      } else {
+        throw error
+      }
+    }
 
     for await (const chunk of stream) {
       chunkCount += 1
+      const usage = (chunk as { usage?: typeof streamUsage }).usage
+      if (usage && typeof usage === 'object') {
+        streamUsage = usage
+      }
+
       const delta = chunk.choices?.[0]?.delta?.content
       if (typeof delta === 'string' && delta.length > 0) {
         if (firstChunkAt === null) {
@@ -139,10 +193,18 @@ export async function createChatCompletionText(
     logger.info('OpenAI chat stream completed', {
       model,
       mode: 'stream',
+      usageTrackingEnabled,
       elapsedMs: Date.now() - startedAt,
       firstChunkMs: firstChunkAt === null ? null : firstChunkAt - startedAt,
       chunkCount,
       contentLength: content.length
+    })
+    recordJobTokenUsage({
+      label: options.usageLabel || 'chat-completion',
+      model,
+      mode: 'stream',
+      maxTokens: (request as { max_tokens?: unknown }).max_tokens,
+      usage: streamUsage
     })
 
     return {
@@ -169,12 +231,27 @@ export async function createChatCompletionText(
           mode: 'stream-partial',
           contentLength: partial.length
         })
+        recordJobTokenUsage({
+          label: options.usageLabel || 'chat-completion',
+          model,
+          mode: 'stream-partial',
+          maxTokens: (request as { max_tokens?: unknown }).max_tokens,
+          usage: streamUsage
+        })
         return {
           content: partial,
           mode: 'stream-partial'
         }
       }
     }
+
+    recordJobTokenUsage({
+      label: options.usageLabel || 'chat-completion',
+      model,
+      mode: 'stream',
+      maxTokens: (request as { max_tokens?: unknown }).max_tokens,
+      usage: streamUsage
+    })
 
     throw error
   }

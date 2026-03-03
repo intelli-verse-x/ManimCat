@@ -95,7 +95,7 @@ export async function generateEditedManimCode(
         temperature: CODER_TEMPERATURE,
         max_tokens: MAX_TOKENS
       },
-      { fallbackToNonStream: true }
+      { fallbackToNonStream: true, usageLabel: 'code-edit' }
     )
 
     if (!content) {

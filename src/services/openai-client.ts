@@ -75,7 +75,7 @@ export async function generateAIManimCode(concept: string, customApiConfig?: Cus
         temperature: AI_TEMPERATURE,
         max_tokens: MAX_TOKENS
       },
-      { fallbackToNonStream: true }
+      { fallbackToNonStream: true, usageLabel: 'single-stage-generation' }
     )
 
     if (!content) {

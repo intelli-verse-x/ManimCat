@@ -73,7 +73,7 @@ export async function generateSceneDesignStage(params: SceneDesignStageParams): 
           temperature: designerTemperature,
           max_tokens: designerMaxTokens
         },
-        { fallbackToNonStream: true }
+        { fallbackToNonStream: true, usageLabel: 'scene-design' }
       )
       content = completion.content
       mode = completion.mode
@@ -96,7 +96,7 @@ export async function generateSceneDesignStage(params: SceneDesignStageParams): 
             temperature: designerTemperature,
             max_tokens: designerMaxTokens
           },
-          { fallbackToNonStream: true }
+          { fallbackToNonStream: true, usageLabel: 'scene-design-text-fallback' }
         )
         content = completion.content
         mode = completion.mode

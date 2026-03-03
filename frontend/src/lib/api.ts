@@ -11,13 +11,17 @@ import { loadSettings } from './settings';
 
 const API_BASE = '/api';
 
-function getAuthHeaders(contentType = 'application/json'): HeadersInit {
+interface RequestAuthOptions {
+  authKeyOverride?: string;
+}
+
+function getAuthHeaders(contentType = 'application/json', options: RequestAuthOptions = {}): HeadersInit {
   const headers: HeadersInit = {};
   if (contentType) {
     headers['Content-Type'] = contentType;
   }
 
-  const apiKey = localStorage.getItem('manimcat_api_key');
+  const apiKey = options.authKeyOverride || localStorage.getItem('manimcat_api_key');
   if (apiKey) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
@@ -25,13 +29,17 @@ function getAuthHeaders(contentType = 'application/json'): HeadersInit {
   return headers;
 }
 
-export async function modifyAnimation(request: ModifyRequest, signal?: AbortSignal): Promise<GenerateResponse> {
+export async function modifyAnimation(
+  request: ModifyRequest,
+  signal?: AbortSignal,
+  options: RequestAuthOptions = {}
+): Promise<GenerateResponse> {
   const videoConfig = request.videoConfig || loadSettings().video;
   const payload = { ...request, videoConfig };
 
   const response = await fetch(`${API_BASE}/modify`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders('application/json', options),
     body: JSON.stringify(payload),
     signal,
   });
@@ -74,13 +82,17 @@ export async function uploadReferenceImage(file: File, signal?: AbortSignal): Pr
   return response.json();
 }
 
-export async function generateAnimation(request: GenerateRequest, signal?: AbortSignal): Promise<GenerateResponse> {
+export async function generateAnimation(
+  request: GenerateRequest,
+  signal?: AbortSignal,
+  options: RequestAuthOptions = {}
+): Promise<GenerateResponse> {
   const videoConfig = request.videoConfig || loadSettings().video;
   const payload = { ...request, videoConfig };
 
   const response = await fetch(`${API_BASE}/generate`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders('application/json', options),
     body: JSON.stringify(payload),
     signal,
   });
@@ -107,9 +119,13 @@ export async function getPromptDefaults(signal?: AbortSignal): Promise<PromptDef
   return response.json();
 }
 
-export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise<JobResult> {
+export async function getJobStatus(
+  jobId: string,
+  signal?: AbortSignal,
+  options: RequestAuthOptions = {}
+): Promise<JobResult> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders('application/json', options),
     signal,
   });
 
@@ -121,10 +137,10 @@ export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise
   return response.json();
 }
 
-export async function cancelJob(jobId: string): Promise<void> {
+export async function cancelJob(jobId: string, options: RequestAuthOptions = {}): Promise<void> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/cancel`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders('application/json', options),
   });
 
   if (!response.ok) {

@@ -64,7 +64,7 @@ export async function generateCodeFromDesignStage(params: CodeFromDesignStagePar
         temperature: coderTemperature,
         max_tokens: maxTokens
       },
-      { fallbackToNonStream: true }
+      { fallbackToNonStream: true, usageLabel: 'code-generation' }
     )
     if (onCheckpoint) await onCheckpoint()
 
