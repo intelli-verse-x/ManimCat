@@ -146,8 +146,13 @@ class Logger {
     return { ...meta, context: this.context }
   }
 
-  private shouldEmit(meta?: any): boolean {
+  private shouldEmit(level: LogLevel, meta?: any): boolean {
     if (!prodSummaryLogOnly) {
+      return true
+    }
+
+    // In production summary-only mode, always keep warnings/errors visible.
+    if (level >= LogLevel.WARN) {
       return true
     }
 
@@ -159,7 +164,7 @@ class Logger {
    */
   debug(message: string, meta?: any): void {
     const contextMeta = this.addContext(meta)
-    if (currentLogLevel <= LogLevel.DEBUG && this.shouldEmit(contextMeta)) {
+    if (currentLogLevel <= LogLevel.DEBUG && this.shouldEmit(LogLevel.DEBUG, contextMeta)) {
       console.debug(formatMessage('DEBUG', message, contextMeta))
     }
   }
@@ -169,7 +174,7 @@ class Logger {
    */
   info(message: string, meta?: any): void {
     const contextMeta = this.addContext(meta)
-    if (currentLogLevel <= LogLevel.INFO && this.shouldEmit(contextMeta)) {
+    if (currentLogLevel <= LogLevel.INFO && this.shouldEmit(LogLevel.INFO, contextMeta)) {
       console.log(formatMessage('INFO', message, contextMeta))
     }
   }
@@ -179,7 +184,7 @@ class Logger {
    */
   warn(message: string, meta?: any): void {
     const contextMeta = this.addContext(meta)
-    if (currentLogLevel <= LogLevel.WARN && this.shouldEmit(contextMeta)) {
+    if (currentLogLevel <= LogLevel.WARN && this.shouldEmit(LogLevel.WARN, contextMeta)) {
       console.warn(formatMessage('WARN', message, contextMeta))
     }
   }
@@ -189,7 +194,7 @@ class Logger {
    */
   error(message: string, meta?: any): void {
     const contextMeta = this.addContext(meta)
-    if (currentLogLevel <= LogLevel.ERROR && this.shouldEmit(contextMeta)) {
+    if (currentLogLevel <= LogLevel.ERROR && this.shouldEmit(LogLevel.ERROR, contextMeta)) {
       console.error(formatMessage('ERROR', message, contextMeta))
     }
   }

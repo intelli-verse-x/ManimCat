@@ -56,6 +56,9 @@ async function startServer(): Promise<void> {
 
     appLogger.info('Express application initialized successfully')
   } catch (error) {
+    // Keep a raw stderr fallback to avoid silent startup failures
+    // when production summary-only logging filters non-summary entries.
+    console.error('[StartupFatal]', error)
     appLogger.error('Failed to start server', { error })
     process.exit(1)
   }

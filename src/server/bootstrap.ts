@@ -32,6 +32,7 @@ function requestLoggerFactory(logger: LoggerLike) {
 
 export async function initializeExpressApp(app: express.Express, logger: LoggerLike): Promise<void> {
   validateConfig()
+  printConfig()
 
   app.use(express.json({ limit: '10mb' }))
   app.use(express.urlencoded({ extended: true, limit: '10mb' }))
@@ -78,7 +79,6 @@ export async function initializeExpressApp(app: express.Express, logger: LoggerL
   })
 
   app.use(errorHandler)
-  printConfig()
 }
 
 export { appConfig }
