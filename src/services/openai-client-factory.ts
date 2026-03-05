@@ -21,15 +21,23 @@ function createBaseConfig(): OpenAIBaseConfig {
 }
 
 export function createDefaultOpenAIClient(): OpenAI {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is missing for default OpenAI client')
+  }
+
   const baseConfig = createBaseConfig()
   if (CUSTOM_API_URL) {
     return new OpenAI({
       ...baseConfig,
       baseURL: CUSTOM_API_URL,
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey
     })
   }
-  return new OpenAI(baseConfig)
+  return new OpenAI({
+    ...baseConfig,
+    apiKey
+  })
 }
 
 export function createCustomOpenAIClient(config: CustomApiConfig): OpenAI {
@@ -43,6 +51,11 @@ export function createCustomOpenAIClient(config: CustomApiConfig): OpenAI {
 export function initializeDefaultOpenAIClient(
   onError?: (error: unknown) => void
 ): OpenAI | null {
+  const apiKey = process.env.OPENAI_API_KEY?.trim()
+  if (!apiKey) {
+    return null
+  }
+
   try {
     return createDefaultOpenAIClient()
   } catch (error) {

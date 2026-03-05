@@ -66,9 +66,13 @@ export const appConfig = {
  */
 export function validateConfig(): void {
   const openaiApiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!openaiApiKey) {
+  const routeKeys = process.env.MANIMCAT_ROUTE_KEYS?.trim()
+  const routeApiKeys = process.env.MANIMCAT_ROUTE_API_KEYS?.trim()
+  const hasRouteBasedUpstream = Boolean(routeKeys && routeApiKeys)
+
+  if (!openaiApiKey && !hasRouteBasedUpstream) {
     console.warn(
-      '[Config] OPENAI_API_KEY is not set. Default backend AI client is disabled; provide customApiConfig per request.'
+      '[Config] No default OPENAI_API_KEY and no MANIMCAT_ROUTE_* upstream mapping found. AI requests need customApiConfig per request.'
     )
   }
 }
