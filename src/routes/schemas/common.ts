@@ -9,6 +9,7 @@ export const customApiConfigSchema = z.object({
 })
 
 export const promptOverridesSchema = z.object({
+  locale: z.enum(['zh-CN', 'en-US']).optional(),
   roles: z
     .object({
       conceptDesigner: z

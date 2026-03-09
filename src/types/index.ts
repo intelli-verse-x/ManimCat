@@ -8,6 +8,7 @@
  */
 export type VideoQuality = 'low' | 'medium' | 'high'
 export type OutputMode = 'video' | 'image'
+export type PromptLocale = 'zh-CN' | 'en-US'
 
 /**
  * 瑙嗛閰嶇疆
@@ -61,6 +62,7 @@ export interface CustomApiConfig {
  * Prompt overrides for generation stages
  */
 export interface PromptOverrides {
+  locale?: PromptLocale
   roles?: Partial<Record<'conceptDesigner' | 'codeGeneration' | 'codeRetry' | 'codeEdit', { system?: string; user?: string }>>
   shared?: Partial<Record<'knowledge' | 'rules', string>>
 }

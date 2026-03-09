@@ -5,17 +5,22 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { getPromptDefaults } from '../lib/api';
-import type { RoleType, SharedModuleType, PromptDefaults, PromptOverrides } from '../types/api';
+import type { RoleType, SharedModuleType, PromptDefaults, PromptOverrides, PromptLocale } from '../types/api';
+import { useI18n } from '../i18n';
 
-const STORAGE_KEY = 'manimcat_prompt_overrides';
+const STORAGE_KEY_PREFIX = 'manimcat_prompt_overrides';
 
 // ============================================================================
 // 存储
 // ============================================================================
 
-function loadStoredOverrides(): PromptOverrides | null {
+function getStorageKey(locale: PromptLocale): string {
+  return `${STORAGE_KEY_PREFIX}:${locale}`;
+}
+
+function loadStoredOverrides(locale: PromptLocale): PromptOverrides | null {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(getStorageKey(locale));
     if (saved) return JSON.parse(saved);
   } catch (e) {
     console.error('Failed to load prompts:', e);
@@ -23,17 +28,20 @@ function loadStoredOverrides(): PromptOverrides | null {
   return null;
 }
 
-function saveOverrides(overrides: PromptOverrides): void {
+function saveOverrides(locale: PromptLocale, overrides: PromptOverrides): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+    localStorage.setItem(getStorageKey(locale), JSON.stringify(overrides));
   } catch (e) {
     console.error('Failed to save prompts:', e);
   }
 }
 
 /** 供 useGeneration 使用，导出当前覆盖配置 */
-export function loadPrompts(): PromptOverrides {
-  return loadStoredOverrides() || {};
+export function loadPrompts(locale: PromptLocale): PromptOverrides {
+  return {
+    locale,
+    ...(loadStoredOverrides(locale) || {}),
+  };
 }
 
 // ============================================================================
@@ -49,6 +57,7 @@ export type SelectionType =
 // ============================================================================
 
 export function usePrompts() {
+  const { locale } = useI18n();
   const [defaults, setDefaults] = useState<PromptDefaults | null>(null);
   const [overrides, setOverrides] = useState<PromptOverrides>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -66,12 +75,12 @@ export function usePrompts() {
       setIsLoading(true);
       try {
         const [defaultsData, storedOverrides] = await Promise.all([
-          getPromptDefaults(),
-          Promise.resolve(loadStoredOverrides())
+          getPromptDefaults(locale),
+          Promise.resolve(loadStoredOverrides(locale))
         ]);
         if (active) {
           setDefaults(defaultsData);
-          setOverrides(storedOverrides || {});
+          setOverrides({ locale, ...(storedOverrides || {}) });
         }
       } catch (e) {
         console.error('Failed to load prompts:', e);
@@ -82,14 +91,14 @@ export function usePrompts() {
 
     void load();
     return () => { active = false; };
-  }, []);
+  }, [locale]);
 
   // 保存覆盖配置
   useEffect(() => {
     if (!isLoading) {
-      saveOverrides(overrides);
+      saveOverrides(locale, overrides);
     }
-  }, [overrides, isLoading]);
+  }, [locale, overrides, isLoading]);
 
   // 获取当前选择的默认内容
   const getDefaultContent = useCallback((): string => {
@@ -126,7 +135,7 @@ export function usePrompts() {
     const newValue = value === defaultValue ? '' : value;
 
     setOverrides(prev => {
-      const next = { ...prev };
+      const next: PromptOverrides = { locale, ...prev };
 
       if (selection.kind === 'role') {
         const { role, promptType } = selection;
@@ -146,7 +155,7 @@ export function usePrompts() {
 
       return next;
     });
-  }, [selection, getDefaultContent]);
+  }, [selection, getDefaultContent, locale]);
 
   // 恢复当前选择的默认值
   const restoreCurrent = useCallback(() => {
@@ -155,8 +164,8 @@ export function usePrompts() {
 
   // 恢复全部默认值
   const restoreAll = useCallback(() => {
-    setOverrides({});
-  }, []);
+    setOverrides({ locale });
+  }, [locale]);
 
   // 检查当前是否有覆盖
   const hasOverride = useCallback((): boolean => {

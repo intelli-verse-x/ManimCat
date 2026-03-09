@@ -8,7 +8,7 @@ app_port: 7860
 pinned: false
 ---
 
-English | [简体中文](./README.zh-CN.md)
+English | [简体中文](https://github.com/Wing900/ManimCat/blob/main/README.zh-CN.md)
 
 <div align="center">
 
@@ -256,7 +256,7 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 
 ## Deployment
 
-Please see the [deployment guide](./DEPLOYMENT.md).
+Please see the [deployment guide](https://github.com/Wing900/ManimCat/blob/main/DEPLOYMENT.md).
 
 ## Contributions
 

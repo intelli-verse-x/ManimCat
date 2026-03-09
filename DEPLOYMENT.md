@@ -1,6 +1,6 @@
 # ManimCat Deployment Guide
 
-English | [简体中文](./DEPLOYMENT.zh-CN.md)
+English | [简体中文](https://github.com/Wing900/ManimCat/blob/main/DEPLOYMENT.zh-CN.md)
 
 This document covers three deployment paths:
 

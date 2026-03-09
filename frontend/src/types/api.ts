@@ -3,6 +3,7 @@
 /** 视频质量选项 */
 export type Quality = 'low' | 'medium' | 'high';
 export type OutputMode = 'video' | 'image';
+export type PromptLocale = 'zh-CN' | 'en-US';
 
 /** 图片细节级别 */
 export type VisionImageDetail = 'auto' | 'low' | 'high';
@@ -41,6 +42,7 @@ export interface PromptDefaults {
 
 /** 提示词覆盖配置（用户自定义） */
 export interface PromptOverrides {
+  locale?: PromptLocale;
   roles?: Partial<Record<RoleType, { system?: string; user?: string }>>;
   shared?: Partial<Record<SharedModuleType, string>>;
 }

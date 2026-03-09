@@ -3,7 +3,7 @@
  */
 
 import express from 'express'
-import { getAllDefaultTemplates, type RoleType, type SharedModuleType } from '../prompts'
+import { getAllDefaultTemplates, type PromptLocale, type RoleType, type SharedModuleType } from '../prompts'
 
 const router = express.Router()
 
@@ -24,8 +24,9 @@ interface PromptDefaults {
  * GET /api/prompts/defaults
  * 获取所有默认提示词模板
  */
-router.get('/prompts/defaults', (_req, res) => {
-  const defaults: PromptDefaults = getAllDefaultTemplates()
+router.get('/prompts/defaults', (req, res) => {
+  const locale: PromptLocale = req.query.locale === 'zh-CN' ? 'zh-CN' : 'en-US'
+  const defaults: PromptDefaults = getAllDefaultTemplates(locale)
   res.json(defaults)
 })
 

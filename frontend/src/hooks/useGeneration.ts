@@ -26,7 +26,7 @@ function getTimeoutConfig(): number {
 }
 
 export function useGeneration(): UseGenerationReturn {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [status, setStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
   const [result, setResult] = useState<JobResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -170,7 +170,7 @@ export function useGeneration(): UseGenerationReturn {
     abortControllerRef.current = new AbortController();
 
     try {
-      const promptOverrides = loadPrompts();
+      const promptOverrides = loadPrompts(locale);
       const selectedProfile = pickNextCustomProfile();
       const customApiConfig = selectedProfile?.customApiConfig || undefined;
       const requestAuthKey = selectedProfile?.manimcatApiKey || undefined;
@@ -188,7 +188,7 @@ export function useGeneration(): UseGenerationReturn {
       setStatus('error');
       setError(err instanceof Error ? err.message : t('generation.rerenderFailed'));
     }
-  }, [startPolling, t]);
+  }, [locale, startPolling, t]);
 
   const modifyWithAI = useCallback(async (request: ModifyRequest) => {
     setStatus('processing');
@@ -199,7 +199,7 @@ export function useGeneration(): UseGenerationReturn {
     abortControllerRef.current = new AbortController();
 
     try {
-      const promptOverrides = loadPrompts();
+      const promptOverrides = loadPrompts(locale);
       const selectedProfile = pickNextCustomProfile();
       const customApiConfig = selectedProfile?.customApiConfig || undefined;
       const requestAuthKey = selectedProfile?.manimcatApiKey || undefined;
@@ -217,7 +217,7 @@ export function useGeneration(): UseGenerationReturn {
       setStatus('error');
       setError(err instanceof Error ? err.message : t('generation.modifyFailed'));
     }
-  }, [startPolling, t]);
+  }, [locale, startPolling, t]);
 
   const generate = useCallback(async (request: GenerateRequest) => {
     setStatus('processing');
@@ -228,7 +228,7 @@ export function useGeneration(): UseGenerationReturn {
     abortControllerRef.current = new AbortController();
 
     try {
-      const promptOverrides = loadPrompts();
+      const promptOverrides = loadPrompts(locale);
       const selectedProfile = pickNextCustomProfile();
       const customApiConfig = selectedProfile?.customApiConfig || undefined;
       const requestAuthKey = selectedProfile?.manimcatApiKey || undefined;
@@ -248,7 +248,7 @@ export function useGeneration(): UseGenerationReturn {
       setStatus('error');
       setError(err instanceof Error ? err.message : t('generation.requestFailed'));
     }
-  }, [startPolling, t]);
+  }, [locale, startPolling, t]);
 
   const reset = useCallback(() => {
     setStatus('idle');

@@ -10,6 +10,7 @@ export {
   getSharedModule,
   getAllDefaultTemplates,
   clearTemplateCache,
+  type PromptLocale,
   type RoleType,
   type SharedModuleType,
   type TemplateVariables,

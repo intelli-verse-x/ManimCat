@@ -5,7 +5,8 @@ import type {
   ApiError,
   PromptDefaults,
   ModifyRequest,
-  UsageMetricsResponse
+  UsageMetricsResponse,
+  PromptLocale
 } from '../types/api';
 import { loadSettings } from './settings';
 import { localizeApiMessage, translate } from '../i18n';
@@ -106,8 +107,9 @@ export async function generateAnimation(
   return response.json();
 }
 
-export async function getPromptDefaults(signal?: AbortSignal): Promise<PromptDefaults> {
-  const response = await fetch(`${API_BASE}/prompts/defaults`, {
+export async function getPromptDefaults(locale?: PromptLocale, signal?: AbortSignal): Promise<PromptDefaults> {
+  const query = locale ? `?locale=${encodeURIComponent(locale)}` : '';
+  const response = await fetch(`${API_BASE}/prompts/defaults${query}`, {
     headers: getAuthHeaders(),
     signal,
   });

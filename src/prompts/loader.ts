@@ -9,6 +9,7 @@ import { API_INDEX, SOUL_INDEX } from './api-index'
 
 // 使用项目根目录，兼容开发和生产环境
 const TEMPLATES_DIR = path.join(process.cwd(), 'src', 'prompts', 'templates')
+const ENGLISH_TEMPLATES_DIR = path.join(TEMPLATES_DIR, 'en-US')
 
 // ============================================================================
 // 类型定义
@@ -16,6 +17,7 @@ const TEMPLATES_DIR = path.join(process.cwd(), 'src', 'prompts', 'templates')
 
 /** 角色类型 */
 export type RoleType = 'conceptDesigner' | 'codeGeneration' | 'codeRetry' | 'codeEdit'
+export type PromptLocale = 'zh-CN' | 'en-US'
 
 /** 共享模块类型 */
 export type SharedModuleType = 'knowledge' | 'rules'
@@ -36,6 +38,7 @@ export interface TemplateVariables {
 
 /** 提示词覆盖配置 */
 export interface PromptOverrides {
+  locale?: PromptLocale
   roles?: Partial<Record<RoleType, { system?: string; user?: string }>>
   shared?: Partial<Record<SharedModuleType, string>>
 }
@@ -44,28 +47,28 @@ export interface PromptOverrides {
 // 文件路径
 // ============================================================================
 
-const ROLE_FILES: Record<RoleType, { system: string; user: string }> = {
+const ROLE_FILE_RELATIVE_PATHS: Record<RoleType, { system: string; user: string }> = {
   conceptDesigner: {
-    system: path.join(TEMPLATES_DIR, 'roles', 'concept-designer.system.md'),
-    user: path.join(TEMPLATES_DIR, 'roles', 'concept-designer.md')
+    system: path.join('roles', 'concept-designer.system.md'),
+    user: path.join('roles', 'concept-designer.md')
   },
   codeGeneration: {
-    system: path.join(TEMPLATES_DIR, 'roles', 'code-generation.system.md'),
-    user: path.join(TEMPLATES_DIR, 'roles', 'code-generation.md')
+    system: path.join('roles', 'code-generation.system.md'),
+    user: path.join('roles', 'code-generation.md')
   },
   codeRetry: {
-    system: path.join(TEMPLATES_DIR, 'roles', 'code-retry.system.md'),
-    user: path.join(TEMPLATES_DIR, 'roles', 'code-retry.md')
+    system: path.join('roles', 'code-retry.system.md'),
+    user: path.join('roles', 'code-retry.md')
   },
   codeEdit: {
-    system: path.join(TEMPLATES_DIR, 'roles', 'code-edit.system.md'),
-    user: path.join(TEMPLATES_DIR, 'roles', 'code-edit.md')
+    system: path.join('roles', 'code-edit.system.md'),
+    user: path.join('roles', 'code-edit.md')
   }
 }
 
-const SHARED_FILES: Record<SharedModuleType, string> = {
-  knowledge: path.join(TEMPLATES_DIR, 'shared', 'knowledge.md'),
-  rules: path.join(TEMPLATES_DIR, 'shared', 'rules.md')
+const SHARED_FILE_RELATIVE_PATHS: Record<SharedModuleType, string> = {
+  knowledge: path.join('shared', 'knowledge.md'),
+  rules: path.join('shared', 'rules.md')
 }
 
 const ROLES_REQUIRE_SYSTEM_INDEX = new Set<RoleType>(['codeGeneration', 'codeRetry', 'codeEdit'])
@@ -89,6 +92,21 @@ function readTemplate(filePath: string): string {
     console.error(`Failed to read template: ${filePath}`, error)
     return ''
   }
+}
+
+function resolveLocale(overrides?: PromptOverrides): PromptLocale {
+  return overrides?.locale === 'en-US' ? 'en-US' : 'zh-CN'
+}
+
+function resolveTemplateFile(relativePath: string, locale: PromptLocale): string {
+  if (locale === 'en-US') {
+    const localizedPath = path.join(ENGLISH_TEMPLATES_DIR, relativePath)
+    if (fs.existsSync(localizedPath)) {
+      return localizedPath
+    }
+  }
+
+  return path.join(TEMPLATES_DIR, relativePath)
 }
 
 /** 清除缓存（开发时热更新用） */
@@ -175,7 +193,8 @@ export function getRoleSystemPrompt(
   overrides?: PromptOverrides
 ): string {
   const override = overrides?.roles?.[role]?.system
-  const basePrompt = override ?? readTemplate(ROLE_FILES[role].system)
+  const locale = resolveLocale(overrides)
+  const basePrompt = override ?? readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS[role].system, locale))
 
   if (!ROLES_REQUIRE_SYSTEM_INDEX.has(role)) {
     return basePrompt
@@ -193,7 +212,8 @@ export function getRoleUserPrompt(
   overrides?: PromptOverrides
 ): string {
   const override = overrides?.roles?.[role]?.user
-  const template = override ?? readTemplate(ROLE_FILES[role].user)
+  const locale = resolveLocale(overrides)
+  const template = override ?? readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS[role].user, locale))
 
   return assembleTemplate(template, variables, overrides)
 }
@@ -205,7 +225,8 @@ export function getSharedModule(
   module: SharedModuleType,
   overrides?: PromptOverrides
 ): string {
-  const raw = overrides?.shared?.[module] ?? readTemplate(SHARED_FILES[module])
+  const locale = resolveLocale(overrides)
+  const raw = overrides?.shared?.[module] ?? readTemplate(resolveTemplateFile(SHARED_FILE_RELATIVE_PATHS[module], locale))
   return resolveIndexPlaceholders(raw)
 }
 
@@ -254,32 +275,34 @@ function assembleSystemPromptWithSharedIndex(
 /**
  * 获取所有默认模板（用于前端展示）
  */
-export function getAllDefaultTemplates(): {
+export function getAllDefaultTemplates(locale: PromptLocale = 'zh-CN'): {
   roles: Record<RoleType, { system: string; user: string }>
   shared: Record<SharedModuleType, string>
 } {
+  const localizedOverrides: PromptOverrides = { locale }
+
   return {
     roles: {
       conceptDesigner: {
-        system: readTemplate(ROLE_FILES.conceptDesigner.system),
-        user: readTemplate(ROLE_FILES.conceptDesigner.user)
+        system: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.conceptDesigner.system, locale)),
+        user: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.conceptDesigner.user, locale))
       },
       codeGeneration: {
-        system: readTemplate(ROLE_FILES.codeGeneration.system),
-        user: readTemplate(ROLE_FILES.codeGeneration.user)
+        system: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.codeGeneration.system, locale)),
+        user: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.codeGeneration.user, locale))
       },
       codeRetry: {
-        system: readTemplate(ROLE_FILES.codeRetry.system),
-        user: readTemplate(ROLE_FILES.codeRetry.user)
+        system: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.codeRetry.system, locale)),
+        user: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.codeRetry.user, locale))
       },
       codeEdit: {
-        system: readTemplate(ROLE_FILES.codeEdit.system),
-        user: readTemplate(ROLE_FILES.codeEdit.user)
+        system: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.codeEdit.system, locale)),
+        user: readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS.codeEdit.user, locale))
       }
     },
     shared: {
-      knowledge: getSharedModule('knowledge'),
-      rules: getSharedModule('rules')
+      knowledge: getSharedModule('knowledge', localizedOverrides),
+      rules: getSharedModule('rules', localizedOverrides)
     }
   }
 }
