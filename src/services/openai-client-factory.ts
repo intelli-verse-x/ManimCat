@@ -3,6 +3,7 @@ import type { CustomApiConfig } from '../types'
 
 const OPENAI_TIMEOUT = parseInt(process.env.OPENAI_TIMEOUT || '600000', 10)
 const CUSTOM_API_URL = process.env.CUSTOM_API_URL?.trim()
+const CUSTOM_API_KEY = process.env.CUSTOM_API_KEY?.trim()
 
 interface OpenAIBaseConfig {
   timeout: number
@@ -21,18 +22,22 @@ function createBaseConfig(): OpenAIBaseConfig {
 }
 
 export function createDefaultOpenAIClient(): OpenAI {
+  const baseConfig = createBaseConfig()
+  if (CUSTOM_API_URL) {
+    const apiKey = CUSTOM_API_KEY || process.env.OPENAI_API_KEY?.trim()
+    if (!apiKey) {
+      throw new Error('CUSTOM_API_KEY (or OPENAI_API_KEY) is missing for custom default OpenAI client')
+    }
+    return new OpenAI({
+      ...baseConfig,
+      baseURL: CUSTOM_API_URL.replace(/\/+$/, ''),
+      apiKey
+    })
+  }
+
   const apiKey = process.env.OPENAI_API_KEY?.trim()
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is missing for default OpenAI client')
-  }
-
-  const baseConfig = createBaseConfig()
-  if (CUSTOM_API_URL) {
-    return new OpenAI({
-      ...baseConfig,
-      baseURL: CUSTOM_API_URL,
-      apiKey
-    })
   }
   return new OpenAI({
     ...baseConfig,
@@ -51,9 +56,16 @@ export function createCustomOpenAIClient(config: CustomApiConfig): OpenAI {
 export function initializeDefaultOpenAIClient(
   onError?: (error: unknown) => void
 ): OpenAI | null {
-  const apiKey = process.env.OPENAI_API_KEY?.trim()
-  if (!apiKey) {
-    return null
+  if (CUSTOM_API_URL) {
+    const apiKey = CUSTOM_API_KEY || process.env.OPENAI_API_KEY?.trim()
+    if (!apiKey) {
+      return null
+    }
+  } else {
+    const apiKey = process.env.OPENAI_API_KEY?.trim()
+    if (!apiKey) {
+      return null
+    }
   }
 
   try {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { SettingsConfig } from '../../types/api';
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from '../../lib/settings';
+import { getActiveProvider, providerToCustomApiConfig } from '../../lib/ai-providers';
 import type { TabType, TestResult } from './types';
 import { useI18n } from '../../i18n';
 
@@ -72,6 +73,9 @@ export function useSettingsModal({ isOpen, onSave }: UseSettingsModalParams): Us
       return;
     }
 
+    const activeProvider = getActiveProvider(config.api);
+    const customApiConfig = providerToCustomApiConfig(activeProvider);
+
     setTestResult({ status: 'testing', message: t('settings.test.testing'), details: {} });
 
     const startTime = performance.now();
@@ -82,16 +86,19 @@ export function useSettingsModal({ isOpen, onSave }: UseSettingsModalParams): Us
           'Content-Type': 'application/json',
           Authorization: `Bearer ${manimcatKey}`,
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify(customApiConfig ? { customApiConfig } : {}),
       });
 
       const duration = Math.round(performance.now() - startTime);
 
       if (response.ok) {
+        const payload = await response.json().catch(() => null);
+        const warning = payload && typeof payload === 'object' && 'warning' in payload ? String((payload as any).warning) : '';
+
         setTestResult({
           status: 'success',
-          message: t('settings.test.success', { duration }),
-          details: { statusCode: response.status, statusText: response.statusText, duration },
+          message: warning ? `${t('settings.test.success', { duration })} — ${warning}` : t('settings.test.success', { duration }),
+          details: { statusCode: response.status, statusText: response.statusText, duration, warning: warning || undefined },
         });
         return;
       }
@@ -127,4 +134,3 @@ export function useSettingsModal({ isOpen, onSave }: UseSettingsModalParams): Us
     handleTestBackend,
   };
 }
-

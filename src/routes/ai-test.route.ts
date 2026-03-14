@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { asyncHandler } from '../middlewares/error-handler'
 import { authMiddleware } from '../middlewares/auth.middleware'
 import { createLogger } from '../utils/logger'
-import { testBackendAIConnection } from '../services/openai-client'
+import { isOpenAIAvailable, testBackendAIConnection } from '../services/openai-client'
 
 const router = express.Router()
 const logger = createLogger('AiTestRoute')
@@ -30,17 +30,38 @@ router.post(
 
     try {
       const parsed = bodySchema.parse(req.body || {})
-      const result = await testBackendAIConnection(parsed.customApiConfig)
       const duration = Date.now() - start
+
+      if (!parsed.customApiConfig && !isOpenAIAvailable()) {
+        return res.status(200).json({
+          success: true,
+          mode: 'backend',
+          warning:
+            'Backend is reachable, but no default upstream AI is configured. Configure a provider (URL + Key) to test upstream, or set server env OPENAI_API_KEY.',
+          duration
+        })
+      }
+
+      const result = await testBackendAIConnection(parsed.customApiConfig)
 
       return res.status(200).json({
         success: true,
+        mode: parsed.customApiConfig ? 'custom' : 'default',
         model: result.model,
         content: result.content,
         duration
       })
     } catch (error) {
       const duration = Date.now() - start
+
+      if (error instanceof Error && error.message === 'OpenAI client is unavailable') {
+        return res.status(400).json({
+          success: false,
+          error: error.message,
+          hint: 'Set server env OPENAI_API_KEY or pass customApiConfig (apiUrl/apiKey) from the frontend provider config.',
+          duration
+        })
+      }
 
       if (error instanceof OpenAI.APIError) {
         logger.error('后端 AI 测试失败', {
