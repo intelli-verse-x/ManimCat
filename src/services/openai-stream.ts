@@ -18,6 +18,8 @@ export interface ChatCompletionTextResult {
 
 const logger = createLogger('OpenAIStream')
 const INCLUDE_STREAM_USAGE = process.env.OPENAI_STREAM_INCLUDE_USAGE === 'true'
+const STREAM_HEARTBEAT_MS = parseInt(process.env.OPENAI_STREAM_HEARTBEAT_MS || '15000', 10)
+const STREAM_IDLE_TIMEOUT_MS = parseInt(process.env.OPENAI_STREAM_IDLE_TIMEOUT_MS || '240000', 10)
 
 interface MessageStats {
   messageCount: number
@@ -117,8 +119,7 @@ export async function createChatCompletionText(
   const startedAt = Date.now()
   const stats = getMessageStats((request as { messages?: unknown }).messages)
   const model = String((request as { model?: unknown }).model || '')
-  // Policy: force pure streaming mode, never fallback to non-stream.
-  const effectiveFallback = false
+  const effectiveFallback = options.fallbackToNonStream ?? false
   const allowPartialOnStreamError = options.allowPartialOnStreamError ?? true
 
   logger.info('OpenAI chat request started', {
@@ -141,6 +142,9 @@ export async function createChatCompletionText(
         total_tokens?: unknown
       }
     | undefined
+  let lastChunkAt = startedAt
+  let heartbeatTimer: NodeJS.Timeout | null = null
+  let idleTimer: NodeJS.Timeout | null = null
 
   try {
     let usageTrackingEnabled = INCLUDE_STREAM_USAGE
@@ -173,8 +177,52 @@ export async function createChatCompletionText(
       }
     }
 
+    const streamController = (stream as unknown as { controller?: { abort?: () => void } }).controller
+    const abortStream = () => {
+      if (streamController && typeof streamController.abort === 'function') {
+        streamController.abort()
+      }
+    }
+
+    if (Number.isFinite(STREAM_HEARTBEAT_MS) && STREAM_HEARTBEAT_MS > 0) {
+      heartbeatTimer = setInterval(() => {
+        logger.debug('OpenAI stream heartbeat', {
+          model,
+          chunkCount,
+          contentLength: content.length,
+          elapsedMs: Date.now() - startedAt,
+          sinceLastChunkMs: Date.now() - lastChunkAt
+        })
+      }, STREAM_HEARTBEAT_MS)
+    }
+
+    if (Number.isFinite(STREAM_IDLE_TIMEOUT_MS) && STREAM_IDLE_TIMEOUT_MS > 0) {
+      const checkEveryMs = Math.min(5000, Math.max(1000, Math.floor(STREAM_IDLE_TIMEOUT_MS / 4)))
+      idleTimer = setInterval(() => {
+        const sinceLastChunkMs = Date.now() - lastChunkAt
+        if (sinceLastChunkMs <= STREAM_IDLE_TIMEOUT_MS) {
+          return
+        }
+
+        logger.warn('OpenAI stream idle timeout, aborting stream', {
+          model,
+          idleTimeoutMs: STREAM_IDLE_TIMEOUT_MS,
+          sinceLastChunkMs,
+          chunkCount,
+          contentLength: content.length
+        })
+        try {
+          abortStream()
+        } catch (error) {
+          logger.warn('Failed to abort OpenAI stream after idle timeout', { model, error: String(error) })
+        }
+      }, checkEveryMs)
+    }
+
     for await (const chunk of stream) {
       chunkCount += 1
+      lastChunkAt = Date.now()
+
       const usage = (chunk as { usage?: typeof streamUsage }).usage
       if (usage && typeof usage === 'object') {
         streamUsage = usage
@@ -184,10 +232,23 @@ export async function createChatCompletionText(
       if (typeof delta === 'string' && delta.length > 0) {
         if (firstChunkAt === null) {
           firstChunkAt = Date.now()
+          logger.info('OpenAI stream received first chunk', {
+            model,
+            firstChunkMs: firstChunkAt - startedAt
+          })
         }
         content += delta
         receivedContent = true
       }
+    }
+
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer)
+      heartbeatTimer = null
+    }
+    if (idleTimer) {
+      clearInterval(idleTimer)
+      idleTimer = null
     }
 
     logger.info('OpenAI chat stream completed', {
@@ -212,6 +273,15 @@ export async function createChatCompletionText(
       mode: 'stream'
     }
   } catch (error) {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer)
+      heartbeatTimer = null
+    }
+    if (idleTimer) {
+      clearInterval(idleTimer)
+      idleTimer = null
+    }
+
     logger.warn('OpenAI chat stream failed', {
       model,
       elapsedMs: Date.now() - startedAt,
@@ -242,6 +312,31 @@ export async function createChatCompletionText(
           content: partial,
           mode: 'stream-partial'
         }
+      }
+    }
+
+    if (effectiveFallback && !receivedContent) {
+      logger.warn('OpenAI chat falling back to non-stream request', { model })
+      const response = await client.chat.completions.create({
+        ...request,
+        stream: false
+      } as OpenAI.Chat.Completions.ChatCompletionCreateParams)
+
+      const fallbackContent = response.choices?.[0]?.message?.content
+      const normalized = typeof fallbackContent === 'string' ? fallbackContent : ''
+
+      recordJobTokenUsage({
+        label: options.usageLabel || 'chat-completion',
+        model,
+        mode: 'non-stream',
+        maxTokens: (request as { max_tokens?: unknown }).max_tokens,
+        usage: (response as unknown as { usage?: typeof streamUsage }).usage
+      })
+
+      return {
+        content: normalized.trim(),
+        mode: 'non-stream',
+        response
       }
     }
 

@@ -23,3 +23,12 @@
 尺寸执行规则：
 1. 优先使用导演稿 SCALE 指令。
 2. 若缺失 SCALE，你必须按画布边界主动估算并调整尺寸，防止重叠和越界。
+
+节奏执行规则（run_time 默认参考）：
+- 简单形状创建/淡入：0.5–1s
+- 文字/公式书写（Write/Create）：1–2s
+- Transform/ReplacementTransform：1–2s
+- 相机移动/大幅位移：2–3s
+- 停顿吸收（self.wait）：0.5–1s
+- 复杂多对象动画：2–4s
+若导演稿指定了 DURATION，以导演稿为准。

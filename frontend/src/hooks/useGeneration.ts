@@ -20,6 +20,7 @@ interface UseGenerationReturn {
 }
 
 const POLL_INTERVAL = 1000;
+const MAX_TRANSIENT_POLL_ERRORS = 5;
 
 function getTimeoutConfig(): number {
   return loadSettings().video.timeout || 1200;
@@ -45,6 +46,7 @@ export function useGeneration(): UseGenerationReturn {
   const pollCountRef = useRef(0);
   const pollIntervalRef = useRef<number | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const transientPollErrorCountRef = useRef(0);
 
   const requestCancel = useCallback(async (id: string | null) => {
     if (!id) {
@@ -83,6 +85,7 @@ export function useGeneration(): UseGenerationReturn {
 
   const startPolling = useCallback((id: string) => {
     pollCountRef.current = 0;
+    transientPollErrorCountRef.current = 0;
     setJobId(id);
 
     const maxPollCount = getTimeoutConfig();
@@ -95,6 +98,7 @@ export function useGeneration(): UseGenerationReturn {
           id,
           abortControllerRef.current?.signal,
         );
+        transientPollErrorCountRef.current = 0;
 
         if (data.status === 'completed') {
           if (pollIntervalRef.current) {
@@ -134,7 +138,21 @@ export function useGeneration(): UseGenerationReturn {
         }
 
         if (err instanceof Error && (err.message.includes('ECONNREFUSED') || err.message.includes('Failed to fetch'))) {
-          console.error('Backend disconnected, stop polling');
+          transientPollErrorCountRef.current += 1;
+
+          if (transientPollErrorCountRef.current < MAX_TRANSIENT_POLL_ERRORS) {
+            console.warn('Backend fetch failed, retry polling', {
+              attempt: transientPollErrorCountRef.current,
+              jobId: id,
+              error: err.message
+            });
+            return;
+          }
+
+          console.error('Backend disconnected, stop polling', {
+            jobId: id,
+            attempts: transientPollErrorCountRef.current
+          });
           if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
           }

@@ -320,10 +320,14 @@ anim_codebook = {
   FadeOut: fo,
   Transform: tr,
   ReplacementTransform: rttr,
+  TransformMatchingTex: tmtex,
+  TransformMatchingShapes: tmsh,
   MoveAlongPath: map,
   Rotate: rot_anim,
   ScaleInPlace: sip,
   Indicate: ind,
+  Circumscribe: circ,
+  FlashAround: flar,
   Flash: flsh,
   FocusOn: fon,
   Succession: succ,
@@ -364,6 +368,17 @@ camera_codebook = {
   zoom: z,
   focal_distance: fd
 }
+# 2D Camera Control: MovingCameraScene
+# IMPORTANT: self.camera.frame is ONLY available in MovingCameraScene.
+# Regular Scene does NOT have camera.frame — using it will raise AttributeError.
+# Usage: class MyScene(MovingCameraScene)
+MovingCamera_methods = {
+  self.camera.frame.animate.move_to(target),
+  self.camera.frame.animate.set_width(w),
+  self.camera.frame.animate.scale(factor),
+  self.camera.frame.save_state(),
+  self.camera.frame.animate.restore()
+}
 
 ### 5. Constants Codebook (The 'Rules')
 const_codebook = {
@@ -379,7 +394,8 @@ const_codebook = {
 soul_index = {
   Anim_Args: [run_time, rate_func, lag_ratio],
   Updater_Logic: [vt(val), au(func), alr(func)],
-  Camera_Control: [sco(p, t, g), mc(p, t, g, z, run_t), afif(mobs)]
+  Camera_Control_3D: [sco(p, t, g), mc(p, t, g, z, run_t), afif(mobs)],
+  Camera_Control_2D: [MovingCameraScene → self.camera.frame.animate.move_to/set_width/scale]
 }
 `
 

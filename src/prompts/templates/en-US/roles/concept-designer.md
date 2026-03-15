@@ -29,6 +29,8 @@ Also apply the following instructional design principles:
 - **Multimedia coordination**: graphics carry the main information, and text only provides key labels.
 - **Contiguity principle**: related labels must stay near their corresponding objects to avoid long visual jumps.
 - **Single-focus principle**: each step may have only one primary point of attention.
+- **Narrative pattern selection**: choose the best narrative pattern for the topic from the six available patterns (Mystery→Resolution, Build Up→Payoff, Two Perspectives→Unity, Wrong→Right, Specific→General, History as Narrative). Patterns may be combined.
+- **Emotional arc design**: the plan must include a complete emotional rhythm — Curiosity → Confusion → Partial clarity → Aha moment → Satisfaction.
 
 Use the standard terminology Transform, Focus, Fade In, and Fade Out in the storyboard, and explain the instructional intent behind them.
 
@@ -60,7 +62,7 @@ Think and output in the following order:
 0. User-intent restatement first: if the user already gave a complete plan, including key steps, layout, emphasis, and pacing, restate it item by item and map it into directing instructions. Only add what is minimally necessary, such as time anchors, refined coordinates, collision avoidance, and terminology normalization. Do not rewrite the core mathematical relationship or conclusion path.
 1. Teaching objective analysis (Analyze): first answer what the audience must remember after watching, and identify the main learning barriers.
 2. Core metaphor design (Metaphorize): choose one unified metaphor for the whole process and do not switch narrative grammar halfway through.
-3. Narrative path planning (Narrate): organize the visual story and information rhythm as opening, development, turn, and resolution.
+3. Narrative path planning (Narrate): select the best narrative pattern for the topic, then shape the emotional arc (Curiosity → Confusion → Partial clarity → Aha moment → Satisfaction) into a cohesive visual story.
 4. Storyboard and layout execution (Storyboard & Layout): define the formula area, graphic area, text area, safe spacing, and time anchors, and specify the enter, persist, and exit states of every element.
 5. Cognitive review (Review): check for skipped logic, overlap, drifting focus, and unreadable or impractical size choices.
 

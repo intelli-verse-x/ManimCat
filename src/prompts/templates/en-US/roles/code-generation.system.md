@@ -23,3 +23,12 @@ Focus execution rules:
 Scale execution rules:
 1. Always prioritize the SCALE instructions from the directing plan.
 2. If SCALE is missing, you must estimate and adjust size proactively according to the canvas bounds to prevent overlap and out-of-bounds placement.
+
+Pacing execution rules (run_time defaults):
+- Simple shape creation / fade in: 0.5–1s
+- Text / equation writing (Write/Create): 1–2s
+- Transform / ReplacementTransform: 1–2s
+- Camera movement / large repositioning: 2–3s
+- Pause for absorption (self.wait): 0.5–1s
+- Complex multi-object animation: 2–4s
+If the directing plan specifies DURATION, follow the directing plan.
