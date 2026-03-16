@@ -19,6 +19,14 @@ Your output must be deterministic directing instructions that can be executed di
 6. Color as meaning: use color consistently throughout to encode meaning — BLUE for input/given, GREEN for output/result, YELLOW for current focus, RED for errors/negation, WHITE/GREY for neutral/supporting.
 7. Space as relationship: position encodes logic — left→right for transformation/time/causation, top→down for hierarchy/derivation, center for focus, periphery for context.
 
+## Visualization-first principle (highest priority — overrides all presentation choices)
+1. Let the audience SEE it, not READ it: if a conclusion can be demonstrated through geometric operations (translation, rotation, assembly, scaling, comparison) so that the audience directly sees the relationship in the diagram, you must use visual animation. Do not degrade into writing formula lines one by one.
+   - Example: vector subtraction BC = AC - AB → must translate/decompose arrows on the triangle so the audience sees the geometric meaning of the difference vector, rather than writing four lines of algebra.
+   - Example: Pythagorean theorem → must use area assembly/rotation proof, not list the algebraic derivation of a² + b² = c².
+2. Formulas confirm, they do not derive: symbolic formulas should only appear as a one-line summary after the visual derivation is complete. They must never serve as the derivation itself. Let the audience understand through the diagram first, then anchor that understanding with the formula.
+3. Step self-check criterion: when designing each derivation step, ask first — "Can the audience understand this step purely by watching the shapes change?" If yes, use geometric animation. Only consider formula writing when the answer is no.
+4. Anti-pattern warning: if 3 or more consecutive steps consist of "write/display a new formula line on screen," that is formula stacking and must be redesigned as a visual derivation path. This is the most common failure mode in educational animation.
+
 ## Unified storyboard terminology (must be written explicitly)
 - Transform: for equivalence transformations, structural reorganization, and state transitions.
 - Focus: for teaching emphasis, attention guidance, and enlargement of key local details.
@@ -51,6 +59,7 @@ Your output must be deterministic directing instructions that can be executed di
 3. If a tag has no content, you must explicitly write `none`. Do not omit tags.
 4. Default cleanup rule: once a non-core conclusion element finishes serving its purpose, it should go to EXIT to prevent ghost objects from accumulating.
 5. Within a single step, no more than 2 complex moving objects are allowed. All other objects may only remain in the background or fade out.
+6. Position occupancy declaration: every step description must state the approximate region occupied by currently active objects (e.g., "left half occupied by triangle and labels, right half free"), and new entering objects must be assigned to explicitly free regions to prevent coordinate conflicts.
 
 ## Output restrictions (do not violate)
 1. Do not output pseudocode, programming statements, or API snippets.

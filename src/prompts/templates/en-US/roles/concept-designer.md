@@ -16,23 +16,10 @@ Please design a directly executable animation directing plan for the following m
 - Prioritize clear composition, stable multi-column layout, and non-overlapping annotations. Complex motion design is not required.
 {{/if}}
 
-### Knowledge Layer (must use)
+### Knowledge Layer (supplementary)
 
-Always use the following canvas physics baseline and do not omit it:
-- Canvas aspect ratio: 16:9
-- Canvas center: (0, 0)
-- Coordinate bounds: x in [-8, 8], y in [-4.5, 4.5]
-- **Strict boundary rule**: no geometric object, formula text, label, or arrow may exceed the above bounds at any step, including fade and transform intermediate states.
-
-Also apply the following instructional design principles:
-- **Cognitive load management**: break complex content into small steps and remove secondary information promptly.
-- **Multimedia coordination**: graphics carry the main information, and text only provides key labels.
-- **Contiguity principle**: related labels must stay near their corresponding objects to avoid long visual jumps.
-- **Single-focus principle**: each step may have only one primary point of attention.
-- **Narrative pattern selection**: choose the best narrative pattern for the topic from the six available patterns (Mystery→Resolution, Build Up→Payoff, Two Perspectives→Unity, Wrong→Right, Specific→General, History as Narrative). Patterns may be combined.
-- **Emotional arc design**: the plan must include a complete emotional rhythm — Curiosity → Confusion → Partial clarity → Aha moment → Satisfaction.
-
-Use the standard terminology Transform, Focus, Fade In, and Fade Out in the storyboard, and explain the instructional intent behind them.
+Canvas baseline, coordinate bounds, narrative patterns, emotional arc, and color semantics are defined in the system instructions. The following are supplementary principles:
+- **Scaffolded instruction**: break complex leaps into small, comprehensible, consecutive transformations.
 
 You may draw on the following visual metaphors:
 - Sets: container / region / layered enclosure
@@ -62,39 +49,26 @@ Think and output in the following order:
 0. User-intent restatement first: if the user already gave a complete plan, including key steps, layout, emphasis, and pacing, restate it item by item and map it into directing instructions. Only add what is minimally necessary, such as time anchors, refined coordinates, collision avoidance, and terminology normalization. Do not rewrite the core mathematical relationship or conclusion path.
 1. Teaching objective analysis (Analyze): first answer what the audience must remember after watching, and identify the main learning barriers.
 2. Core metaphor design (Metaphorize): choose one unified metaphor for the whole process and do not switch narrative grammar halfway through.
-3. Narrative path planning (Narrate): select the best narrative pattern for the topic, then shape the emotional arc (Curiosity → Confusion → Partial clarity → Aha moment → Satisfaction) into a cohesive visual story.
+3. Narrative path planning (Narrate): select the best narrative pattern for the topic and shape a cohesive 60s+ visual story.
 4. Storyboard and layout execution (Storyboard & Layout): define the formula area, graphic area, text area, safe spacing, and time anchors, and specify the enter, persist, and exit states of every element.
 5. Cognitive review (Review): check for skipped logic, overlap, drifting focus, and unreadable or impractical size choices.
 
 Every dynamic change description must include three states: the initial state, the transition process, and the final state.
 
-### Machine-readable storyboard protocol (must follow)
+### Machine-readable storyboard protocol (supplementary)
 
-Under every "step," you must first output one structured tag line with the fixed format:
-
-`[FOCUS: ...] [ENTER: ...] [KEEP: ...] [EXIT: ...] [SCALE: ...]`
-
-Constraints:
-1. All five tags must appear. Do not omit any. If a tag has no content, write `none`.
-2. Element names must remain stable and consistent, preferably in `snake_case`, so the downstream coder can track object states.
-3. `FOCUS` may contain only 1 primary focus object, optionally with 1 secondary focus.
-4. `ENTER/KEEP/EXIT` must cover every key element involved in the step to avoid ghost objects.
-5. `SCALE` must provide suggested size or scale for key elements, for example `main_graph=0.9, helper_text=0.7`.
+The full protocol is defined in the system instructions. Additional requirement for the user prompt:
+- Every step must include **[logical motivation]** (why this step) and **[visual transformation detail]** (initial state, process, final state).
 
 ### Rules Layer (hard constraints)
 
-1. No mechanical listing: do not simply stack logical points as visual elements.
-2. No logical jumps: key intermediate steps must be visualized explicitly.
-3. No meaningless animation: every motion must serve a teaching purpose.
-4. Do not output pseudocode or any programming-language snippets.
-5. Do not include more than 2 unrelated dynamic targets in a single step.
-6. Use no more than 5 colors besides the background.
-7. Do not place long explanatory text inside the geometric graphic area. Text must stay in the designated text area.
-8. Formulas, labels, and graphics must never overlap at any moment. Overlap tolerance is zero.
-9. For multiple-choice or multi-branch derivations, full vertical stacking is forbidden. A multi-column layout is mandatory.
-10. For multiple-choice or multi-branch derivations, overwrite-style progression is mandatory: the previous item's intermediate derivation must fade out before the next item enters.
-11. No element may be placed outside the canvas boundary. If content is too dense, scale it down or split it across multiple images.
-12. If space conflicts arise, prioritize shrinking the graphic area or splitting the step. Label overlap is never acceptable.
+1. **Visualization first**: derivation steps must prioritize geometric transformations over formula text. Do not degrade into writing formula lines one by one (see "Visualization-first principle" in the system instructions).
+2. No meaningless animation: every motion must serve a teaching purpose.
+3. Do not output pseudocode or any programming-language snippets.
+4. Do not include more than 2 unrelated dynamic targets in a single step.
+5. Use no more than 5 colors besides the background.
+6. Do not place long explanatory text inside the geometric graphic area. Text must stay in the designated text area.
+7. For multiple-choice or multi-branch derivations, full vertical stacking is forbidden. A multi-column layout with overwrite-style progression is mandatory.
 
 ### Protocol Layer (style and rhythm)
 
