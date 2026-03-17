@@ -36,7 +36,6 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 ```env
 LOG_LEVEL=info
 PROD_SUMMARY_LOG_ONLY=false
-OPENAI_STREAM_INCLUDE_USAGE=false
 ```
 
 ### 阶段 3: 安装依赖
@@ -85,8 +84,6 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 NODE_ENV=production
 LOG_LEVEL=info
 PROD_SUMMARY_LOG_ONLY=true
-# 如果你的上游模型/网关支持 stream_options.include_usage，可以开启
-OPENAI_STREAM_INCLUDE_USAGE=true
 
 # 按 key 路由到不同上游
 MANIMCAT_ROUTE_KEYS=user_key_a,user_key_b
@@ -157,7 +154,6 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 ```env
 LOG_LEVEL=info
 PROD_SUMMARY_LOG_ONLY=true
-OPENAI_STREAM_INCLUDE_USAGE=true
 ```
 
 如果你希望生产环境只保留每任务一条摘要日志，请确保以下三项都已在 Settings 配置并重启 Space：
@@ -214,4 +210,41 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 ## 前端多组 Custom API（可选）
 
 前端设置页仍支持多组 `url/key/model/manimcatKey` 轮询；它适合“同一浏览器用户自管多组上游”。  
-如果你希望“不同用户固定走不同上游”，优先使用上面的服务端 `MANIMCAT_ROUTE_*`。
+如果你希望”不同用户固定走不同上游”，优先使用上面的服务端 `MANIMCAT_ROUTE_*`。
+
+---
+
+## 生成历史（可选，Supabase）
+
+ManimCat 支持基于 Supabase 的持久化生成历史。数据库仅存储文字数据（提示词、生成的代码、元数据），**不存储**视频和图片文件。
+
+### 配置步骤
+
+1. 在 [supabase.com](https://supabase.com) 创建免费项目
+2. 在 Supabase SQL Editor 中执行建表脚本：
+
+```sql
+-- 文件：src/database/migrations/001_create_history.sql
+create table if not exists history (
+  id          uuid primary key default gen_random_uuid(),
+  client_id   text not null,
+  prompt      text not null,
+  code        text,
+  output_mode text not null check (output_mode in ('video', 'image')),
+  quality     text not null check (quality in ('low', 'medium', 'high')),
+  status      text not null check (status in ('completed', 'failed')),
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_history_client_created
+  on history (client_id, created_at desc);
+```
+
+3. 在 `.env` 中添加以下环境变量：
+
+```env
+ENABLE_HISTORY_DB=true
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-supabase-anon-key
+```
+
+当 `ENABLE_HISTORY_DB` 为 `false`（默认值）时，历史记录 API 返回空结果，不会建立数据库连接。

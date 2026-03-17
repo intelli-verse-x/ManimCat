@@ -6,12 +6,24 @@ import type {
   PromptDefaults,
   ModifyRequest,
   UsageMetricsResponse,
-  PromptLocale
+  PromptLocale,
+  HistoryListResponse
 } from '../types/api';
 import { loadSettings } from './settings';
 import { localizeApiMessage, translate } from '../i18n';
 
 const API_BASE = '/api';
+
+/** 获取或生成浏览器端唯一标识，用于隔离历史记录 */
+function getClientId(): string {
+  const KEY = 'manimcat_client_id';
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
 
 interface RequestAuthOptions {
   authKeyOverride?: string;
@@ -41,7 +53,7 @@ export async function modifyAnimation(
 
   const response = await fetch(`${API_BASE}/modify`, {
     method: 'POST',
-    headers: getAuthHeaders('application/json', options),
+    headers: { ...getAuthHeaders('application/json', options), 'x-client-id': getClientId() },
     body: JSON.stringify(payload),
     signal,
   });
@@ -94,7 +106,7 @@ export async function generateAnimation(
 
   const response = await fetch(`${API_BASE}/generate`, {
     method: 'POST',
-    headers: getAuthHeaders('application/json', options),
+    headers: { ...getAuthHeaders('application/json', options), 'x-client-id': getClientId() },
     body: JSON.stringify(payload),
     signal,
   });
@@ -164,4 +176,42 @@ export async function getUsageMetrics(days = 7, signal?: AbortSignal): Promise<U
   }
 
   return response.json();
+}
+
+// ============================================================================
+// History API
+// ============================================================================
+
+export async function getHistoryList(
+  page = 1,
+  pageSize = 12,
+  signal?: AbortSignal
+): Promise<HistoryListResponse> {
+  const response = await fetch(
+    `${API_BASE}/history?page=${page}&pageSize=${pageSize}`,
+    { headers: { ...getAuthHeaders(), 'x-client-id': getClientId() }, signal }
+  );
+
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.error ? localizeApiMessage(error.error) : translate('history.loadFailed'));
+  }
+
+  return response.json();
+}
+
+export async function deleteHistoryRecord(
+  id: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/history/${id}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders(), 'x-client-id': getClientId() },
+    signal,
+  });
+
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.error ? localizeApiMessage(error.error) : 'Delete failed');
+  }
 }

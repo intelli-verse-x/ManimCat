@@ -15,7 +15,7 @@ const logger = createLogger('ConceptDesigner')
 
 const DESIGNER_TEMPERATURE = parseFloat(process.env.DESIGNER_TEMPERATURE || '0.8')
 const CODER_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE || '0.7')
-const MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS || '1200', 10)
+const MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS || '12000', 10)
 const DESIGNER_MAX_TOKENS = parseInt(process.env.DESIGNER_MAX_TOKENS || '12000', 10)
 
 function createCustomClient(config: CustomApiConfig): OpenAI {

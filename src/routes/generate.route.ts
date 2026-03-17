@@ -99,6 +99,7 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
       customApiConfig: effectiveCustomApiConfig,
       promptOverrides,
       videoConfig,
+      clientId: String(req.headers['x-client-id'] || '').trim() || undefined,
       timestamp: new Date().toISOString()
     },
     {

@@ -7,10 +7,9 @@ import { useTabTitle } from './hooks/useTabTitle';
 import { TimingPanel } from './components/TimingPanel';
 import { AiModifyModal } from './components/AiModifyModal';
 import { SettingsModal } from './components/SettingsModal';
-import { PromptsManager } from './components/PromptsManager';
 import { DonationModal } from './components/DonationModal';
-import { UsageDashboard } from './components/UsageDashboard';
 import { ProviderConfigModal } from './components/ProviderConfigModal';
+import { Workspace } from './components/Workspace';
 import ManimCatLogo from './components/ManimCatLogo';
 import { TopLeftActions } from './components/app/top-left-actions';
 import { TopRightActions } from './components/app/top-right-actions';
@@ -23,10 +22,9 @@ function App() {
   const { t } = useI18n();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [promptsOpen, setPromptsOpen] = useState(false);
   const [donationOpen, setDonationOpen] = useState(false);
   const [providersOpen, setProvidersOpen] = useState(false);
-  const [usageOpen, setUsageOpen] = useState(false);
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [aiModifyOpen, setAiModifyOpen] = useState(false);
   const [aiModifyInput, setAiModifyInput] = useState('');
   const [currentCode, setCurrentCode] = useState('');
@@ -88,8 +86,7 @@ function App() {
     <div className="min-h-screen bg-bg-primary transition-colors duration-300 overflow-x-hidden">
       <TopLeftActions onOpenDonation={() => setDonationOpen(true)} onOpenProviders={() => setProvidersOpen(true)} />
       <TopRightActions
-        onOpenUsage={() => setUsageOpen(true)}
-        onOpenPrompts={() => setPromptsOpen(true)}
+        onOpenWorkspace={() => setWorkspaceOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -139,10 +136,9 @@ function App() {
       `}</style>
 
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} onSave={(config) => console.log(t('app.settingsSaved'), config)} />
-      <PromptsManager isOpen={promptsOpen} onClose={() => setPromptsOpen(false)} />
       <DonationModal isOpen={donationOpen} onClose={() => setDonationOpen(false)} />
       <ProviderConfigModal isOpen={providersOpen} onClose={() => setProvidersOpen(false)} onSave={(config) => console.log(t('app.settingsSaved'), config)} />
-      <UsageDashboard isOpen={usageOpen} onClose={() => setUsageOpen(false)} />
+      <Workspace isOpen={workspaceOpen} onClose={() => setWorkspaceOpen(false)} />
       <AiModifyModal
         isOpen={aiModifyOpen}
         value={aiModifyInput}

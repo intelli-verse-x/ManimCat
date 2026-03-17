@@ -41,7 +41,6 @@ Optional:
 ```env
 LOG_LEVEL=info
 PROD_SUMMARY_LOG_ONLY=false
-OPENAI_STREAM_INCLUDE_USAGE=false
 ```
 
 Install dependencies:
@@ -91,7 +90,6 @@ Recommended production settings:
 NODE_ENV=production
 LOG_LEVEL=info
 PROD_SUMMARY_LOG_ONLY=true
-OPENAI_STREAM_INCLUDE_USAGE=true
 ```
 
 Build and run:
@@ -194,3 +192,40 @@ The frontend settings page still supports multiple `url/key/model/manimcatKey` p
 Use that when a single user wants to manage multiple upstreams locally.
 
 If you want stable upstream routing per user, prefer server-side `MANIMCAT_ROUTE_*`.
+
+---
+
+## 6. Generation History (Optional, Supabase)
+
+ManimCat supports persistent generation history powered by Supabase. Only text data is stored (prompt, generated code, metadata). Videos and images are **not** stored in the database.
+
+### Setup
+
+1. Create a free project at [supabase.com](https://supabase.com)
+2. Run the migration SQL in the Supabase SQL Editor:
+
+```sql
+-- File: src/database/migrations/001_create_history.sql
+create table if not exists history (
+  id          uuid primary key default gen_random_uuid(),
+  client_id   text not null,
+  prompt      text not null,
+  code        text,
+  output_mode text not null check (output_mode in ('video', 'image')),
+  quality     text not null check (quality in ('low', 'medium', 'high')),
+  status      text not null check (status in ('completed', 'failed')),
+  created_at  timestamptz not null default now()
+);
+create index if not exists idx_history_client_created
+  on history (client_id, created_at desc);
+```
+
+3. Add the following environment variables:
+
+```env
+ENABLE_HISTORY_DB=true
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_KEY=your-supabase-anon-key
+```
+
+When `ENABLE_HISTORY_DB` is `false` (the default), the history API returns empty results and no database connection is made.

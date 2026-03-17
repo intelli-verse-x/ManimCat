@@ -40,7 +40,7 @@ export async function runPreGeneratedFlow(args: BaseFlowArgs): Promise<FlowResul
   )
 
   const storeStart = Date.now()
-  await storeResult(renderResult, timings)
+  await storeResult(renderResult, timings, data.clientId)
   timings.store = Date.now() - storeStart
   timings.total = (timings.render || 0) + (timings.store || 0)
 
@@ -113,7 +113,7 @@ export async function runEditFlow(args: BaseFlowArgs): Promise<FlowResult> {
   timings.render = Date.now() - renderStart
 
   const storeStart = Date.now()
-  await storeResult(renderResult, timings)
+  await storeResult(renderResult, timings, data.clientId)
   timings.store = Date.now() - storeStart
   timings.total = (timings.edit || 0) + (timings.render || 0) + (timings.store || 0)
 
@@ -175,7 +175,7 @@ export async function runGenerationFlow(args: BaseFlowArgs): Promise<FlowResult>
 
   await ensureJobNotCancelled(jobId, job)
   const storeStart = Date.now()
-  await storeResult(renderResult, timings)
+  await storeResult(renderResult, timings, data.clientId)
   timings.store = Date.now() - storeStart
   timings.total = (timings.analyze || 0) + (timings.render || 0) + (timings.store || 0)
 

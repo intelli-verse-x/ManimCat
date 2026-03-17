@@ -84,7 +84,9 @@ export interface VideoJobData {
   quality: VideoQuality
   outputMode: OutputMode
   timestamp: string
-  /** 棰勭敓鎴愮殑浠ｇ爜锛堜娇鐢ㄨ嚜瀹氫箟 AI 鏃讹級 */
+  /** 前端客户端指纹，用于隔离历史记录 */
+  clientId?: string
+  /** 预生成的代码（使用自定义 AI 时） */
   preGeneratedCode?: string
   /** AI 淇敼鏃剁殑鍘熷浠ｇ爜 */
   editCode?: string

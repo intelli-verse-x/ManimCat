@@ -16,6 +16,7 @@ import metricsRouter from './metrics.route'
 import aiTestRouter from './ai-test.route'
 import aiModelsRouter from './ai-models.route'
 import referenceImageUploadRouter from './reference-image-upload.route'
+import historyRouter from './history.route'
 
 const router = express.Router()
 
@@ -31,6 +32,7 @@ router.use('/api', promptsRouter)
 router.use('/api', aiTestRouter)
 router.use('/api', aiModelsRouter)
 router.use('/api', referenceImageUploadRouter)
+router.use('/api', historyRouter)
 router.use('/api/metrics', metricsRouter)
 
 export default router

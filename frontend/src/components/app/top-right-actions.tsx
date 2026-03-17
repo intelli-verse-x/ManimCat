@@ -2,32 +2,22 @@ import { ThemeToggle } from '../ThemeToggle';
 import { useI18n } from '../../i18n';
 
 interface TopRightActionsProps {
-  onOpenPrompts: () => void;
+  onOpenWorkspace: () => void;
   onOpenSettings: () => void;
-  onOpenUsage: () => void;
 }
 
-export function TopRightActions({ onOpenPrompts, onOpenSettings, onOpenUsage }: TopRightActionsProps) {
+export function TopRightActions({ onOpenWorkspace, onOpenSettings }: TopRightActionsProps) {
   const { locale, toggleLocale, t } = useI18n();
 
   return (
     <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
       <button
-        onClick={onOpenUsage}
+        onClick={onOpenWorkspace}
         className="p-2.5 text-text-secondary/70 hover:text-text-secondary hover:bg-bg-secondary/50 rounded-full transition-all active:scale-90 active:duration-75"
-        title={t('topbar.usage')}
+        title={t('topbar.workspace')}
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 19h16M6 16V9m6 7V5m6 11v-4" />
-        </svg>
-      </button>
-      <button
-        onClick={onOpenPrompts}
-        className="p-2.5 text-text-secondary/70 hover:text-text-secondary hover:bg-bg-secondary/50 rounded-full transition-all active:scale-90 active:duration-75"
-        title={t('topbar.prompts')}
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
       </button>
       <button

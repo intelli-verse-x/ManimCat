@@ -134,6 +134,7 @@ Users only need to describe what they want in natural language. The system then 
 - Bull `4.16.5` + ioredis `5.9.2` for the Redis-backed job queue
 - OpenAI SDK (`package.json`: `^4.50.0`, current `package-lock.json`: `4.104.0`)
 - Zod (`package.json`: `^3.23.0`, current `package-lock.json`: `3.25.76`) for data validation
+- Supabase JS (`@supabase/supabase-js`) for optional persistent history storage
 
 **Frontend**
 - React (current lock version `19.2.3`) + TypeScript `5.9.3`
@@ -205,7 +206,6 @@ User request -> POST /api/generate (outputMode: video | image)
 | `REDIS_PORT` | `6379` | Redis port |
 | `REDIS_PASSWORD` | - | Redis password, if needed |
 | `REDIS_DB` | `0` | Redis database |
-| `OPENAI_TIMEOUT` | `600000` | OpenAI request timeout in milliseconds |
 | `MANIMCAT_ROUTE_KEYS` | - | List of ManimCat keys for upstream mapping, separated by commas or new lines |
 | `MANIMCAT_ROUTE_API_URLS` | - | Upstream API URLs matched to `MANIMCAT_ROUTE_KEYS` by index |
 | `MANIMCAT_ROUTE_API_KEYS` | - | Upstream API keys matched to `MANIMCAT_ROUTE_KEYS` by index |
@@ -219,7 +219,6 @@ User request -> POST /api/generate (outputMode: video | image)
 | `MANIM_TIMEOUT` | `600000` | Manim render timeout in milliseconds |
 | `LOG_LEVEL` | `info` | Log level (`debug/info/warn/error`) |
 | `PROD_SUMMARY_LOG_ONLY` | `true` | In production, only emit one summary log line per job |
-| `OPENAI_STREAM_INCLUDE_USAGE` | `false` | Whether to try recording usage tokens for streaming requests, if the upstream supports it |
 | `CODE_RETRY_MAX_RETRIES` | `4` | Number of code-fix retries |
 | `MEDIA_RETENTION_HOURS` | `72` | Retention period for image and video files |
 | `MEDIA_CLEANUP_INTERVAL_MINUTES` | `60` | Media cleanup interval in minutes |
@@ -227,6 +226,9 @@ User request -> POST /api/generate (outputMode: video | image)
 | `USAGE_RETENTION_DAYS` | `90` | Retention period for daily aggregated usage metrics |
 | `METRICS_USAGE_RATE_LIMIT_MAX` | `30` | Maximum number of usage requests per IP in each rate limit window |
 | `METRICS_USAGE_RATE_LIMIT_WINDOW_MS` | `60000` | Usage API rate limit window in milliseconds |
+| `ENABLE_HISTORY_DB` | `false` | Enable persistent generation history (requires Supabase) |
+| `SUPABASE_URL` | - | Supabase project URL |
+| `SUPABASE_KEY` | - | Supabase anon key or service role key |
 
 **Example `.env`**
 
@@ -234,7 +236,6 @@ User request -> POST /api/generate (outputMode: video | image)
 PORT=3000
 REDIS_HOST=localhost
 REDIS_PORT=6379
-OPENAI_TIMEOUT=600000
 AI_TEMPERATURE=0.7
 CODE_RETRY_MAX_RETRIES=4
 MANIMCAT_ROUTE_KEYS=user_key_a,user_key_b
@@ -272,7 +273,7 @@ I made fairly extensive modifications and refactors to the original project so i
 - React 19 + TailwindCSS + react-syntax-highlighter
 
 6. Project structure
-- `src/{config,middlewares,routes,services,queues,prompts,types,utils}/`
+- `src/{config,database,middlewares,routes,services,queues,prompts,types,utils}/`
 - `frontend/src/{components,hooks,lib,types}/`
 
 7. New capabilities
@@ -293,6 +294,8 @@ I made fairly extensive modifications and refactors to the original project so i
 - Production summary logging mode with token aggregation support
 - Server-side upstream mapping by ManimCat key, making it possible to distinguish test and production users
 - Frontend multi-profile API polling and sharded routing, with `url/key/model/manimcat key` matched by index
+- Workspace: unified full-screen management page combining generation history, prompt management, and usage dashboard with a left rail navigation
+- Generation history: persistent history stored in Supabase (text-only: prompt, code, metadata; videos/images are not stored), feature-flagged via `ENABLE_HISTORY_DB`
 
 <details>
   <summary>Prompt feature notes</summary>
@@ -314,7 +317,7 @@ The system supports **8 prompt types**, divided into two major categories:
 
 ### Workflow
 
-1. Visit the page by clicking the "Prompt Manager" button in the top-right corner of the main interface
+1. Visit the page by clicking the "Workspace" button in the top-right corner, then select "Prompts" from the left rail
 2. Choose the prompt type in the sidebar
 3. Edit the prompt content in the main editor area
 4. Save or rely on auto-save

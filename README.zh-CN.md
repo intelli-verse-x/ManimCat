@@ -124,6 +124,7 @@
 - Bull `4.16.5` + ioredis `5.9.2`（Redis 任务队列）
 - OpenAI SDK（`package.json`: `^4.50.0`，当前 `package-lock.json`: `4.104.0`）
 - Zod（`package.json`: `^3.23.0`，当前 `package-lock.json`: `3.25.76`，数据验证）
+- Supabase JS（`@supabase/supabase-js`）可选持久化历史记录存储
 
 **前端**
 - React（当前 lock 版本 `19.2.3`）+ TypeScript `5.9.3`
@@ -188,7 +189,6 @@
 | `REDIS_PORT` | `6379` | Redis 端口 |
 | `REDIS_PASSWORD` | - | Redis 密码（如需） |
 | `REDIS_DB` | `0` | Redis 数据库 |
-| `OPENAI_TIMEOUT` | `600000` | OpenAI 请求超时（毫秒） |
 | `MANIMCAT_ROUTE_KEYS` | - | 按 ManimCat key 进行上游映射的 key 列表（逗号/换行分隔） |
 | `MANIMCAT_ROUTE_API_URLS` | - | 上游 API 地址列表（与 `MANIMCAT_ROUTE_KEYS` 按索引配对） |
 | `MANIMCAT_ROUTE_API_KEYS` | - | 上游 API 密钥列表（与 `MANIMCAT_ROUTE_KEYS` 按索引配对） |
@@ -202,7 +202,6 @@
 | `MANIM_TIMEOUT` | `600000` | Manim 渲染超时（毫秒） |
 | `LOG_LEVEL` | `info` | 日志级别（debug/info/warn/error） |
 | `PROD_SUMMARY_LOG_ONLY` | `true` | 生产环境仅输出任务摘要日志（每任务一条） |
-| `OPENAI_STREAM_INCLUDE_USAGE` | `false` | 流式请求是否尝试记录 usage token（需上游支持） |
 | `CODE_RETRY_MAX_RETRIES` | `4` | 代码修复重试次数 |
 | `MEDIA_RETENTION_HOURS` | `72` | 图片/视频文件保留小时数 |
 | `MEDIA_CLEANUP_INTERVAL_MINUTES` | `60` | 媒体清理任务执行间隔（分钟） |
@@ -210,6 +209,9 @@
 | `USAGE_RETENTION_DAYS` | `90` | 用量统计（按天聚合）保留天数 |
 | `METRICS_USAGE_RATE_LIMIT_MAX` | `30` | 用量接口每个 IP 的窗口最大请求数 |
 | `METRICS_USAGE_RATE_LIMIT_WINDOW_MS` | `60000` | 用量接口限流窗口时长（毫秒） |
+| `ENABLE_HISTORY_DB` | `false` | 是否启用持久化生成历史（需配置 Supabase） |
+| `SUPABASE_URL` | - | Supabase 项目 URL |
+| `SUPABASE_KEY` | - | Supabase anon key 或 service role key |
 
 **示例 `.env` 文件：**
 
@@ -217,7 +219,6 @@
 PORT=3000
 REDIS_HOST=localhost
 REDIS_PORT=6379
-OPENAI_TIMEOUT=600000
 AI_TEMPERATURE=0.7
 CODE_RETRY_MAX_RETRIES=4
 MANIMCAT_ROUTE_KEYS=user_key_a,user_key_b
@@ -261,7 +262,7 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 
   6. 项目结构
 
-  - src/{config,middlewares,routes,services,queues,prompts,types,utils}/
+  - src/{config,database,middlewares,routes,services,queues,prompts,types,utils}/
     frontend/src/{components,hooks,lib,types}/
 
   7. 新增功能
@@ -300,6 +301,10 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 
   - 前端自定义 API 仍支持多组配置轮询分流（url/key/model/manimcat key 按索引配对）
 
+  - 工作空间：统一的全屏管理页面，整合生成历史、提示词管理和用量统计，左侧 Rail 导航切换
+
+  - 生成历史：持久化历史记录存储于 Supabase（仅存文字：提示词、代码、元数据；不存储视频/图片），通过 `ENABLE_HISTORY_DB` 环境变量开关
+
 
 
 <details>
@@ -324,7 +329,7 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
 
 ### 使用流程
 
-1. **访问页面**：点击主界面右上角的“提示词管理”按钮（文档图标）
+1. **访问页面**：点击主界面右上角的”工作空间”按钮，然后在左侧 Rail 中选择”提示词系统”
 2. **选择类型**：在侧边栏选择要编辑的提示词类型
 3. **编辑提示词**：在主编辑区输入或修改提示词内容
 4. **保存配置**：点击保存按钮或自动保存

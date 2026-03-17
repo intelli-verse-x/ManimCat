@@ -6,6 +6,7 @@
 import { videoQueue } from '../../config/bull'
 import { storeJobResult } from '../../services/job-store'
 import { clearJobCancelled } from '../../services/job-cancel-store'
+import { createHistory } from '../../database'
 import { JobCancelledError } from '../../utils/errors'
 import { createLogger } from '../../utils/logger'
 import type { VideoJobData } from '../../types'
@@ -182,6 +183,23 @@ videoQueue.process(async (job) => {
       data: { error: errorMessage, cancelReason, outputMode }
     })
     await clearJobCancelled(jobId)
+
+    // 写入持久化历史记录（静默失败）
+    if (data.clientId) {
+      try {
+        await createHistory({
+          client_id: data.clientId,
+          prompt: concept,
+          code: null,
+          output_mode: outputMode as 'video' | 'image',
+          quality: quality as 'low' | 'medium' | 'high',
+          status: 'failed'
+        })
+      } catch (histErr) {
+        logger.warn('Failed to write history record', { jobId, error: histErr })
+      }
+    }
+
     emitJobSummary({
       jobId,
       taskType: editCode && editInstructions ? 'ai-edit' : preGeneratedCode ? 'pre-generated' : 'generation',
