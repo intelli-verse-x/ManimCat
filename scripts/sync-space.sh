@@ -11,6 +11,7 @@ TEMP_BRANCH="__space-sync-tmp"
 # HF 不允许的二进制文件模式
 EXCLUDE_PATTERNS=(
   "public/readme-images/*.png"
+  "src/audio/tracks/*.mp3"
 )
 
 # 确保在 main 分支且工作目录干净
