@@ -1,8 +1,8 @@
 /**
  * Routes Index
- * 路由总入口
- * - 统一挂载所有路由
- * - API 版本控制
+ * 璺敱鎬诲叆鍙?
+ * - 缁熶竴鎸傝浇鎵€鏈夎矾鐢?
+ * - API 鐗堟湰鎺у埗
  */
 
 import express from 'express'
@@ -17,13 +17,14 @@ import aiTestRouter from './ai-test.route'
 import aiModelsRouter from './ai-models.route'
 import referenceImageUploadRouter from './reference-image-upload.route'
 import historyRouter from './history.route'
+import renderFailuresRouter from './render-failures.route'
 
 const router = express.Router()
 
-// 挂载健康检查路由（不使用 /api 前缀）
+// 鎸傝浇鍋ュ悍妫€鏌ヨ矾鐢憋紙涓嶄娇鐢?/api 鍓嶇紑锛?
 router.use(healthRouter)
 
-// 挂载 API 路由（使用 /api 前缀）
+// 鎸傝浇 API 璺敱锛堜娇鐢?/api 鍓嶇紑锛?
 router.use('/api', generateRouter)
 router.use('/api', modifyRouter)
 router.use('/api', jobStatusRouter)
@@ -34,5 +35,6 @@ router.use('/api', aiModelsRouter)
 router.use('/api', referenceImageUploadRouter)
 router.use('/api', historyRouter)
 router.use('/api/metrics', metricsRouter)
+router.use('/api/admin', renderFailuresRouter)
 
 export default router

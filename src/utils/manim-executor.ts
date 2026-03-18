@@ -1,8 +1,3 @@
-/**
- * Manim 执行器
- * 执行 Manim 命令，管理子进程
- */
-
 import { spawn } from 'child_process'
 import { createLogger } from './logger'
 import {
@@ -23,19 +18,14 @@ import {
 
 const logger = createLogger('ManimExecutor')
 
-/**
- * Manim 执行结果
- */
 export interface ManimExecutionResult {
   success: boolean
   stdout: string
   stderr: string
   peakMemoryMB: number
+  exitCode?: number
 }
 
-/**
- * Manim 执行选项
- */
 export interface ManimExecuteOptions {
   jobId: string
   quality: string
@@ -47,9 +37,6 @@ export interface ManimExecuteOptions {
   timeoutMs?: number
 }
 
-/**
- * 执行 manim 命令
- */
 export function executeManimCommand(
   codeFile: string,
   options: ManimExecuteOptions
@@ -57,7 +44,7 @@ export function executeManimCommand(
   const normalizedOptions = normalizeExecuteOptions(options)
   const args = buildManimArgs(codeFile, normalizedOptions)
 
-  logger.info(`Job ${normalizedOptions.jobId}: 启动 manim 进程`, {
+  logger.info(`Job ${normalizedOptions.jobId}: starting manim process`, {
     command: `manim ${args.join(' ')}`,
     cwd: normalizedOptions.tempDir
   })
@@ -98,7 +85,7 @@ export function executeManimCommand(
     timeoutTimer = setTimeout(() => {
       const elapsed = elapsedSeconds(startTime)
 
-      logger.warn(`Job ${normalizedOptions.jobId}: Manim render timeout (${elapsed}s), killing process`, {
+      logger.warn(`Job ${normalizedOptions.jobId}: manim render timeout (${elapsed}s), killing process`, {
         peakMemoryMB: state.peakMemoryMB
       })
 
@@ -119,23 +106,23 @@ export function executeManimCommand(
 
       if (cancelled) {
         logger.warn(`Job ${normalizedOptions.jobId}: Manim cancelled`, { elapsed: `${elapsed}s` })
-        settle(buildResult(false, state, 'Job cancelled'))
+        settle(buildResult(false, state, 'Job cancelled', code ?? undefined))
         return
       }
 
       if (code === 0) {
-        logger.info(`Job ${normalizedOptions.jobId}: Manim 成功完成`, {
+        logger.info(`Job ${normalizedOptions.jobId}: manim completed`, {
           elapsed: `${elapsed}s`,
           exitCode: code,
           stdoutLength: state.stdout.length,
           stderrLength: state.stderr.length,
           peakMemoryMB: state.peakMemoryMB
         })
-        settle(buildResult(true, state))
+        settle(buildResult(true, state, undefined, code ?? undefined))
         return
       }
 
-      logger.error(`Job ${normalizedOptions.jobId}: Manim 退出异常`, {
+      logger.error(`Job ${normalizedOptions.jobId}: manim exited with error`, {
         elapsed: `${elapsed}s`,
         exitCode: code,
         stdoutLength: state.stdout.length,
@@ -143,7 +130,7 @@ export function executeManimCommand(
         stderrPreview: state.stderr.slice(-500),
         peakMemoryMB: state.peakMemoryMB
       })
-      settle(buildResult(false, state))
+      settle(buildResult(false, state, undefined, code ?? undefined))
     })
 
     proc.on('error', (error) => {
@@ -156,7 +143,7 @@ export function executeManimCommand(
         return
       }
 
-      logger.error(`Job ${normalizedOptions.jobId}: Manim 进程启动失败`, {
+      logger.error(`Job ${normalizedOptions.jobId}: manim process start failed`, {
         elapsed: `${elapsed}s`,
         errorMessage: error.message,
         errorStack: error.stack

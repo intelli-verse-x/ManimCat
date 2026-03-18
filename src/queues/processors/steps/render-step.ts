@@ -9,9 +9,6 @@ const logger = createLogger('RenderStep')
 
 export type { RenderResult } from './render-step-types'
 
-/**
- * 处理预生成代码
- */
 export async function handlePreGeneratedCode(
   jobId: string,
   concept: string,
@@ -37,7 +34,18 @@ export async function handlePreGeneratedCode(
 
   const renderResult =
     outputMode === 'image'
-      ? await renderImages(jobId, concept, quality, codeResult, timings, jobData.videoConfig)
+      ? await renderImages(
+          jobId,
+          concept,
+          quality,
+          codeResult,
+          timings,
+          jobData.videoConfig,
+          jobData.customApiConfig,
+          jobData.promptOverrides,
+          undefined,
+          jobData.clientId
+        )
       : await renderVideo(
           jobId,
           concept,
@@ -46,7 +54,9 @@ export async function handlePreGeneratedCode(
           timings,
           jobData.customApiConfig,
           jobData.videoConfig,
-          jobData.promptOverrides
+          jobData.promptOverrides,
+          undefined,
+          jobData.clientId
         )
 
   timings.render = Date.now() - renderStart

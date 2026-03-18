@@ -1,14 +1,13 @@
 ---
 title: ManimCat
-emoji: 🐱
-colorFrom: gray
+emoji: 婵☆偓绲介崯顖炲磿?colorFrom: gray
 colorTo: blue
 sdk: docker
 app_port: 7860
 pinned: false
 ---
 
-English | [简体中文](https://github.com/Wing900/ManimCat/blob/main/README.zh-CN.md)
+English | [缂傚倷鑳舵慨顓㈠磻閹捐秮褰掓晲閸℃ê鐭梺鐓庣仛閸ㄥ灝顕ｉ鍕簥?https://github.com/Wing900/ManimCat/blob/main/README.zh-CN.md)
 
 <div align="center">
 
@@ -33,12 +32,11 @@ English | [简体中文](https://github.com/Wing900/ManimCat/blob/main/README.zh
 <!-- Math symbol divider -->
 <p align="center">
   <span style="font-family: monospace; font-size: 24px; color: #90A4AE;">
-    ∫ &nbsp; ∑ &nbsp; ∂ &nbsp; ∞
-  </span>
+    闂?&nbsp; 闂?&nbsp; 闂?&nbsp; 闂?  </span>
 </p>
 
 <p align="center">
-  <strong>🎬 AI-Powered Mathematical Animation Generator</strong>
+  <strong>婵☆偓绲介崯顐ょ不?AI-Powered Mathematical Animation Generator</strong>
 </p>
 
 <p align="center">
@@ -47,7 +45,7 @@ English | [简体中文](https://github.com/Wing900/ManimCat/blob/main/README.zh
 
 <!-- Geometric divider -->
 <div style="margin: 30px 0;">
-  <span style="color: #CFD8DC; font-size: 20px;">◆ &nbsp; ◆ &nbsp; ◆</span>
+  <span style="color: #CFD8DC; font-size: 20px;">闂?&nbsp; 闂?&nbsp; 闂?/span>
 </div>
 
 <p align="center">
@@ -58,13 +56,7 @@ English | [简体中文](https://github.com/Wing900/ManimCat/blob/main/README.zh
 </p>
 
 <p align="center" style="font-size: 18px;">
-  <a href="#preface"><strong>Preface</strong></a> •
-  <a href="#examples"><strong>Examples</strong></a> •
-  <a href="#technology"><strong>Technology</strong></a> •
-  <a href="#deployment"><strong>Deployment</strong></a> •
-  <a href="#contributions"><strong>Contributions</strong></a> •
-  <a href="#license-and-copyright"><strong>License</strong></a> •
-  <a href="#maintenance-notes"><strong>Maintenance</strong></a>
+  <a href="#preface"><strong>Preface</strong></a> 闂?  <a href="#examples"><strong>Examples</strong></a> 闂?  <a href="#technology"><strong>Technology</strong></a> 闂?  <a href="#deployment"><strong>Deployment</strong></a> 闂?  <a href="#contributions"><strong>Contributions</strong></a> 闂?  <a href="#license-and-copyright"><strong>License</strong></a> 闂?  <a href="#maintenance-notes"><strong>Maintenance</strong></a>
 </p>
 
 <br>
@@ -107,7 +99,7 @@ Users only need to describe what they want in natural language. The system then 
   </video>
 </a>
 
-<sub>▲ Generated with BGM · Geometric Series Proof · ManimCat</sub>
+<sub>闂?Generated with BGM 闁?Geometric Series Proof 闁?ManimCat</sub>
 
 </div>
 
@@ -217,6 +209,8 @@ User request -> POST /api/generate (outputMode: video | image)
 | `METRICS_USAGE_RATE_LIMIT_WINDOW_MS` | `60000` | Usage API rate limit window in milliseconds |
 | `ENABLE_HISTORY_DB` | `false` | Enable persistent generation history (requires Supabase) |
 | `SUPABASE_URL` | - | Supabase project URL |
+| `ENABLE_RENDER_FAILURE_LOG` | `false` | Enable standalone render-failure event logging (only render failures) |
+| `ADMIN_EXPORT_TOKEN` | - | Admin token for render-failure JSON export endpoint |
 | `SUPABASE_KEY` | - | Supabase anon key or service role key |
 
 **Example `.env`**
@@ -362,7 +356,7 @@ If you have good suggestions or discover a bug, feel free to open an Issue for d
 If this project gave you useful ideas or helped you in some way, that is already an honor for me.
 
 <details>
-  <summary><b>If you like this project, you can also buy the author a Coke 🥤</b></summary>
+  <summary><b>If you like this project, you can also buy the author a Coke 婵☆偓绲介崯銊╁磻?/b></summary>
   <br />
   <p>Support it here:</p>
   <a href="https://afdian.com/a/wingflow/plan" target="_blank">
@@ -376,3 +370,20 @@ If this project gave you useful ideas or helped you in some way, that is already
 - Original project author
 - Linux.do community
 - Alibaba Cloud Bailian
+
+### Render Failure Export (Admin)
+
+```bash
+curl -H "x-admin-token: $ADMIN_EXPORT_TOKEN" "https://your-domain/api/admin/render-failures/export?from=2026-03-01&to=2026-03-31&limit=1000"
+```
+## PR Checklist
+
+Before opening a PR, please make sure all checks pass locally:
+
+```bash
+npm test
+npm run build:backend
+npm run build:frontend
+```
+
+If tests or builds fail, please fix them first and then submit the PR.

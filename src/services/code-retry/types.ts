@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Code Retry Service - 绫诲瀷瀹氫箟
  */
 
@@ -50,6 +50,8 @@ export interface RenderResult {
   stderr: string
   stdout: string
   peakMemoryMB: number
+  exitCode?: number
+  codeSnippet?: string
 }
 
 /**

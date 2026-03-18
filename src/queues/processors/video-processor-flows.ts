@@ -25,7 +25,7 @@ export async function runPreGeneratedFlow(args: BaseFlowArgs): Promise<FlowResul
   const { jobId, concept, quality, outputMode = 'video', preGeneratedCode } = data
 
   if (!preGeneratedCode) {
-    throw new Error('ç¼ºå°‘ preGeneratedCode')
+    throw new Error('È±ÉÙ preGeneratedCode')
   }
 
   await ensureJobNotCancelled(jobId, job)
@@ -57,7 +57,7 @@ export async function runEditFlow(args: BaseFlowArgs): Promise<FlowResult> {
   const { jobId, concept, quality, outputMode = 'video', editCode, editInstructions } = data
 
   if (!editCode || !editInstructions) {
-    throw new Error('ç¼ºå°‘ç¼–è¾‘è¾“å…¥')
+    throw new Error('È±ÉÙ±à¼­ÊäÈë')
   }
 
   await ensureJobNotCancelled(jobId, job)
@@ -75,7 +75,7 @@ export async function runEditFlow(args: BaseFlowArgs): Promise<FlowResult> {
   timings.edit = Date.now() - editStart
 
   if (!editedCode) {
-    throw new Error('AI ä¿®æ”¹æœªè¿”å›æœ‰æ•ˆä»£ç ')
+    throw new Error('AI ĞŞ¸ÄÎ´·µ»ØÓĞĞ§´úÂë')
   }
 
   await ensureJobNotCancelled(jobId, job)
@@ -83,7 +83,7 @@ export async function runEditFlow(args: BaseFlowArgs): Promise<FlowResult> {
   const generationResult = {
     manimCode: editedCode,
     usedAI: true,
-    generationType: 'ai-edit'
+    generationType: 'ai-edit' as const
   }
 
   const renderResult =
@@ -97,7 +97,8 @@ export async function runEditFlow(args: BaseFlowArgs): Promise<FlowResult> {
           data.videoConfig,
           data.customApiConfig,
           promptOverrides,
-          () => storeProcessingStage(jobId, 'rendering')
+          () => storeProcessingStage(jobId, 'rendering'),
+          data.clientId
         )
       : await renderVideo(
           jobId,
@@ -108,7 +109,8 @@ export async function runEditFlow(args: BaseFlowArgs): Promise<FlowResult> {
           data.customApiConfig,
           data.videoConfig,
           promptOverrides,
-          () => storeProcessingStage(jobId, 'rendering')
+          () => storeProcessingStage(jobId, 'rendering'),
+          data.clientId
         )
   timings.render = Date.now() - renderStart
 
@@ -158,7 +160,8 @@ export async function runGenerationFlow(args: BaseFlowArgs): Promise<FlowResult>
           data.videoConfig,
           data.customApiConfig,
           promptOverrides,
-          () => storeProcessingStage(jobId, 'rendering')
+          () => storeProcessingStage(jobId, 'rendering'),
+          data.clientId
         )
       : await renderVideo(
           jobId,
@@ -169,7 +172,8 @@ export async function runGenerationFlow(args: BaseFlowArgs): Promise<FlowResult>
           data.customApiConfig,
           data.videoConfig,
           promptOverrides,
-          () => storeProcessingStage(jobId, 'rendering')
+          () => storeProcessingStage(jobId, 'rendering'),
+          data.clientId
         )
   timings.render = Date.now() - renderStart
 

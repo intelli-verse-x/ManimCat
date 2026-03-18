@@ -111,7 +111,7 @@ export function startMemoryMonitor(
     }
 
     if (renderMemoryLogEnabled) {
-      logger.info(`Job ${options.jobId}: Manim 内存使用（进程树总和）`, {
+      logger.info(`Job ${options.jobId}: Manim memory usage`, {
         memoryMB: memory,
         peakMemoryMB: state.peakMemoryMB
       })
@@ -124,7 +124,7 @@ export function handleStdoutData(state: ExecutionState, jobId: string, text: str
 
   const elapsedSinceLastStdoutLog = Date.now() - state.lastStdoutLogAt
   if (elapsedSinceLastStdoutLog > STDOUT_LOG_INTERVAL_MS) {
-    logger.info(`Job ${jobId}: Manim 进度输出`, {
+    logger.info(`Job ${jobId}: Manim stdout`, {
       output: text.trim(),
       totalOutputLength: state.stdout.length
     })
@@ -137,14 +137,14 @@ export function handleStdoutData(state: ExecutionState, jobId: string, text: str
 
   const elapsedSinceLastProgressLog = Date.now() - state.lastProgressLogAt
   if (elapsedSinceLastProgressLog > PROGRESS_LOG_INTERVAL_MS) {
-    logger.info(`Job ${jobId}: 渲染进度`, { progress: text.trim() })
+    logger.info(`Job ${jobId}: Manim progress`, { progress: text.trim() })
     state.lastProgressLogAt = Date.now()
   }
 }
 
 export function handleStderrData(state: ExecutionState, jobId: string, text: string): void {
   state.stderr += text
-  logger.info(`Job ${jobId}: Manim stderr 实时输出`, {
+  logger.info(`Job ${jobId}: Manim stderr`, {
     output: text.trim(),
     totalStderrLength: state.stderr.length
   })
@@ -157,12 +157,14 @@ export function elapsedSeconds(startTime: number): string {
 export function buildResult(
   success: boolean,
   state: ExecutionState,
-  stderrOverride?: string
+  stderrOverride?: string,
+  exitCode?: number
 ): ManimExecutionResult {
   return {
     success,
     stdout: state.stdout,
     stderr: stderrOverride ?? state.stderr,
-    peakMemoryMB: state.peakMemoryMB
+    peakMemoryMB: state.peakMemoryMB,
+    exitCode
   }
 }

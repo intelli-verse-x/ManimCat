@@ -9,11 +9,27 @@ import { addBackgroundMusic } from '../../../audio/bgm-mixer'
 import { createRetryContext, executeCodeRetry } from '../../../services/code-retry/manager'
 import { ensureJobNotCancelled } from '../../../services/job-cancel'
 import { storeJobStage } from '../../../services/job-store'
+import {
+  createRenderFailureEvent,
+  extractCodeSnippet,
+  inferErrorMessage,
+  inferErrorType,
+  isRenderFailureFeatureEnabled,
+  sanitizeFullCode,
+  sanitizeStderrPreview,
+  sanitizeStdoutPreview
+} from '../../../render-failure'
 import type { GenerationResult } from './analysis-step'
-import type { PromptOverrides, VideoConfig } from '../../../types'
+import type { CustomApiConfig, PromptOverrides, VideoConfig } from '../../../types'
 import type { RenderResult } from './render-step-types'
 
 const logger = createLogger('RenderVideoStep')
+
+function resolveModel(customApiConfig?: unknown): string | undefined {
+  const model = (customApiConfig as Partial<CustomApiConfig> | undefined)?.model
+  const normalized = typeof model === 'string' ? model.trim() : ''
+  return normalized || undefined
+}
 
 export async function renderVideo(
   jobId: string,
@@ -24,7 +40,8 @@ export async function renderVideo(
   customApiConfig?: unknown,
   videoConfig?: VideoConfig,
   promptOverrides?: PromptOverrides,
-  onStageUpdate?: () => Promise<void>
+  onStageUpdate?: () => Promise<void>,
+  clientId?: string
 ): Promise<RenderResult> {
   const { manimCode, usedAI, generationType, sceneDesign } = codeResult
 
@@ -37,6 +54,45 @@ export async function renderVideo(
   const mediaDir = path.join(tempDir, 'media')
   const codeFile = path.join(tempDir, 'scene.py')
   const outputDir = path.join(process.cwd(), 'public', 'videos')
+
+  const logRenderFailure = async (args: {
+    attempt: number
+    code: string
+    codeSnippet?: string
+    stderr: string
+    stdout: string
+    peakMemoryMB: number
+    exitCode?: number
+    promptRole: string
+  }): Promise<void> => {
+    if (!isRenderFailureFeatureEnabled()) {
+      return
+    }
+
+    try {
+      await createRenderFailureEvent({
+        job_id: jobId,
+        attempt: args.attempt,
+        output_mode: 'video',
+        error_type: inferErrorType(args.stderr),
+        error_message: inferErrorMessage(args.stderr),
+        stderr_preview: sanitizeStderrPreview(args.stderr),
+        stdout_preview: sanitizeStdoutPreview(args.stdout),
+        code_snippet: extractCodeSnippet(args.codeSnippet || args.code),
+        full_code: sanitizeFullCode(args.code),
+        peak_memory_mb: args.peakMemoryMB,
+        exit_code: args.exitCode,
+        recovered: false,
+        model: resolveModel(customApiConfig),
+        prompt_version: process.env.PROMPT_VERSION?.trim() || null,
+        prompt_role: args.promptRole,
+        client_id: clientId || null,
+        concept: concept || null
+      })
+    } catch (error) {
+      console.error('[RenderVideoStep] Failed to record render failure:', error)
+    }
+  }
 
   try {
     fs.mkdirSync(tempDir, { recursive: true })
@@ -51,6 +107,8 @@ export async function renderVideo(
       stderr: string
       stdout: string
       peakMemoryMB: number
+      exitCode?: number
+      codeSnippet?: string
     }> => {
       await ensureJobNotCancelled(jobId)
       const cleaned = cleanManimCode(code)
@@ -80,11 +138,21 @@ export async function renderVideo(
 
       const result = await executeManimCommand(codeFile, options)
       lastRenderPeakMemoryMB = result.peakMemoryMB
-      return result
+      return {
+        ...result,
+        codeSnippet: cleaned.code
+      }
     }
 
     let finalCode = manimCode
-    let renderResult: { success: boolean; stderr: string; stdout: string; peakMemoryMB: number }
+    let renderResult: {
+      success: boolean
+      stderr: string
+      stdout: string
+      peakMemoryMB: number
+      exitCode?: number
+      codeSnippet?: string
+    }
 
     if (usedAI) {
       logger.info('Using local code-retry for video render', { jobId, hasSceneDesign: !!sceneDesign })
@@ -93,11 +161,19 @@ export async function renderVideo(
 
       const retryContext = createRetryContext(
         concept,
-        sceneDesign?.trim() || `æ¦‚å¿µï¼š${concept}`,
+        sceneDesign?.trim() || `¸ÅÄî: ${concept}`,
         promptOverrides,
         'video'
       )
-      const retryManagerResult = await executeCodeRetry(retryContext, renderCode, customApiConfig, manimCode)
+      const retryManagerResult = await executeCodeRetry(
+        retryContext,
+        renderCode,
+        customApiConfig,
+        manimCode,
+        async (event) => {
+          await logRenderFailure({ ...event, promptRole: 'codeRetry' })
+        }
+      )
 
       if (typeof retryManagerResult.generationTimeMs === 'number') {
         timings.retry = retryManagerResult.generationTimeMs
@@ -124,6 +200,16 @@ export async function renderVideo(
       if (onStageUpdate) await onStageUpdate()
       renderResult = await renderCode(manimCode)
       if (!renderResult.success) {
+        await logRenderFailure({
+          attempt: 1,
+          code: manimCode,
+          codeSnippet: renderResult.codeSnippet,
+          stderr: renderResult.stderr,
+          stdout: renderResult.stdout,
+          peakMemoryMB: renderResult.peakMemoryMB,
+          exitCode: renderResult.exitCode,
+          promptRole: 'single-render'
+        })
         throw new Error(renderResult.stderr || 'Manim render failed')
       }
       finalCode = lastRenderedCode
@@ -139,7 +225,6 @@ export async function renderVideo(
     const outputPath = path.join(outputDir, outputFilename)
     fs.copyFileSync(videoPath, outputPath)
 
-    // Add background music (default: on)
     if (videoConfig?.bgm !== false) {
       await addBackgroundMusic(outputPath)
     }
