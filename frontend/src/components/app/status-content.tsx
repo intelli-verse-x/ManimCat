@@ -28,6 +28,21 @@ interface StatusContentProps {
   onAiModifyOpen: () => void;
   onResetAll: () => void;
   onCancel: () => void;
+  onOpenProviders: () => void;
+}
+
+function shouldShowProviderConfigHint(message: string | null): boolean {
+  if (!message) {
+    return false;
+  }
+
+  return (
+    message.includes('MANIMCAT_ROUTE_API_URLS') ||
+    message.includes('未配置上游 AI') ||
+    message.includes('model 为空') ||
+    message.includes('no upstream AI is configured') ||
+    message.includes('no model is available')
+  );
 }
 
 export function StatusContent({
@@ -47,6 +62,7 @@ export function StatusContent({
   onAiModifyOpen,
   onResetAll,
   onCancel,
+  onOpenProviders,
 }: StatusContentProps) {
   const { t } = useI18n();
 
@@ -97,6 +113,11 @@ export function StatusContent({
   }
 
   if (status === 'error') {
+    const showProviderConfigHint = shouldShowProviderConfigHint(error);
+    const shownError = showProviderConfigHint
+      ? t('result.error.noBackendModelConfigured')
+      : (error || t('result.errorFallback'));
+
     return (
       <div className="space-y-6">
         <div className="bg-red-50/80 dark:bg-red-900/20 rounded-2xl p-6">
@@ -108,7 +129,16 @@ export function StatusContent({
             </div>
             <div className="flex-1">
               <p className="text-text-primary font-medium mb-1">{t('result.errorTitle')}</p>
-              <p className="text-text-secondary text-sm">{error || t('result.errorFallback')}</p>
+              <p className="text-text-secondary text-sm">{shownError}</p>
+              {showProviderConfigHint && (
+                <button
+                  type="button"
+                  onClick={onOpenProviders}
+                  className="mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium text-bg-primary bg-accent hover:bg-accent-hover transition-colors"
+                >
+                  {t('result.error.configureCustomModel')}
+                </button>
+              )}
             </div>
           </div>
         </div>

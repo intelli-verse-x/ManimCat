@@ -126,6 +126,7 @@ function App() {
             onAiModifyOpen={() => setAiModifyOpen(true)}
             onResetAll={resetAll}
             onCancel={cancel}
+            onOpenProviders={() => setProvidersOpen(true)}
           />
         </div>
       </div>

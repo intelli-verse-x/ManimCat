@@ -27,6 +27,82 @@ type DailyField = (typeof DAILY_FIELDS)[number]
 
 type DailyCounters = Record<DailyField, number>
 
+type ErrorCategory = 'DB_AUTH' | 'DB_SCHEMA' | 'NETWORK' | 'UNKNOWN'
+
+function getErrorCategory(message: string): ErrorCategory {
+  const normalized = message.toLowerCase()
+
+  if (
+    normalized.includes('permission') ||
+    normalized.includes('forbidden') ||
+    normalized.includes('unauthorized') ||
+    normalized.includes('jwt') ||
+    normalized.includes('rls')
+  ) {
+    return 'DB_AUTH'
+  }
+
+  if (
+    normalized.includes('column') ||
+    normalized.includes('relation') ||
+    normalized.includes('table') ||
+    normalized.includes('schema') ||
+    normalized.includes('does not exist') ||
+    normalized.includes('invalid input syntax')
+  ) {
+    return 'DB_SCHEMA'
+  }
+
+  if (
+    normalized.includes('timeout') ||
+    normalized.includes('network') ||
+    normalized.includes('fetch failed') ||
+    normalized.includes('econn') ||
+    normalized.includes('socket')
+  ) {
+    return 'NETWORK'
+  }
+
+  return 'UNKNOWN'
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    const message = error.message || ''
+    return {
+      name: error.name,
+      message,
+      category: getErrorCategory(message),
+      stack: error.stack
+    }
+  }
+
+  if (typeof error === 'object' && error !== null) {
+    const source = error as Record<string, unknown>
+    const message =
+      (typeof source.message === 'string' && source.message) ||
+      (typeof source.error_description === 'string' && source.error_description) ||
+      (typeof source.details === 'string' && source.details) ||
+      ''
+
+    return {
+      message: message || '[No message]',
+      category: getErrorCategory(message),
+      code: source.code,
+      details: source.details,
+      hint: source.hint,
+      status: source.status,
+      raw: source
+    }
+  }
+
+  const message = String(error)
+  return {
+    message,
+    category: getErrorCategory(message)
+  }
+}
+
 export interface UsageDailyPoint {
   date: string
   submittedTotal: number
@@ -157,7 +233,7 @@ async function incrementDailyCounters(dateString: string, counters: Partial<Dail
     tx.expire(key, retentionSeconds)
     await tx.exec()
   } catch (err) {
-    logger.warn('Redis 用量统计更新失败', { dateString, error: String(err) })
+    logger.warn('Redis 用量统计更新失败', { dateString, error: serializeError(err) })
   }
 
   // 2. 同步到数据库 (持久化)
@@ -178,7 +254,7 @@ async function incrementDailyCounters(dateString: string, counters: Partial<Dail
       })
       if (error) throw error
     } catch (err) {
-      logger.error('数据库用量统计更新失败', { dateString, error: String(err) })
+      logger.error('数据库用量统计更新失败', { dateString, error: serializeError(err) })
     }
   }
 }
@@ -197,7 +273,7 @@ export async function recordUsageSubmission(
   try {
     await incrementDailyCounters(dateString, counters)
   } catch (error) {
-    logger.warn('记录任务提交用量失败', { source, error: String(error) })
+    logger.warn('记录任务提交用量失败', { source, error: serializeError(error) })
   }
 }
 
@@ -234,7 +310,7 @@ export async function recordUsageFinalization(args: {
 
     await incrementDailyCounters(dateString, counters)
   } catch (error) {
-    logger.warn('记录任务完成用量失败', { jobId, status, error: String(error) })
+    logger.warn('记录任务完成用量失败', { jobId, status, error: serializeError(error) })
   }
 }
 
@@ -310,7 +386,7 @@ export async function getUsageSummary(days: number): Promise<UsageSummary> {
         return buildDailyPoint(date, counters)
       })
     } catch (err) {
-      logger.warn('从数据库获取用量概览失败，尝试回退到 Redis', { error: String(err) })
+      logger.warn('从数据库获取用量概览失败，尝试回退到 Redis', { error: serializeError(err) })
       db = null // 标记数据库失败，进入 Redis 逻辑
     }
   }
