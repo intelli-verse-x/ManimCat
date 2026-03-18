@@ -30,6 +30,7 @@ interface StatusContentProps {
   onBackToHome: () => void;
   onCancel: () => void;
   onOpenProviders: () => void;
+  onOpenGame: () => void;
 }
 
 function shouldShowProviderConfigHint(message: string | null): boolean {
@@ -65,6 +66,7 @@ export function StatusContent({
   onBackToHome,
   onCancel,
   onOpenProviders,
+  onOpenGame,
 }: StatusContentProps) {
   const { t } = useI18n();
 
@@ -75,7 +77,7 @@ export function StatusContent({
   if (status === 'processing') {
     return (
       <div className="bg-bg-secondary/20 rounded-2xl p-8">
-        <LoadingSpinner stage={stage} jobId={jobId || undefined} onCancel={onCancel} />
+        <LoadingSpinner stage={stage} jobId={jobId || undefined} onCancel={onCancel} onOpenGame={onOpenGame} />
       </div>
     );
   }

@@ -13,6 +13,7 @@ interface LoadingSpinnerProps {
   stage: Stage;
   jobId?: string;
   onCancel?: () => void;
+  onOpenGame?: () => void;
 }
 
 const STAGE_CONFIG = {
@@ -180,7 +181,7 @@ function WavingPaws() {
 // 主组件
 // ============================================================================
 
-export function LoadingSpinner({ stage, jobId, onCancel }: LoadingSpinnerProps) {
+export function LoadingSpinner({ stage, jobId, onCancel, onOpenGame }: LoadingSpinnerProps) {
   const { t } = useI18n();
   const progress = usePerceivedProgress(stage);
   const { key } = STAGE_CONFIG[stage];
@@ -204,7 +205,29 @@ export function LoadingSpinner({ stage, jobId, onCancel }: LoadingSpinnerProps) 
   return (
     <div className="flex flex-col items-center justify-center py-6">
       {/* 大猫头 */}
-      <FloatingCat />
+      <div className="relative">
+        <FloatingCat />
+
+        {onOpenGame && (
+          <div className="absolute left-[100px] -top-[50px] flex flex-col-reverse items-start">
+            <div className="w-[50px] h-[30px] border-l border-t border-text-secondary/35 rounded-tl-[4px] mt-1" />
+            <p className="text-[13px] leading-snug tracking-[0.08em] font-light text-text-secondary/85 whitespace-nowrap">
+              {t('game.invite.bubble')}{' '}
+              <a
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault();
+                  onOpenGame();
+                }}
+                className="font-semibold text-text-primary underline underline-offset-4 cursor-pointer"
+              >
+                2048
+              </a>
+              <span className="text-text-secondary/85">?</span>
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* 波浪猫爪 */}
       <div className="mt-3">
