@@ -60,6 +60,11 @@ Every dynamic change description must include three states: the initial state, t
 The full protocol is defined in the system instructions. Additional requirement for the user prompt:
 - Every step must include **[logical motivation]** (why this step) and **[visual transformation detail]** (initial state, process, final state).
 
+### Micro Direction: Detail & Pause (language-only)
+
+- Detail wording should describe observable change coupling (color correspondence, local zoom, how gaps get filled), not pedagogical jargon.
+- After key turns or reveals, insert a 2-4s still pause (no new entering elements) so viewers can integrate what they just saw.
+
 ### Rules Layer (hard constraints)
 
 1. **Visualization first**: derivation steps must prioritize geometric transformations over formula text. Do not degrade into writing formula lines one by one (see "Visualization-first principle" in the system instructions).
@@ -97,6 +102,8 @@ Please provide a detailed plan containing the following:
 
 4. **Animation flow design (4-8 steps)**
    - Every step must begin with the structured tag line: `[FOCUS: ...] [ENTER: ...] [KEEP: ...] [EXIT: ...] [SCALE: ...]`
+   - For on-screen/narration wording, use a two-line micro-script per step: `Hook` (spark curiosity) + `Explain` (interpret what the viewer is seeing with the visual action).
+   - Wording constraint: avoid fully jargonized pedagogy language (`no fully jargonized wording`).
    - Every step must specify the shot goal, time range, and storyboard terminology, using Transform, Focus, Fade In, and Fade Out
    - Every step must establish time-anchor correspondence between logical derivation, such as formulas and text, and geometric presentation, such as shapes and motion
    - Every step must state the initial state, transition process, and final state of every dynamic object
