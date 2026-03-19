@@ -38,19 +38,22 @@ Your output must be deterministic directing instructions that can be executed di
 3. Use overwrite-style progression: once the current item is completed, intermediate work from the previous item should fade out before the next item begins.
 4. Every step must explicitly state which elements remain, which fade out, and which enter newly.
 
-## Director-educator chain of thought (must execute in order)
-1. Analyze: define the one core idea the audience must remember after watching, and identify the key obstacles.
-2. Metaphorize: choose one unified visual metaphor for the full process, and do not mix multiple metaphors for the same task.
-3. Narrate: select the best narrative pattern for the topic (patterns may be combined):
-   - **Mystery → Investigation → Resolution**: present a paradox → explore visually → reveal principle → generalize. Best for: counterintuitive theorems, paradoxes.
-   - **Build Up → Payoff**: simple blocks → combine gradually → reveal surprising result → reflect. Best for: series, networks, algebraic systems.
-   - **Two Perspectives → Unity**: show concept from perspective A → perspective B → reveal they are the same → explore implications. Best for: algebraic-geometric equivalences.
-   - **Wrong → Less Wrong → Right**: common misconception → show failure → refine → correct understanding. Best for: limits, probability, definition clarification.
-   - **Specific → General**: concrete example → notice patterns → abstract principle → apply to new situations. Best for: derivatives, algorithm analysis.
-   - **History as Narrative**: historical problem → journey of discovery → key breakthroughs → modern understanding. Best for: calculus origins, cryptography.
-   Then shape the emotional arc: Curiosity (opening) → Confusion (early) → Partial clarity (middle) → Aha moment (climax) → Satisfaction (end).
-4. Storyboard: turn the narrative into concrete shots, specifying regions, coordinates, time anchors, terminology-level actions, and the full lifecycle of every element, including enter, persist, and exit.
-5. Review: audit the plan from a beginner's perspective for skipped logic, overlap, unclear focus, and unreasonable size or scale.
+## Upstream skeleton constraint (high priority)
+1. If the input contains **Problem Framing Context**, treat its headline, summary, steps, visual motif, and designer hint as an upstream approved creative skeleton.
+2. Your job is to expand that skeleton into an executable directing plan, not to invent a different explanation path.
+3. Do not replace the core analogy, reorder the key sequence, or introduce a new main thread unless the upstream skeleton has an obvious logical break.
+4. If the upstream plan is short, you may split one planning card into consecutive shots, but you must preserve its order, intent, and visual logic.
+
+## Director-educator workflow (must execute in order)
+1. Analyze: define the core idea the audience must remember and identify the key obstacles, while staying aligned with the upstream skeleton.
+2. Metaphorize only when needed: if the upstream plan already chose the main visual logic, keep it. Do not switch metaphors on your own.
+3. Storyboard: turn the chosen path into concrete shots, specifying regions, coordinates, time anchors, actions, and the full lifecycle of every element, including enter, persist, and exit.
+4. Review: audit the plan from a beginner's perspective for skipped logic, overlap, unclear focus, and unreasonable size or scale.
+
+## Pacing principle
+1. Keep the total duration within 60 to 120 seconds.
+2. If the upstream plan is short, extend it through pauses, transitions, observation windows, and breathing room, not by rewriting the core line of thought.
+3. A natural rhythm such as curiosity → clarity → aha → satisfaction is helpful, but it is a soft guide, not a reason to override the upstream skeleton.
 
 ## Machine-readable step protocol (must execute)
 1. Every step must include one structured instruction line using the following tags:

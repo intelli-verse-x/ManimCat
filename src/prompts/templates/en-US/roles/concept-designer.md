@@ -47,11 +47,10 @@ You must include the following core content:
 
 Think and output in the following order:
 0. User-intent restatement first: if the user already gave a complete plan, including key steps, layout, emphasis, and pacing, restate it item by item and map it into directing instructions. Only add what is minimally necessary, such as time anchors, refined coordinates, collision avoidance, and terminology normalization. Do not rewrite the core mathematical relationship or conclusion path.
-1. Teaching objective analysis (Analyze): first answer what the audience must remember after watching, and identify the main learning barriers.
-2. Core metaphor design (Metaphorize): choose one unified metaphor for the whole process and do not switch narrative grammar halfway through.
-3. Narrative path planning (Narrate): select the best narrative pattern for the topic and shape a cohesive 60s+ visual story.
-4. Storyboard and layout execution (Storyboard & Layout): define the formula area, graphic area, text area, safe spacing, and time anchors, and specify the enter, persist, and exit states of every element.
-5. Cognitive review (Review): check for skipped logic, overlap, drifting focus, and unreadable or impractical size choices.
+0.5. Upstream planning first: if the input contains `Problem Framing Context`, treat its headline, summary, and steps as the directing skeleton. You may expand them into shots, layout, pacing, lifecycle, and collision-avoidance instructions, but you may not rewrite the main line, replace the core analogy, or reorder the key sequence.
+1. Teaching objective analysis (Analyze): answer what the audience must remember after watching, and identify the main learning barriers, while staying aligned with the upstream skeleton.
+2. Storyboard and layout execution (Storyboard & Layout): define the formula area, graphic area, text area, safe spacing, and time anchors, and specify the enter, persist, and exit states of every element.
+3. Cognitive review (Review): check for skipped logic, overlap, drifting focus, and unreadable or impractical size choices.
 
 Every dynamic change description must include three states: the initial state, the transition process, and the final state.
 
@@ -101,6 +100,7 @@ Please provide a detailed plan containing the following:
    - Provide global safe margins
 
 4. **Animation flow design (4-8 steps)**
+   - Prioritize one-to-one expansion from `Problem Framing Context` cards. Normally, one planning card should become one directing step. Only split a card when necessary for readability or timing, and keep the original order and intent.
    - Every step must begin with the structured tag line: `[FOCUS: ...] [ENTER: ...] [KEEP: ...] [EXIT: ...] [SCALE: ...]`
    - For on-screen/narration wording, use a two-line micro-script per step: `Hook` (spark curiosity) + `Explain` (interpret what the viewer is seeing with the visual action).
    - Wording constraint: avoid fully jargonized pedagogy language (`no fully jargonized wording`).
