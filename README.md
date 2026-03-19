@@ -356,7 +356,13 @@ If this project gave you useful ideas or helped you in some way, that is already
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Wing900/ManimCat&type=Date)](https://www.star-history.com/#Wing900/ManimCat&Date)
+<a href="https://www.star-history.com/?repos=Wing900%2FManimCat&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Wing900/ManimCat&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=Wing900/ManimCat&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=Wing900/ManimCat&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## Acknowledgements
 

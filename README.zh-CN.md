@@ -372,6 +372,16 @@ MANIMCAT_ROUTE_MODELS=qwen3.5-plus,gemini-3-flash-preview
   <p><i>感谢你的支持，我会更有动力维护这个项目！</i></p>
 </details>
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=Wing900%2FManimCat&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/image?repos=Wing900/ManimCat&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/image?repos=Wing900/ManimCat&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/image?repos=Wing900/ManimCat&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ## 致谢
 
 - 原项目作者
