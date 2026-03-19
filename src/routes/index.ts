@@ -18,6 +18,7 @@ import aiModelsRouter from './ai-models.route'
 import referenceImageUploadRouter from './reference-image-upload.route'
 import historyRouter from './history.route'
 import renderFailuresRouter from './render-failures.route'
+import problemFrameRouter from './problem-frame.route'
 
 const router = express.Router()
 
@@ -34,6 +35,7 @@ router.use('/api', aiTestRouter)
 router.use('/api', aiModelsRouter)
 router.use('/api', referenceImageUploadRouter)
 router.use('/api', historyRouter)
+router.use('/api', problemFrameRouter)
 router.use('/api/metrics', metricsRouter)
 router.use('/api/admin', renderFailuresRouter)
 

@@ -76,7 +76,7 @@ export function StatusContent({
 
   if (status === 'processing') {
     return (
-      <div className="bg-bg-secondary/20 rounded-2xl p-8">
+      <div className="animate-fade-in-soft bg-bg-secondary/20 rounded-2xl p-8">
         <LoadingSpinner stage={stage} jobId={jobId || undefined} onCancel={onCancel} onOpenGame={onOpenGame} />
       </div>
     );

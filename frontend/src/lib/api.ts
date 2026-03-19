@@ -7,7 +7,9 @@ import type {
   ModifyRequest,
   UsageMetricsResponse,
   PromptLocale,
-  HistoryListResponse
+  HistoryListResponse,
+  ProblemFramingRequest,
+  ProblemFramingResponse
 } from '../types/api';
 import { loadSettings } from './settings';
 import { localizeApiMessage, translate } from '../i18n';
@@ -114,6 +116,26 @@ export async function generateAnimation(
   if (!response.ok) {
     const error: ApiError = await response.json();
     throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.generateFailed'));
+  }
+
+  return response.json();
+}
+
+export async function generateProblemFraming(
+  request: ProblemFramingRequest,
+  signal?: AbortSignal,
+  options: RequestAuthOptions = {}
+): Promise<ProblemFramingResponse> {
+  const response = await fetch(`${API_BASE}/problem-frame`, {
+    method: 'POST',
+    headers: { ...getAuthHeaders('application/json', options), 'x-client-id': getClientId() },
+    body: JSON.stringify(request),
+    signal,
+  });
+
+  if (!response.ok) {
+    const error: ApiError = await response.json();
+    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.problemFramingFailed'));
   }
 
   return response.json();

@@ -4,6 +4,7 @@
 export type Quality = 'low' | 'medium' | 'high';
 export type OutputMode = 'video' | 'image';
 export type PromptLocale = 'zh-CN' | 'en-US';
+export type ProblemFramingMode = 'clarify' | 'invent';
 
 /** 图片细节级别 */
 export type VisionImageDetail = 'auto' | 'low' | 'high';
@@ -93,6 +94,7 @@ export interface JobTimings {
 /** 生成请求 */
 export interface GenerateRequest {
   concept: string;
+  problemPlan?: ProblemFramingPlan;
   outputMode: OutputMode;
   quality?: Quality;
   /** 参考图片 */
@@ -104,6 +106,33 @@ export interface GenerateRequest {
   /** Prompt overrides */
   promptOverrides?: PromptOverrides;
   customApiConfig?: CustomApiConfig;
+}
+
+export interface ProblemFramingStep {
+  title: string;
+  content: string;
+}
+
+export interface ProblemFramingPlan {
+  mode: ProblemFramingMode;
+  headline: string;
+  summary: string;
+  steps: ProblemFramingStep[];
+  visualMotif: string;
+  designerHint: string;
+}
+
+export interface ProblemFramingRequest {
+  concept: string;
+  feedback?: string;
+  locale?: PromptLocale;
+  currentPlan?: ProblemFramingPlan;
+  customApiConfig?: CustomApiConfig;
+}
+
+export interface ProblemFramingResponse {
+  success: boolean;
+  plan: ProblemFramingPlan;
 }
 
 /** AI 修改请求 */

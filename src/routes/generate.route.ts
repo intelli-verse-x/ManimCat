@@ -25,6 +25,7 @@ import { hasPromptOverrides } from '../utils/prompt-overrides'
 import { sanitizeReferenceImages } from './helpers/reference-images'
 import { generateBodySchema } from './schemas/generate'
 import { resolveCustomApiConfigByManimcatKey } from '../utils/manimcat-routing'
+import type { ProblemFramingPlan } from '../types'
 
 const router = express.Router()
 const logger = createLogger('GenerateRoute')
@@ -35,7 +36,7 @@ const logger = createLogger('GenerateRoute')
 async function handleGenerateRequest(req: express.Request, res: express.Response) {
   const parsed = generateBodySchema.parse(req.body)
 
-  const { concept, outputMode, quality, code, customApiConfig, promptOverrides, videoConfig, referenceImages } = parsed
+  const { concept, problemPlan, outputMode, quality, code, customApiConfig, promptOverrides, videoConfig, referenceImages } = parsed
   const authenticatedManimcatApiKey = res.locals.manimcatApiKey as string | undefined
   const routedCustomApiConfig = resolveCustomApiConfigByManimcatKey(authenticatedManimcatApiKey)
   const effectiveCustomApiConfig = customApiConfig ?? routedCustomApiConfig
@@ -63,6 +64,7 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
   }
 
   const sanitizedConcept = concept.trim().replace(/\s+/g, ' ')
+  const queuedConcept = mergeProblemPlanIntoConcept(sanitizedConcept, problemPlan)
   const sanitizedReferenceImages = sanitizeReferenceImages(referenceImages)
 
   if (sanitizedConcept.length === 0) {
@@ -74,9 +76,10 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
 
   logger.info('收到动画生成请求', {
     jobId,
-    concept: sanitizedConcept,
+    concept: queuedConcept,
     outputMode,
     quality,
+    hasProblemPlan: !!problemPlan,
     hasPreGeneratedCode: !!code,
     hasCustomApiConfig: !!effectiveCustomApiConfig,
     routeByManimcatKey: !customApiConfig && !!routedCustomApiConfig,
@@ -91,7 +94,8 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
   await videoQueue.add(
     {
       jobId,
-      concept: sanitizedConcept,
+      concept: queuedConcept,
+      problemPlan,
       outputMode,
       quality,
       referenceImages: sanitizedReferenceImages,
@@ -128,3 +132,26 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
 router.post('/generate', authMiddleware, asyncHandler(handleGenerateRequest))
 
 export default router
+
+function mergeProblemPlanIntoConcept(concept: string, problemPlan?: ProblemFramingPlan): string {
+  if (!problemPlan) {
+    return concept
+  }
+
+  const steps = problemPlan.steps
+    .map((step, index) => `${index + 1}. ${step.title}: ${step.content}`)
+    .join('\n')
+
+  return [
+    concept,
+    '',
+    '[Problem Framing Context]',
+    `Mode: ${problemPlan.mode}`,
+    `Headline: ${problemPlan.headline}`,
+    `Summary: ${problemPlan.summary}`,
+    'Steps:',
+    steps,
+    `Visual Motif: ${problemPlan.visualMotif}`,
+    `Designer Hint: ${problemPlan.designerHint}`
+  ].join('\n')
+}

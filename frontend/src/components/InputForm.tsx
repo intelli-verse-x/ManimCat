@@ -56,24 +56,25 @@ export function InputForm({ concept, onConceptChange, onSubmit, loading }: Input
     });
   }, [concept, quality, outputMode, images, onSubmit, t]);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'Enter' && !loading) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [loading, handleSubmit]);
-
-  useEffect(() => {
-    if (concept.length > 0 && concept.length < 5) {
-      setLocalError(t('form.error.minLengthShort'));
-    } else {
-      setLocalError(null);
+  const handleTextareaKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && event.shiftKey && !loading) {
+      event.preventDefault();
+      handleSubmit();
     }
+  };
+
+  useEffect(() => {
+    if (concept.trim().length === 0) {
+      setLocalError(null);
+      return;
+    }
+
+    if (concept.trim().length < 5) {
+      setLocalError(t('form.error.minLengthShort'));
+      return;
+    }
+
+    setLocalError(null);
   }, [concept, t]);
 
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -108,6 +109,7 @@ export function InputForm({ concept, onConceptChange, onSubmit, loading }: Input
             disabled={loading}
             value={concept}
             onChange={(e) => onConceptChange(e.target.value)}
+            onKeyDown={handleTextareaKeyDown}
             className={`w-full px-4 py-4 bg-bg-secondary/50 rounded-2xl text-text-primary placeholder-text-secondary/40 focus:outline-none focus:ring-2 transition-all resize-none ${
               isDragging
                 ? 'ring-2 ring-accent/50 bg-accent/5 border-2 border-dashed border-accent/30'
@@ -150,7 +152,7 @@ export function InputForm({ concept, onConceptChange, onSubmit, loading }: Input
                 </>
               ) : (
                 <>
-                  {outputMode === 'image' ? t('form.submit.image') : t('form.submit.video')}
+                  {t('form.submit.plan')}
                   <svg className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
@@ -162,7 +164,7 @@ export function InputForm({ concept, onConceptChange, onSubmit, loading }: Input
         </div>
 
         <p className="text-center text-xs text-text-secondary/50">
-          {t('form.shortcutPrefix')} <kbd className="px-1.5 py-0.5 bg-bg-secondary/50 rounded text-[10px]">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 bg-bg-secondary/50 rounded text-[10px]">Enter</kbd> {t('form.shortcutSuffix')}
+          {t('form.shortcutPrefix')} <kbd className="px-1.5 py-0.5 bg-bg-secondary/50 rounded text-[10px]">Shift</kbd> + <kbd className="px-1.5 py-0.5 bg-bg-secondary/50 rounded text-[10px]">Enter</kbd> {t('form.shortcutSuffix')}
         </p>
       </form>
     </div>

@@ -4,6 +4,8 @@ import { TopLeftActions } from '../components/app/top-left-actions';
 import { TopRightActions } from '../components/app/top-right-actions';
 import { StatusContent } from '../components/app/status-content';
 import { TimingPanel } from '../components/TimingPanel';
+import { ProblemFramingOverlay } from '../components/ProblemFramingOverlay';
+import type { ProblemFramingPlan } from '../types/api';
 import { useI18n } from '../i18n';
 
 interface LastRequest {
@@ -36,6 +38,15 @@ interface StudioPageProps {
   onOpenWorkspace: () => void;
   onOpenSettings: () => void;
   onOpenGame: () => void;
+  problemOpen: boolean;
+  problemStatus: 'loading' | 'ready' | 'error';
+  problemPlan: ProblemFramingPlan | null;
+  problemError: string | null;
+  problemAdjustment: string;
+  onProblemAdjustmentChange: (value: string) => void;
+  onProblemRetry: () => void;
+  onProblemClose: () => void;
+  onProblemGenerate: () => void;
 }
 
 export function StudioPage({
@@ -61,6 +72,15 @@ export function StudioPage({
   onOpenWorkspace,
   onOpenSettings,
   onOpenGame,
+  problemOpen,
+  problemStatus,
+  problemPlan,
+  problemError,
+  problemAdjustment,
+  onProblemAdjustmentChange,
+  onProblemRetry,
+  onProblemClose,
+  onProblemGenerate,
 }: StudioPageProps) {
   const { t } = useI18n();
   const isCompleted = status === 'completed';
@@ -110,6 +130,20 @@ export function StudioPage({
       </div>
 
       {status === 'completed' && result?.timings && <TimingPanel timings={result.timings} />}
+
+      <ProblemFramingOverlay
+        open={problemOpen}
+        status={problemStatus}
+        concept={concept}
+        plan={problemPlan}
+        error={problemError}
+        adjustment={problemAdjustment}
+        generating={isBusy}
+        onAdjustmentChange={onProblemAdjustmentChange}
+        onRetry={onProblemRetry}
+        onGenerate={onProblemGenerate}
+        onClose={onProblemClose}
+      />
 
       <div
         aria-hidden="true"

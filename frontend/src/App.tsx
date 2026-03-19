@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { OutputMode, Quality, ReferenceImage } from './types/api';
 import { useGeneration } from './hooks/useGeneration';
+import { useProblemFraming } from './hooks/useProblemFraming';
 import { useGame2048 } from './hooks/useGame2048';
 import { useTabTitle } from './hooks/useTabTitle';
 import { AiModifyModal } from './components/AiModifyModal';
@@ -14,6 +15,7 @@ import { useI18n } from './i18n';
 
 function App() {
   const { status, result, error, jobId, stage, generate, renderWithCode, modifyWithAI, reset, cancel } = useGeneration();
+  const problemFraming = useProblemFraming();
   const game = useGame2048();
   useTabTitle(status, stage);
   const { t } = useI18n();
@@ -27,6 +29,7 @@ function App() {
   const [currentCode, setCurrentCode] = useState('');
   const [concept, setConcept] = useState('');
   const [page, setPage] = useState<'studio' | 'game'>('studio');
+  const [problemAdjustment, setProblemAdjustment] = useState('');
   const [lastRequest, setLastRequest] = useState<{
     concept: string;
     quality: Quality;
@@ -48,6 +51,8 @@ function App() {
     setAiModifyInput('');
     setAiModifyOpen(false);
     setPage('studio');
+    setProblemAdjustment('');
+    problemFraming.reset();
   };
 
   const handleSubmit = (data: {
@@ -57,12 +62,37 @@ function App() {
     referenceImages?: ReferenceImage[];
   }) => {
     setConcept(data.concept);
-    setLastRequest(data);
-    generate(data);
+    setProblemAdjustment('');
+    void problemFraming.startPlan({ request: data });
   };
 
   const handleBackToHome = () => {
     reset();
+  };
+
+  const handleProblemRetry = () => {
+    if (!problemAdjustment.trim()) {
+      return;
+    }
+    void problemFraming.refinePlan({ feedback: problemAdjustment.trim() });
+  };
+
+  const handleProblemGenerate = () => {
+    if (!problemFraming.draft || !problemFraming.plan) {
+      return;
+    }
+    const draft = problemFraming.draft;
+    const problemPlan = problemFraming.plan;
+    setLastRequest(draft);
+    setConcept(draft.concept);
+    setProblemAdjustment('');
+    problemFraming.reset();
+    generate({ ...draft, problemPlan });
+  };
+
+  const handleProblemClose = () => {
+    setProblemAdjustment('');
+    problemFraming.reset();
   };
 
   const handleRerender = () => {
@@ -129,6 +159,15 @@ function App() {
           onOpenWorkspace={() => setWorkspaceOpen(true)}
           onOpenSettings={() => setSettingsOpen(true)}
           onOpenGame={handleOpenGame}
+          problemOpen={problemFraming.status !== 'idle'}
+          problemStatus={problemFraming.status === 'idle' ? 'loading' : problemFraming.status}
+          problemPlan={problemFraming.plan}
+          problemError={problemFraming.error}
+          problemAdjustment={problemAdjustment}
+          onProblemAdjustmentChange={setProblemAdjustment}
+          onProblemRetry={handleProblemRetry}
+          onProblemClose={handleProblemClose}
+          onProblemGenerate={handleProblemGenerate}
         />
       ) : (
         <Game2048Page

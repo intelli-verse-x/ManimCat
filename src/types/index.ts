@@ -76,12 +76,27 @@ export interface ReferenceImage {
   detail?: VisionImageDetail
 }
 
+export interface ProblemFramingStep {
+  title: string
+  content: string
+}
+
+export interface ProblemFramingPlan {
+  mode: 'clarify' | 'invent'
+  headline: string
+  summary: string
+  steps: ProblemFramingStep[]
+  visualMotif: string
+  designerHint: string
+}
+
 /**
  * 瑙嗛鐢熸垚浠诲姟鏁版嵁
  */
 export interface VideoJobData {
   jobId: string
   concept: string
+  problemPlan?: ProblemFramingPlan
   referenceImages?: ReferenceImage[]
   quality: VideoQuality
   outputMode: OutputMode
@@ -162,6 +177,7 @@ export interface ConceptCacheData {
  */
 export interface GenerateRequest {
   concept: string
+  problemPlan?: ProblemFramingPlan
   referenceImages?: ReferenceImage[]
   quality?: VideoQuality
   outputMode: OutputMode
@@ -299,4 +315,3 @@ export interface CacheCheckResult {
   hit: boolean
   data?: ConceptCacheData
 }
-
