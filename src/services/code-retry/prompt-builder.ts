@@ -1,8 +1,6 @@
-import crypto from 'crypto'
 import { getSharedModule, getRoleSystemPrompt, getRoleUserPrompt } from '../../prompts'
 import type { PromptOverrides } from '../../types'
 import type { CodeRetryContext } from './types'
-import { buildInitialCodePrompt } from './prompts'
 
 function applyPromptTemplate(
   template: string,
@@ -20,30 +18,15 @@ function applyPromptTemplate(
   return output
 }
 
-function generateSeed(concept: string): string {
-  const timestamp = Date.now()
-  const randomPart = crypto.randomBytes(4).toString('hex')
-  return crypto.createHash('md5').update(`${concept}-${timestamp}-${randomPart}`).digest('hex').slice(0, 8)
-}
-
 export function getCodeRetrySystemPrompt(promptOverrides?: PromptOverrides): string {
   return getRoleSystemPrompt('codeRetry', promptOverrides)
-}
-
-function buildInitialPrompt(
-  concept: string,
-  seed: string,
-  sceneDesign: string,
-  outputMode: 'video' | 'image',
-  promptOverrides?: PromptOverrides
-): string {
-  return buildInitialCodePrompt(concept, seed, sceneDesign, outputMode, promptOverrides)
 }
 
 export function buildRetryFixPrompt(
   concept: string,
   errorMessage: string,
   code: string,
+  codeSnippet: string | undefined,
   attempt: number | string,
   outputMode: 'video' | 'image',
   promptOverrides?: PromptOverrides
@@ -54,6 +37,7 @@ export function buildRetryFixPrompt(
       concept,
       errorMessage,
       code,
+      codeSnippet,
       attempt: Number(attempt),
       outputMode,
       isImage: outputMode === 'image',
@@ -67,7 +51,8 @@ export function buildRetryPrompt(
   context: CodeRetryContext,
   errorMessage: string,
   attempt: number,
-  currentCode: string
+  currentCode: string,
+  codeSnippet?: string
 ): string {
   const override = context.promptOverrides?.roles?.codeRetry?.user
   if (override) {
@@ -77,6 +62,7 @@ export function buildRetryPrompt(
         concept: context.concept,
         errorMessage,
         code: currentCode,
+        codeSnippet: codeSnippet || '',
         attempt: String(attempt),
         outputMode: context.outputMode,
         isImage: context.outputMode === 'image',
@@ -85,22 +71,14 @@ export function buildRetryPrompt(
       context.promptOverrides
     )
   }
+
   return buildRetryFixPrompt(
     context.concept,
     errorMessage,
     currentCode,
+    codeSnippet,
     attempt,
     context.outputMode,
     context.promptOverrides
   )
-}
-
-export function buildContextOriginalPrompt(
-  concept: string,
-  sceneDesign: string,
-  outputMode: 'video' | 'image',
-  promptOverrides?: PromptOverrides
-): string {
-  const seed = generateSeed(concept)
-  return buildInitialPrompt(concept, seed, sceneDesign, outputMode, promptOverrides)
 }

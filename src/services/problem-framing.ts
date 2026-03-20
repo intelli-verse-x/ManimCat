@@ -47,6 +47,10 @@ function stripCodeFence(text: string): string {
 
 function extractJsonObject(text: string): string {
   const cleaned = stripCodeFence(text)
+  if (/^\s*<!DOCTYPE\s+html/i.test(cleaned) || /^\s*<html/i.test(cleaned)) {
+    throw new Error('Problem framing response was HTML, not JSON')
+  }
+
   const start = cleaned.indexOf('{')
   const end = cleaned.lastIndexOf('}')
 

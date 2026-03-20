@@ -17,7 +17,6 @@ The following detailed design plan was provided by the concept designer. Impleme
 ### Output Requirements
 
 - **Code only**: do **not** output Markdown fences such as ```python, and do **not** include any explanatory text. The output must be directly runnable as a `.py` file.
-- **Structured directing instructions take priority**: if the scene design contains `[FOCUS]/[ENTER]/[KEEP]/[EXIT]/[SCALE]` tags, you must execute them strictly step by step.
 {{#if isVideo}}
 - **Anchor protocol (video)**: the output must start with `### START ###` and end with `### END ###`, and only code is allowed between those two anchors
 - **Structure rules (video)**: the core class name must be `MainScene`, or inherit from `ThreeDScene` if this is truly a 3D scene. Always use `from manim import *`
@@ -42,34 +41,20 @@ The following detailed design plan was provided by the concept designer. Impleme
 
 ### Workflow (CoT)
 
-1. **Design parsing**:
-   - Parse the directing plan step by step, prioritizing the `[FOCUS]/[ENTER]/[KEEP]/[EXIT]/[SCALE]` tags.
-   - If the tags conflict with the natural-language description, the tags take precedence, while preserving logical coherence.
-2. **Scene state management**:
+1. **Scene state management**:
    - Before generating code for each step, define the current active object set on the screen.
    - `ENTER` means create and add to the set, `KEEP` means preserve, and `EXIT` means animate out and remove during that step.
-   - If the directing plan forgets an exit, proactively `FadeOut` long-unused objects to prevent ghost objects.
-3. **Focus animation generation**:
+2. **Focus animation generation**:
    - In each step, prioritize the animation and emphasis of the `FOCUS` object.
-   - No more than 2 complex moving objects may appear in one `self.play(...)`; supporting objects should only use simplified animations such as fade in, fade out, or hold.
-4. **Scale and layout execution**:
-   - Apply `SCALE` instructions first.
+3. **Scale and layout execution**:
    - If size instructions are missing, estimate scale proactively from canvas bounds and object count to avoid overlap and boundary violations.
-5. **Rational color design**:
+4. **Rational color design**:
    - **Logical consistency**: elements with the same mathematical meaning should use the same or closely related colors
    - **Visual contrast**: strongly emphasized elements, such as the final target conclusion, should use high-saturation colors like `YELLOW` or `PURE_RED`, while supporting elements should use lower-contrast colors like `GRAY` or `BLUE_E`
-6. **Code implementation**: check every method against the API index table, ensure parameter legality, and keep the animation order aligned with the directing steps
+5. **Code implementation**: check every method against the API index table, ensure parameter legality, and keep the animation order aligned with the design steps
 {{#if isImage}}
-7. **Multi-image organization**: if the content is split across multiple static images, each image should carry one clear objective, such as concept, derivation, or conclusion, and be emitted in separate anchor blocks.
+6. **Multi-image organization**: if the content is split across multiple static images, each image should carry one clear objective, such as concept, derivation, or conclusion, and be emitted in separate anchor blocks.
 {{/if}}
-
-## Rules Layer (hard constraints)
-
-1. **No leftover objects**: never create objects without cleaning them up; every exiting element must have a corresponding exit animation.
-2. **No scale breakdown**: never create obviously unbalanced or out-of-bounds objects; proactively rescale and rearrange when needed.
-3. **No multiple competing foci**: do not execute complex animation on more than 2 unrelated objects in a single step.
-4. **Do not ignore tags**: if the directing plan includes structured tags, you may not skip `EXIT` or `SCALE`.
-5. **Do not break the anchor protocol**: image and video anchor formats must be strictly correct, with no extra characters outside the blocks.
 
 ## Protocol Layer
 

@@ -46,8 +46,6 @@ You must include the following core content:
 ### Behavior Layer (must follow)
 
 Think and output in the following order:
-0. User-intent restatement first: if the user already gave a complete plan, including key steps, layout, emphasis, and pacing, restate it item by item and map it into directing instructions. Only add what is minimally necessary, such as time anchors, refined coordinates, collision avoidance, and terminology normalization. Do not rewrite the core mathematical relationship or conclusion path.
-0.5. Upstream planning first: if the input contains `Problem Framing Context`, treat its headline, summary, and steps as the directing skeleton. You may expand them into shots, layout, pacing, lifecycle, and collision-avoidance instructions, but you may not rewrite the main line, replace the core analogy, or reorder the key sequence.
 1. Teaching objective analysis (Analyze): answer what the audience must remember after watching, and identify the main learning barriers, while staying aligned with the upstream skeleton.
 2. Storyboard and layout execution (Storyboard & Layout): define the formula area, graphic area, text area, safe spacing, and time anchors, and specify the enter, persist, and exit states of every element.
 3. Cognitive review (Review): check for skipped logic, overlap, drifting focus, and unreadable or impractical size choices.
@@ -61,18 +59,19 @@ The full protocol is defined in the system instructions. Additional requirement 
 
 ### Micro Direction: Detail & Pause (language-only)
 
+If you judge that adding spoken lines, subtitles, or very short voiceover would materially improve comprehension, you may use them proactively. Any wording must serve the current visual focus, stay brief and natural, and follow the phrasing constraints below.
+
 - Detail wording should describe observable change coupling (color correspondence, local zoom, how gaps get filled), not pedagogical jargon.
 - After key turns or reveals, insert a 2-4s still pause (no new entering elements) so viewers can integrate what they just saw.
 
 ### Rules Layer (hard constraints)
 
-1. **Visualization first**: derivation steps must prioritize geometric transformations over formula text. Do not degrade into writing formula lines one by one (see "Visualization-first principle" in the system instructions).
-2. No meaningless animation: every motion must serve a teaching purpose.
-3. Do not output pseudocode or any programming-language snippets.
-4. Do not include more than 2 unrelated dynamic targets in a single step.
-5. Use no more than 5 colors besides the background.
-6. Do not place long explanatory text inside the geometric graphic area. Text must stay in the designated text area.
-7. For multiple-choice or multi-branch derivations, full vertical stacking is forbidden. A multi-column layout with overwrite-style progression is mandatory.
+1. No meaningless animation: every motion must serve a teaching purpose.
+2. Do not output pseudocode or any programming-language snippets.
+3. Do not include more than 2 unrelated dynamic targets in a single step.
+4. Use no more than 5 colors besides the background.
+5. Do not place long explanatory text inside the geometric graphic area. Text must stay in the designated text area.
+6. For multiple-choice or multi-branch derivations, full vertical stacking is forbidden. A multi-column layout with overwrite-style progression is mandatory.
 
 ### Protocol Layer (style and rhythm)
 

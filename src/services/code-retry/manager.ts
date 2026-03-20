@@ -9,8 +9,7 @@ import type {
 } from './types'
 import type { OutputMode, PromptOverrides } from '../../types'
 import { extractErrorMessage, getErrorType } from './utils'
-import { buildContextOriginalPrompt } from './prompt-builder'
-import { generateInitialCode, retryCodeGeneration } from './code-generation'
+import { retryCodeGeneration } from './code-generation'
 
 const logger = createLogger('CodeRetryManager')
 
@@ -26,7 +25,6 @@ export function createRetryContext(
     concept,
     sceneDesign,
     outputMode,
-    originalPrompt: buildContextOriginalPrompt(concept, sceneDesign, outputMode, promptOverrides),
     promptOverrides
   }
 }
@@ -48,7 +46,7 @@ export async function executeCodeRetry(
     exitCode?: number
   }) => Promise<void> | void
 ): Promise<RetryManagerResult> {
-  logger.info('开始代码重试管理', {
+  logger.info('Starting code retry manager', {
     concept: context.concept,
     maxRetries: MAX_RETRIES
   })
@@ -56,15 +54,14 @@ export async function executeCodeRetry(
   let generationTimeMs = 0
   let currentCode = initialCode?.trim() || ''
   if (!currentCode) {
-    const generationStart = Date.now()
-    currentCode = await generateInitialCode(context, customApiConfig)
-    generationTimeMs += Date.now() - generationStart
+    throw new Error('Code retry requires existing code; full regeneration mode is disabled')
   }
 
   let renderResult = await renderer(currentCode)
+  let currentCodeSnippet = renderResult.codeSnippet || currentCode
 
   if (renderResult.success) {
-    logger.info('首次渲染成功')
+    logger.info('Initial render succeeded')
     return { code: currentCode, success: true, attempts: 1, generationTimeMs }
   }
 
@@ -86,10 +83,10 @@ export async function executeCodeRetry(
 
   let errorMessage = extractErrorMessage(renderResult.stderr)
   let errorType = getErrorType(renderResult.stderr)
-  logger.warn('首次渲染失败', { errorType, error: errorMessage })
+  logger.warn('Initial render failed', { errorType, error: errorMessage })
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    logger.info(`开始第 ${attempt} 次重试`, {
+    logger.info('Starting retry patch attempt', {
       totalAttempts: attempt + 1,
       errorType,
       error: errorMessage
@@ -97,13 +94,21 @@ export async function executeCodeRetry(
 
     try {
       const generationStart = Date.now()
-      currentCode = await retryCodeGeneration(context, errorMessage, attempt, currentCode, customApiConfig)
+      currentCode = await retryCodeGeneration(
+        context,
+        errorMessage,
+        attempt,
+        currentCode,
+        currentCodeSnippet,
+        customApiConfig
+      )
       generationTimeMs += Date.now() - generationStart
 
       renderResult = await renderer(currentCode)
+      currentCodeSnippet = renderResult.codeSnippet || currentCode
 
       if (renderResult.success) {
-        logger.info('重试渲染成功', { attempt: attempt + 1 })
+        logger.info('Retry render succeeded', { attempt: attempt + 1 })
         return { code: currentCode, success: true, attempts: attempt + 1, generationTimeMs }
       }
 
@@ -125,13 +130,13 @@ export async function executeCodeRetry(
 
       errorMessage = extractErrorMessage(renderResult.stderr)
       errorType = getErrorType(renderResult.stderr)
-      logger.warn('重试渲染失败', { attempt: attempt + 1, errorType, error: errorMessage })
+      logger.warn('Retry render failed', { attempt: attempt + 1, errorType, error: errorMessage })
     } catch (error) {
-      logger.error('重试过程出错', { attempt: attempt + 1, error: String(error) })
+      logger.error('Retry patch process failed', { attempt: attempt + 1, error: String(error) })
     }
   }
 
-  logger.error('所有重试均失败', {
+  logger.error('All retry patch attempts failed', {
     totalAttempts: MAX_RETRIES + 1,
     finalError: extractErrorMessage(renderResult.stderr)
   })

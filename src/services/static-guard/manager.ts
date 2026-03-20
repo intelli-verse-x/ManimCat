@@ -15,6 +15,11 @@ const MAX_TOKENS = parseInt(process.env.AI_MAX_TOKENS || '12000', 10)
 const THINKING_TOKENS = parseInt(process.env.AI_THINKING_TOKENS || '20000', 10)
 
 function extractJsonObject(text: string): string {
+  const normalized = text.trim()
+  if (/^\s*<!DOCTYPE\s+html/i.test(normalized) || /^\s*<html/i.test(normalized)) {
+    throw new Error('Static patch response was HTML, not JSON')
+  }
+
   const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
   if (fencedMatch?.[1]) {
     return fencedMatch[1].trim()
@@ -30,9 +35,14 @@ function extractJsonObject(text: string): string {
 }
 
 function parsePatchResponse(content: string): StaticPatch {
-  const parsed = JSON.parse(extractJsonObject(content)) as {
-    original_snippet?: unknown
-    replacement_snippet?: unknown
+  let parsed: { original_snippet?: unknown; replacement_snippet?: unknown }
+  try {
+    parsed = JSON.parse(extractJsonObject(content)) as {
+      original_snippet?: unknown
+      replacement_snippet?: unknown
+    }
+  } catch (error) {
+    throw new Error(`Failed to parse static patch JSON: ${String(error)}`)
   }
 
   const originalSnippet = typeof parsed.original_snippet === 'string' ? parsed.original_snippet : ''

@@ -32,6 +32,7 @@ export interface TemplateVariables {
   attempt?: number
   instructions?: string
   code?: string
+  codeSnippet?: string
   outputMode?: 'video' | 'image'
   isImage?: boolean
   isVideo?: boolean

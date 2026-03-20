@@ -2,12 +2,12 @@ import OpenAI from 'openai'
 import { createLogger } from '../../utils/logger'
 import { cleanManimCode } from '../../utils/manim-code-cleaner'
 import { getClient } from './client'
-import { extractCodeFromResponse } from './utils'
 import type { CodeRetryContext } from './types'
 import { buildRetryPrompt, getCodeRetrySystemPrompt } from './prompt-builder'
 import { dedupeSharedBlocksInMessages } from '../prompt-dedup'
 import { createChatCompletionText } from '../openai-stream'
 import { buildTokenParams } from '../../utils/reasoning-model'
+import { applyPatchToCode, extractTargetLine, parsePatchResponse } from './utils'
 
 const logger = createLogger('CodeRetryCodeGen')
 
@@ -24,65 +24,12 @@ function getModel(customApiConfig?: unknown): string {
   return trimmed
 }
 
-export async function generateInitialCode(
-  context: CodeRetryContext,
-  customApiConfig?: unknown
-): Promise<string> {
-  const client = getClient(customApiConfig as any)
-  if (!client) {
-    throw new Error('No upstream AI is configured for this request')
-  }
-
-  try {
-    const requestMessages = dedupeSharedBlocksInMessages(
-      [
-        { role: 'system', content: getCodeRetrySystemPrompt(context.promptOverrides) },
-        { role: 'user', content: context.originalPrompt }
-      ],
-      context.promptOverrides
-    )
-
-    const { content, mode } = await createChatCompletionText(
-      client,
-      {
-        model: getModel(customApiConfig),
-        messages: requestMessages,
-        temperature: AI_TEMPERATURE,
-        ...buildTokenParams(THINKING_TOKENS, MAX_TOKENS)
-      },
-      { fallbackToNonStream: true, usageLabel: 'retry-initial' }
-    )
-
-    if (!content) {
-      throw new Error('AI 返回空内容')
-    }
-
-    const code = extractCodeFromResponse(content, context.outputMode)
-    const cleaned = cleanManimCode(code)
-
-    logger.info('首次代码生成成功', {
-      concept: context.concept,
-      mode,
-      codeLength: cleaned.code.length
-    })
-
-    return cleaned.code
-  } catch (error) {
-    if (error instanceof OpenAI.APIError) {
-      logger.error('OpenAI API 错误', {
-        status: error.status,
-        message: error.message
-      })
-    }
-    throw error
-  }
-}
-
 export async function retryCodeGeneration(
   context: CodeRetryContext,
   errorMessage: string,
   attempt: number,
   currentCode: string,
+  codeSnippet: string | undefined,
   customApiConfig?: unknown
 ): Promise<string> {
   const client = getClient(customApiConfig as any)
@@ -90,7 +37,7 @@ export async function retryCodeGeneration(
     throw new Error('No upstream AI is configured for this request')
   }
 
-  const retryPrompt = buildRetryPrompt(context, errorMessage, attempt, currentCode)
+  const retryPrompt = buildRetryPrompt(context, errorMessage, attempt, currentCode, codeSnippet)
 
   try {
     const requestMessages = dedupeSharedBlocksInMessages(
@@ -113,23 +60,26 @@ export async function retryCodeGeneration(
     )
 
     if (!content) {
-      throw new Error('AI 返回空内容')
+      throw new Error('AI returned empty content')
     }
 
-    const code = extractCodeFromResponse(content, context.outputMode)
-    const cleaned = cleanManimCode(code)
+    const patch = parsePatchResponse(content)
+    const patchedCode = applyPatchToCode(currentCode, patch, extractTargetLine(errorMessage))
+    const cleaned = cleanManimCode(patchedCode)
 
-    logger.info('代码重试生成成功', {
+    logger.info('Code retry patch applied', {
       concept: context.concept,
       attempt,
       mode,
-      codeLength: cleaned.code.length
+      codeLength: cleaned.code.length,
+      originalSnippetLength: patch.originalSnippet.length,
+      replacementSnippetLength: patch.replacementSnippet.length
     })
 
     return cleaned.code
   } catch (error) {
     if (error instanceof OpenAI.APIError) {
-      logger.error('OpenAI API 错误（重试）', {
+      logger.error('OpenAI API error during code retry', {
         attempt,
         status: error.status,
         message: error.message
