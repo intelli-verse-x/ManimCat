@@ -335,6 +335,16 @@ Licensing details are defined in `LICENSE_POLICY.md` (Chinese) and `LICENSE_POLI
 
 - Third-party attribution and notices: `THIRD_PARTY_NOTICES.md`
 - Chinese third-party notices: `THIRD_PARTY_NOTICES.zh-CN.md`
+- Contribution agreement: `CLA.md`
+- Contribution guide: `CONTRIBUTING.md`
+
+### CLA Intent Statement
+
+This project uses a CLA so the maintainer can keep commercial-use authorization under a single workflow, instead of requiring separate consent from every contributor each time.
+
+This is not a statement of "project commercialization" as a company path. The maintainer remains a developer, the project stays open source, and the project stance is anti-monopoly.
+
+Any commercial authorization income is intended to be reinvested into project development itself, including support for major contributors and community activities. For small companies that are open-source-friendly, authorization terms and fees are expected to be symbolic.
 
 ## Maintenance Notes
 

@@ -48,6 +48,9 @@ tmp/
 !static/gifs/README.md
 !DEPLOYMENT.md
 !DEPLOYMENT.zh-CN.md
+!CLA.md
+!CONTRIBUTING.md
+!.github/pull_request_template.md
 !src/prompts/templates/**/*.md
 
 # Flow type files

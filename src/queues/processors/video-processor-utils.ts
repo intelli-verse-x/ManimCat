@@ -1,7 +1,7 @@
 import type { ProcessingStage } from '../../types'
 
 export function shouldDisableQueueRetry(errorMessage: string): boolean {
-  return errorMessage.includes('Code retry failed after')
+  return errorMessage.includes('Code retry failed after') || errorMessage.includes('Static guard failed after')
 }
 
 export function getRetryMeta(job: any): {

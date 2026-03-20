@@ -10,7 +10,7 @@ import { createHistory } from '../../database'
 import { JobCancelledError } from '../../utils/errors'
 import { createLogger } from '../../utils/logger'
 import type { VideoJobData } from '../../types'
-import { runEditFlow, runGenerationFlow, runPreGeneratedFlow } from './video-processor-flows'
+import { runEditFlow, runGenerationFlow, runPreGeneratedFlow } from './video-processor-flows-static'
 import { getRetryMeta, shouldDisableQueueRetry } from './video-processor-utils'
 import { getCurrentJobLogSummary, runWithJobLogContext } from '../../services/job-log-context'
 
