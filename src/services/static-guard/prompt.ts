@@ -17,7 +17,9 @@ export function getStaticPatchSystemPrompt(): string {
     '这里放替换后的代码片段',
     '[[END]]',
     'original snippet 必须逐字摘抄自当前代码，不能改写，不能概括。',
-    '禁止 markdown 代码块，禁止 ```，禁止任何额外说明。'
+    '禁止 markdown 代码块，禁止 ```，禁止任何额外说明。',
+    '如果需要补充 Manim 类导入，必须新增单独的 from manim import Xxx 行，禁止写成 from manim import *, Xxx。',
+    '第一行必须是 [[PATCH]]；如果无法生成合法 patch，返回空字符串。'
   ].join('\n')
 }
 
@@ -48,6 +50,7 @@ export function buildStaticPatchUserPrompt(code: string, diagnostics: StaticDiag
     primaryDiagnostic
       ? `- 优先围绕第一个问题（第 ${primaryDiagnostic.line} 行）组织修复，但可顺手修掉同批同类问题。`
       : '- 没有问题时不要输出任何内容。',
+    '- 如果要补充导入，使用单独的新 import 行，不要构造非法 import 语法。',
     '',
     '只返回下面这种 patch 块，可返回多个：',
     '[[PATCH]]',
@@ -55,6 +58,35 @@ export function buildStaticPatchUserPrompt(code: string, diagnostics: StaticDiag
     '原代码片段1',
     '[[REPLACE]]',
     '新代码片段1',
+    '[[END]]',
+    '',
+    '示例 1：修复缺失的 ThreeDScene 导入',
+    '错误：Name "ThreeDScene" is not defined',
+    '当前代码：',
+    'from manim import *',
+    '',
+    'class MainScene(ThreeDScene):',
+    '    pass',
+    '正确输出：',
+    '[[PATCH]]',
+    '[[SEARCH]]',
+    'from manim import *',
+    '[[REPLACE]]',
+    'from manim import *',
+    'from manim import ThreeDScene',
+    '[[END]]',
+    '',
+    '示例 2：修复非法 import 语法',
+    '错误：SyntaxError: invalid syntax',
+    '当前代码：',
+    'from manim import *, ThreeDScene',
+    '正确输出：',
+    '[[PATCH]]',
+    '[[SEARCH]]',
+    'from manim import *, ThreeDScene',
+    '[[REPLACE]]',
+    'from manim import *',
+    'from manim import ThreeDScene',
     '[[END]]'
   ].join('\n')
 }

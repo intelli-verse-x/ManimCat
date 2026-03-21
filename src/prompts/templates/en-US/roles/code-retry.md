@@ -11,11 +11,57 @@
 
 ### Output Requirements
 
-- Return JSON only. A single patch may use `{"original_snippet":"...","replacement_snippet":"..."}`; multiple patches may use `{"patches":[{"original_snippet":"...","replacement_snippet":"..."}, ...]}`
-- Every `original_snippet` must be an exact snippet that already exists in the current code
-- Every `replacement_snippet` must be the new code that should replace its matching snippet
+- Return one or more patch blocks only. Do not return JSON.
+- The patch format must be exactly:
+[[PATCH]]
+[[SEARCH]]
+original code snippet
+[[REPLACE]]
+replacement code snippet
+[[END]]
+- Every `[[SEARCH]]` block must be an exact snippet that already exists in the current code
+- Every `[[REPLACE]]` block must be the new code that should replace its matching snippet
 - Fix only the code that is directly relevant to the current error; do not refactor unrelated parts
 - If a one-line or intra-line fix works, do not replace a larger block; if there are several similar local failures, return multiple minimal patches
+
+### Few-Shot Examples
+
+Example 1: missing ThreeDScene import
+
+Error:
+Name "ThreeDScene" is not defined
+
+Current code:
+from manim import *
+
+class MainScene(ThreeDScene):
+    pass
+
+Correct output:
+[[PATCH]]
+[[SEARCH]]
+from manim import *
+[[REPLACE]]
+from manim import *
+from manim import ThreeDScene
+[[END]]
+
+Example 2: invalid import syntax
+
+Error:
+SyntaxError: invalid syntax
+
+Current code:
+from manim import *, ThreeDScene
+
+Correct output:
+[[PATCH]]
+[[SEARCH]]
+from manim import *, ThreeDScene
+[[REPLACE]]
+from manim import *
+from manim import ThreeDScene
+[[END]]
 
 ## Behavior Layer
 
@@ -31,7 +77,7 @@
 {{#if isImage}}
    - In image mode, preserve the existing `YON_IMAGE` anchor structure and continuous numbering
 {{/if}}
-5. Output JSON only, with no extra text.
+5. The first line must be `[[PATCH]]`, with no extra text.
 
 ---
 
@@ -49,4 +95,4 @@
 ```
 {{/if}}
 
-Now output the patch JSON only, and nothing else.
+Now output patch blocks only, and nothing else.

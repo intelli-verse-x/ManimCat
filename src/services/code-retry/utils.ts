@@ -1,57 +1,82 @@
 import type { CodePatch, CodePatchSet } from './types'
 
-function extractJsonObject(text: string): string {
-  const normalized = text.trim()
-  if (/^\s*<!DOCTYPE\s+html/i.test(normalized) || /^\s*<html/i.test(normalized)) {
-    throw new Error('Code retry patch response was HTML, not JSON')
-  }
-
-  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  if (fencedMatch?.[1]) {
-    return fencedMatch[1].trim()
-  }
-
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
-  if (start >= 0 && end > start) {
-    return text.slice(start, end + 1)
-  }
-
-  return text.trim()
+function stripCodeFence(text: string): string {
+  return text
+    .replace(/^```(?:json|text)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim()
 }
 
-function normalizePatch(candidate: unknown): CodePatch {
-  const parsed = candidate as {
-    original_snippet?: unknown
-    replacement_snippet?: unknown
-  }
-
-  const originalSnippet = typeof parsed.original_snippet === 'string' ? parsed.original_snippet : ''
-  const replacementSnippet = typeof parsed.replacement_snippet === 'string' ? parsed.replacement_snippet : ''
-
-  if (!originalSnippet) {
-    throw new Error('Code retry patch response missing original_snippet')
-  }
-
-  if (originalSnippet === replacementSnippet) {
-    throw new Error('Code retry patch produced no change')
-  }
-
-  return { originalSnippet, replacementSnippet }
+function trimPatchBoundary(text: string): string {
+  return text
+    .replace(/^\s*\r?\n/, '')
+    .replace(/\r?\n\s*$/, '')
+    .replace(/\r\n/g, '\n')
 }
 
 export function parsePatchResponse(text: string): CodePatchSet {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(extractJsonObject(text))
-  } catch (error) {
-    throw new Error(`Failed to parse code retry patch JSON: ${String(error)}`)
+  const normalized = stripCodeFence(text)
+  if (!normalized) {
+    throw new Error('Code retry patch response was empty')
   }
 
-  const patchCandidates = Array.isArray((parsed as { patches?: unknown })?.patches)
-    ? (parsed as { patches: unknown[] }).patches
-    : [parsed]
-  const patches = patchCandidates.map((item) => normalizePatch(item))
+  if (/^\s*<!DOCTYPE\s+html/i.test(normalized) || /^\s*<html/i.test(normalized)) {
+    throw new Error('Code retry patch response was HTML, not patch text')
+  }
+
+  const hasPatchMarkers =
+    normalized.includes('[[PATCH]]') ||
+    normalized.includes('[[SEARCH]]') ||
+    normalized.includes('[[REPLACE]]') ||
+    normalized.includes('[[END]]')
+
+  if (!hasPatchMarkers) {
+    throw new Error('Code retry patch response did not contain any [[PATCH]] blocks')
+  }
+
+  const patches: CodePatch[] = []
+  let cursor = 0
+
+  while (true) {
+    const patchStart = normalized.indexOf('[[PATCH]]', cursor)
+    if (patchStart < 0) {
+      break
+    }
+
+    const searchStart = normalized.indexOf('[[SEARCH]]', patchStart + '[[PATCH]]'.length)
+    if (searchStart < 0) {
+      throw new Error('Code retry patch block missing [[SEARCH]] marker')
+    }
+
+    const replaceStart = normalized.indexOf('[[REPLACE]]', searchStart + '[[SEARCH]]'.length)
+    if (replaceStart < 0) {
+      throw new Error('Code retry patch block missing [[REPLACE]] marker')
+    }
+
+    const endStart = normalized.indexOf('[[END]]', replaceStart + '[[REPLACE]]'.length)
+    if (endStart < 0) {
+      throw new Error('Code retry patch block missing [[END]] marker')
+    }
+
+    const originalSnippet = trimPatchBoundary(
+      normalized.slice(searchStart + '[[SEARCH]]'.length, replaceStart)
+    )
+    const replacementSnippet = trimPatchBoundary(
+      normalized.slice(replaceStart + '[[REPLACE]]'.length, endStart)
+    )
+
+    if (!originalSnippet) {
+      throw new Error('Code retry patch block missing SEARCH content')
+    }
+
+    if (originalSnippet === replacementSnippet) {
+      throw new Error('Code retry patch produced no change')
+    }
+
+    patches.push({ originalSnippet, replacementSnippet })
+    cursor = endStart + '[[END]]'.length
+  }
+
   if (patches.length === 0) {
     throw new Error('Code retry patch response missing patches')
   }

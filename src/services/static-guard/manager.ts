@@ -27,39 +27,11 @@ function stripCodeFence(text: string): string {
     .trim()
 }
 
-function extractJsonObject(text: string): string {
-  const normalized = stripCodeFence(text)
-  if (/^\s*<!DOCTYPE\s+html/i.test(normalized) || /^\s*<html/i.test(normalized)) {
-    throw new Error('Static patch response was HTML, not JSON')
-  }
-
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
-  if (start >= 0 && end > start) {
-    return text.slice(start, end + 1)
-  }
-
-  return text.trim()
-}
-
-function normalizePatch(candidate: unknown): StaticPatch | null {
-  const parsed = candidate as {
-    original_snippet?: unknown
-    replacement_snippet?: unknown
-  }
-
-  const originalSnippet = typeof parsed.original_snippet === 'string' ? parsed.original_snippet : ''
-  const replacementSnippet = typeof parsed.replacement_snippet === 'string' ? parsed.replacement_snippet : ''
-
-  if (!originalSnippet) {
-    throw new Error('Static patch response missing original_snippet')
-  }
-
-  if (originalSnippet === replacementSnippet) {
-    return null
-  }
-
-  return { originalSnippet, replacementSnippet }
+function trimPatchBoundary(text: string): string {
+  return text
+    .replace(/^\s*\r?\n/, '')
+    .replace(/\r?\n\s*$/, '')
+    .replace(/\r\n/g, '\n')
 }
 
 function parseSearchReplacePatchResponse(content: string): StaticPatchSet | null {
@@ -72,24 +44,55 @@ function parseSearchReplacePatchResponse(content: string): StaticPatchSet | null
     throw new Error('Static patch response was HTML, not patch text')
   }
 
-  const blockRegex = /\[\[PATCH\]\]\s*[\r\n]+[\s\S]*?\[\[SEARCH\]\]\s*[\r\n]+([\s\S]*?)[\r\n]+\[\[REPLACE\]\]\s*[\r\n]+([\s\S]*?)[\r\n]+\[\[END\]\]/g
   const patches: StaticPatch[] = []
   let skippedNoopCount = 0
   let blockCount = 0
+  let cursor = 0
 
-  let match: RegExpExecArray | null
-  while ((match = blockRegex.exec(normalized)) !== null) {
+  const hasPatchMarkers =
+    normalized.includes('[[PATCH]]') ||
+    normalized.includes('[[SEARCH]]') ||
+    normalized.includes('[[REPLACE]]') ||
+    normalized.includes('[[END]]')
+
+  while (true) {
+    const patchStart = normalized.indexOf('[[PATCH]]', cursor)
+    if (patchStart < 0) {
+      break
+    }
+
+    const searchStart = normalized.indexOf('[[SEARCH]]', patchStart + '[[PATCH]]'.length)
+    if (searchStart < 0) {
+      throw new Error('Static patch block missing [[SEARCH]] marker')
+    }
+
+    const replaceStart = normalized.indexOf('[[REPLACE]]', searchStart + '[[SEARCH]]'.length)
+    if (replaceStart < 0) {
+      throw new Error('Static patch block missing [[REPLACE]] marker')
+    }
+
+    const endStart = normalized.indexOf('[[END]]', replaceStart + '[[REPLACE]]'.length)
+    if (endStart < 0) {
+      throw new Error('Static patch block missing [[END]] marker')
+    }
+
     blockCount += 1
-    const originalSnippet = match[1]?.replace(/\r\n/g, '\n') ?? ''
-    const replacementSnippet = match[2]?.replace(/\r\n/g, '\n') ?? ''
+    const originalSnippet = trimPatchBoundary(
+      normalized.slice(searchStart + '[[SEARCH]]'.length, replaceStart)
+    )
+    const replacementSnippet = trimPatchBoundary(
+      normalized.slice(replaceStart + '[[REPLACE]]'.length, endStart)
+    )
     if (!originalSnippet.trim()) {
       throw new Error('Static patch block missing SEARCH content')
     }
     if (originalSnippet === replacementSnippet) {
       skippedNoopCount += 1
+      cursor = endStart + '[[END]]'.length
       continue
     }
     patches.push({ originalSnippet, replacementSnippet })
+    cursor = endStart + '[[END]]'.length
   }
 
   if (skippedNoopCount > 0) {
@@ -100,6 +103,10 @@ function parseSearchReplacePatchResponse(content: string): StaticPatchSet | null
 
   if (blockCount > 0) {
     return { patches }
+  }
+
+  if (hasPatchMarkers) {
+    throw new Error('Static patch markers detected but no complete patch block could be parsed')
   }
 
   return null
@@ -119,30 +126,7 @@ function parsePatchResponse(content: string): StaticPatchSet {
     return searchReplacePatchSet
   }
 
-  const jsonPayload = extractJsonObject(content)
-  logger.info('Static patch raw response extracted', {
-    format: 'json-fallback',
-    contentLength: content.length,
-    jsonLength: jsonPayload.length,
-    contentPreview: content.trim().slice(0, 500),
-    jsonPreview: jsonPayload.slice(0, 500)
-  })
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(jsonPayload)
-  } catch (error) {
-    throw new Error(`Failed to parse static patch JSON: ${String(error)}`)
-  }
-
-  const patchCandidates = Array.isArray((parsed as { patches?: unknown })?.patches)
-    ? ((parsed as { patches: unknown[] }).patches)
-    : [parsed]
-
-  const patches = patchCandidates
-    .map((item) => normalizePatch(item))
-    .filter((patch): patch is StaticPatch => Boolean(patch))
-  return { patches }
+  throw new Error('Static patch response did not contain any [[PATCH]] blocks')
 }
 
 function getLineNumberAtIndex(text: string, index: number): number {
