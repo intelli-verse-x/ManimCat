@@ -33,7 +33,11 @@ export function StudioCommandPanel({
       return
     }
     setInput('')
-    await onRun(next)
+    try {
+      await onRun(next)
+    } catch {
+      setInput(next)
+    }
     inputRef.current?.focus()
   }
 
@@ -53,8 +57,10 @@ export function StudioCommandPanel({
     if (!latestAssistantText) {
       streamRateRef.current = 0
       latestTextMetaRef.current = { text: '', at: 0 }
-      setAnimatedAssistantText('')
-      return
+      const frame = window.requestAnimationFrame(() => {
+        setAnimatedAssistantText('')
+      })
+      return () => window.cancelAnimationFrame(frame)
     }
 
     const now = Date.now()
@@ -71,12 +77,16 @@ export function StudioCommandPanel({
     }
     latestTextMetaRef.current = { text: latestAssistantText, at: now }
 
-    setAnimatedAssistantText((current) => {
-      if (!latestAssistantText.startsWith(current)) {
-        return ''
-      }
-      return current
+    const frame = window.requestAnimationFrame(() => {
+      setAnimatedAssistantText((current) => {
+        if (!latestAssistantText.startsWith(current)) {
+          return ''
+        }
+        return current
+      })
     })
+
+    return () => window.cancelAnimationFrame(frame)
   }, [latestAssistantText])
 
   useEffect(() => {

@@ -5,6 +5,15 @@ import path from 'path'
 export default defineConfig({
   base: '/',
   plugins: [react()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    css: false,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+    },
+  },
   build: {
     outDir: '../public',
     emptyOutDir: true,

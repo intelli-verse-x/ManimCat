@@ -16,10 +16,11 @@ interface UseStudioRunInput {
   onRunSubmitting: () => void
   onRunStarted: (run: StudioRun, pendingPermissions: StudioPermissionRequest[]) => void
   onSnapshotLoaded: (snapshot: StudioSessionSnapshot, pendingPermissions: StudioPermissionRequest[]) => void
+  onError: (error: string) => void
   recoverSession: () => Promise<StudioSession>
 }
 
-export function useStudioRun({ session, onUserMessageSubmitted, onRunSubmitting, onRunStarted, onSnapshotLoaded, recoverSession }: UseStudioRunInput) {
+export function useStudioRun({ session, onUserMessageSubmitted, onRunSubmitting, onRunStarted, onSnapshotLoaded, onError, recoverSession }: UseStudioRunInput) {
   return useCallback(async (inputText: string) => {
     if (!session) {
       return
@@ -71,8 +72,13 @@ export function useStudioRun({ session, onUserMessageSubmitted, onRunSubmitting,
       }
     }
 
-    await submitWithSession(session, true)
-  }, [onRunStarted, onRunSubmitting, onSnapshotLoaded, onUserMessageSubmitted, recoverSession, session])
+    try {
+      await submitWithSession(session, true)
+    } catch (error) {
+      onError(error instanceof Error ? error.message : String(error))
+      throw error
+    }
+  }, [onError, onRunStarted, onRunSubmitting, onSnapshotLoaded, onUserMessageSubmitted, recoverSession, session])
 }
 
 function filterPermissionsForSession(requests: StudioPermissionRequest[], sessionId?: string | null) {

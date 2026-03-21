@@ -108,9 +108,11 @@ export function useStudioSession() {
     }
   }, [loadSnapshot, state.entities.session?.id])
 
+  const sessionId = state.entities.session?.id ?? null
+  const activeRenderTask = hasActiveRenderTask(state)
+
   useEffect(() => {
-    const sessionId = state.entities.session?.id
-    if (!sessionId || !hasActiveRenderTask(state)) {
+    if (!sessionId || !activeRenderTask) {
       return
     }
 
@@ -136,10 +138,10 @@ export function useStudioSession() {
     }, 4000)
 
     return () => window.clearInterval(timer)
-  }, [loadSnapshot, state])
+  }, [activeRenderTask, loadSnapshot, sessionId])
 
   useStudioEvents({
-    sessionId: state.entities.session?.id ?? null,
+    sessionId,
     onEvent: (event) => {
       dispatch({ type: 'event_received', event })
     },
@@ -182,11 +184,17 @@ export function useStudioSession() {
         pendingPermissions,
       })
     },
+    onError: (error) => {
+      dispatch({
+        type: 'run_submit_failed',
+        error,
+      })
+    },
     recoverSession: () => createFreshSession('replace'),
   })
 
   const { replyPermission } = useStudioPermissions({
-    sessionId: state.entities.session?.id ?? null,
+    sessionId,
     onReplyStarted: (requestId) => {
       dispatch({ type: 'permission_reply_started', requestId })
     },

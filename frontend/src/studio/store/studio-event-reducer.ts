@@ -23,6 +23,7 @@ export type StudioStateAction =
   | { type: 'user_message_submitted'; message: StudioMessage }
   | { type: 'run_submitting' }
   | { type: 'run_started'; run: StudioRun; pendingPermissions: StudioPermissionRequest[] }
+  | { type: 'run_submit_failed'; error: string }
   | { type: 'permission_reply_started'; requestId: string }
   | { type: 'permission_reply_finished'; requests: StudioPermissionRequest[] }
 
@@ -134,6 +135,15 @@ export function studioEventReducer(
             [action.run.id]: '',
           },
         },
+      }
+    case 'run_submit_failed':
+      return {
+        ...state,
+        runtime: {
+          ...state.runtime,
+          submitting: false,
+        },
+        error: action.error,
       }
     case 'permission_reply_started':
       return {

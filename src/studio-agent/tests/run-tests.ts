@@ -35,6 +35,7 @@ import {
   type StudioTurnPlanResolver
 } from '../index'
 import { createStudioError, createStudioSuccess, isStudioPermissionDecision } from '../../routes/helpers/studio-agent-responses'
+import { parseStudioTurnIntent } from '../runtime/turn-plan-intent'
 
 function createTestRuntime(options?: {
   permissionService?: StudioPermissionService
@@ -146,6 +147,22 @@ async function main() {
     assert.match(prompt, /Do not call render until the target code has been written or updated in the workspace and checked with static-check/)
     assert.match(prompt, /use the question tool to ask for confirmation first/)
   })
+  await run('turn intent maps list requests to ls at workspace root', async () => {
+    const intent = parseStudioTurnIntent('please list the current workspace')
+
+    assert.equal(intent.directTool?.toolName, 'ls')
+    assert.deepEqual(intent.directTool?.input, { path: '.' })
+    assert.ok(intent.requestedToolNames.includes('ls'))
+  })
+
+  await run('turn intent keeps explicit ls path intact', async () => {
+    const intent = parseStudioTurnIntent('/ls src/studio-agent')
+
+    assert.equal(intent.directTool?.toolName, 'ls')
+    assert.deepEqual(intent.directTool?.input, { path: 'src/studio-agent' })
+    assert.equal(intent.explicitCommand, true)
+  })
+
   await run('registry filters tools by agent', async () => {
     const { registry } = createTestRuntime()
 
@@ -252,6 +269,51 @@ async function main() {
     })
 
     assert.match(plan.assistantText ?? '', /最近一次 render 结果失败/)
+  })
+
+  await run('resolver does not auto-call render for plain render requests', async () => {
+    const { registry } = createTestRuntime()
+    const resolveTurnPlan = createStudioDefaultTurnPlanResolver({
+      registry,
+      enabledToolNames: ['skill', 'task', 'read', 'glob', 'grep', 'ls', 'render']
+    })
+    const session = createStudioSession({
+      projectId: 'project-1',
+      agentType: 'builder',
+      title: 'Render Guard Session',
+      directory: await createWorkspace(),
+      permissionLevel: 'L4',
+      permissionRules: defaultRulesForLevel('L4')
+    })
+
+    const plan = await resolveTurnPlan({
+      projectId: 'project-1',
+      session,
+      run: {
+        id: 'run_render_guard',
+        sessionId: session.id,
+        status: 'pending',
+        inputText: '请直接渲染当前内容',
+        activeAgent: 'builder',
+        createdAt: new Date().toISOString()
+      },
+      assistantMessage: {
+        id: 'msg_render_guard',
+        sessionId: session.id,
+        role: 'assistant',
+        agent: 'builder',
+        parts: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      inputText: '请直接渲染当前内容',
+      workContext: {
+        sessionId: session.id,
+        agent: 'builder'
+      }
+    })
+
+    assert.equal(plan.toolCalls?.length ?? 0, 0)
   })
 
   await run('subagent prompt assembly keeps workflow separate from agent prompt', async () => {
@@ -673,6 +735,8 @@ main()
     console.error(error)
     process.exit(1)
   })
+
+
 
 
 

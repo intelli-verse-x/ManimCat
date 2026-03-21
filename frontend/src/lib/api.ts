@@ -45,6 +45,20 @@ function getAuthHeaders(contentType = 'application/json', options: RequestAuthOp
   return headers;
 }
 
+async function parseApiErrorMessage(response: Response, fallbackMessage: string): Promise<string> {
+  try {
+    const text = await response.text();
+    if (!text) {
+      return fallbackMessage;
+    }
+
+    const error = JSON.parse(text) as ApiError;
+    return error.error ? localizeApiMessage(error.error) : fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+}
+
 export async function modifyAnimation(
   request: ModifyRequest,
   signal?: AbortSignal,
@@ -61,8 +75,7 @@ export async function modifyAnimation(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.modifyFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('api.modifyFailed')));
   }
 
   return response.json();
@@ -114,8 +127,7 @@ export async function generateAnimation(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.generateFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('api.generateFailed')));
   }
 
   return response.json();
@@ -134,8 +146,7 @@ export async function generateProblemFraming(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.problemFramingFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('api.problemFramingFailed')));
   }
 
   return response.json();
@@ -149,8 +160,7 @@ export async function getPromptDefaults(locale?: PromptLocale, signal?: AbortSig
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error || 'Failed to load prompt defaults');
+    throw new Error(await parseApiErrorMessage(response, 'Failed to load prompt defaults'));
   }
 
   return response.json();
@@ -167,8 +177,7 @@ export async function getJobStatus(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.jobStatusFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('api.jobStatusFailed')));
   }
 
   return response.json();
@@ -181,8 +190,7 @@ export async function cancelJob(jobId: string, options: RequestAuthOptions = {})
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.cancelFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('api.cancelFailed')));
   }
 }
 
@@ -193,8 +201,7 @@ export async function getUsageMetrics(days = 7, signal?: AbortSignal): Promise<U
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('api.usageFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('api.usageFailed')));
   }
 
   return response.json();
@@ -215,8 +222,7 @@ export async function getHistoryList(
   );
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : translate('history.loadFailed'));
+    throw new Error(await parseApiErrorMessage(response, translate('history.loadFailed')));
   }
 
   return response.json();
@@ -233,7 +239,6 @@ export async function deleteHistoryRecord(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json();
-    throw new Error(error.error ? localizeApiMessage(error.error) : 'Delete failed');
+    throw new Error(await parseApiErrorMessage(response, 'Delete failed'));
   }
 }
