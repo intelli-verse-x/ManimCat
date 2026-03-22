@@ -38,12 +38,10 @@ export function VideoSettingsTab({ videoConfig, onUpdate }: VideoSettingsTabProp
 
       <CustomSelect
         options={[
-          { value: 60, label: t('settings.video.timeout.60') },
-          { value: 120, label: t('settings.video.timeout.120') },
-          { value: 180, label: t('settings.video.timeout.180') },
-          { value: 300, label: t('settings.video.timeout.300') },
           { value: 600, label: t('settings.video.timeout.600') },
           { value: 1200, label: t('settings.video.timeout.1200') },
+          { value: 1800, label: t('settings.video.timeout.1800') },
+          { value: 3000, label: t('settings.video.timeout.3000') },
         ]}
         value={videoConfig.timeout ?? DEFAULT_SETTINGS.video.timeout}
         onChange={(value) => onUpdate({ timeout: value })}
