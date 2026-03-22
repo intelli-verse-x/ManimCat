@@ -1,150 +1,115 @@
-## 任务目标
+Design an executable storyboard for this concept.
 
-请为以下数学概念设计一个深度的、具有逻辑阐释力的动画导演稿：
-
-### 输入概念
-
-**概念**: {{concept}}
-**种子**: {{seed}}
-**输出模式**: {{outputMode}}
+Concept: {{concept}}
+Seed: {{seed}}
+Output mode: {{outputMode}}
 
 {{#if isImage}}
-### 图片模式附加要求
-[...]（保持原样）
+This is image mode.
+Treat each shot as a static composition step.
+Overwrite transitions between images must still be explicit.
 {{/if}}
 
-### 知识层（补充）
+## Goal Layer
+### Input Expectation
+- The concept is the core teaching target.
+- If the input already contains an upstream structure, preserve its order and intent.
 
-画布基准、坐标边界、叙事模式、情感弧线、因果链条等已在系统指令中定义。以下为补充原则：
-- **支架式教学**：将复杂跨度拆解为多个微小、可理解的连续变换。
+### Output Requirement
+- Produce a director-ready storyboard for code generation.
+- The storyboard must make placement, transforms, persistence, and exits precise enough to implement directly.
 
-### 目标层（必须达成）
+## Knowledge Layer
+### Useful Context
+- Use English command language in the storyboard.
+- Use mixed placement:
+  - exact coordinates for important anchors
+  - relative placement for secondary relations
+- Stable layouts are preferred.
 
-你交付的方案必须满足：
-1. **逻辑图谱明确**：标注出从“已知”到“未知”的每一个认知跳跃点。
-2. **步骤数量建议与上游规划对齐**：优先与 `Problem Framing Context` 的 cards 一一对应。通常每张卡片扩成 1 个导演步骤；必要时最多拆成 2 个连续步骤，但不得丢失卡片顺序与核心意图。
+## Behavior Layer
+### Workflow
+1. define the teaching target
+2. define the global layout
+3. define the persistent and temporary objects
+4. define the shot-by-shot commands
+5. review overlap, focus, and lifecycle
 
-你必须输出：
-1. 核心数学目标、关键认知障碍与“顿悟画面”定义。
-2. 全局视觉隐喻。
-3. 分屏布局定义。
-4. **分步叙事流程（含 [DURATION] 标签与每步意图）**。
-5. 全局视觉规格表。
+### Working Principles
+- If a scene is crowded, split it.
+- Prefer visual reasoning over formula stacking.
+- Prefer explicit exits over lingering objects.
 
-### 行为层（必须遵循）
+## Protocol Layer
+### Command Language
+Use command lines such as:
+- `duration 8s`
+- `layout left_panel graph_main at (-3.2, 0), right_panel formula_main at (3.1, 0)`
+- `focus area_transfer`
+- `enter square_left and square_right`
+- `keep axes and title`
+- `exit helper_grid and temp_label`
+- `transform cut_piece -> filled_gap`
+- `scale formula_main 0.9, helper_label 0.7`
+- `note no overlap with graph_main`
 
-按以下顺序思考并输出：
-1. 逻辑图谱分析（Analyze）：识别认知障碍，寻找能支撑上游规划的视觉变换。
-2. 分镜与布局落地（Storyboard）：明确各区坐标，为每个元素声明完整生命周期。
-3. 认知友好审查（Review）：检查是否有跳步或遮挡。
+### Layout Templates
+You may use stable layout templates such as:
+- `two_column`
+- `left_graph_right_formula`
+- `center_focus_side_note`
+- `top_statement_bottom_derivation`
 
-### 语言风格 Few-shot（仅约束措辞，不改变叙事结构）
+### Output Format
+Wrap everything in `<design>` and `</design>`.
+Inside, use exactly this structure:
 
-如果你判断加入台词、字幕或极短口播能显著提升理解效果，可以主动使用；但文字必须服务于当前视觉焦点，保持简短、自然、可讲述，并遵守以下措辞约束。
-
-以下示例用于约束“台前语言”风格。请保持既有叙事模式与步骤结构不变，只替换说法。
-
-- **反例**：逻辑动机：为了重构面积，我们需要合并底部。
-  **正例**：先别急着算，看看这两块面积能不能在下一步自然拼上。
-
-- **反例**：使用补集思维，定义剩余区域并计算。
-  **正例**：正面不好算时，我们换个角度看“剩下的那一块”。
-
-- **反例**：步骤3：终极合成，得到最终结论。
-  **正例**：到这里，两条线索终于汇成同一个结果。
-
-- **反例**：当前教学目标是建立等价变换认知。
-  **正例**：你可以把这个变化看成“同一件事的另一种写法”。
-
-- **反例**：认知鸿沟在于从几何到代数的映射困难。
-  **正例**：难点就在这一下：图形里的关系，怎么落到式子里。
-
-风格约束总结：
-- 多用“邀请观众观察”的句式（如“先看”“注意这里”“换个角度”）。
-- 少用“作者自我表白”的句式（如“我的动机是”“本步骤目标是”）。
-- 细节叙述应落在“看得见的变化”上（颜色对应、局部放大、缺口如何被填补），不要落在术语解释上。
-- 关键转折或结论出现后，安排 2–4 秒静止停顿（无新元素进入），给观众完成观察与缝合时间。
-
-### 规范层（硬约束）
-
-1. **分栏优先**：多选项/多分支推导强制使用分栏布局，并采用覆盖式切换。
-
-### 分镜输出要求
-[...]（结构保持一致，但在“动画流程”部分增加 DURATION 和逻辑动机的要求）
-
-补充约束：
-- 若步骤中需要文本，优先使用数学对象词（如“面积”“边长”“角度”“映射”“对称”）与极短动作词，避免教育方法论名词。
-{{#if isImage}}
-   - 图片模式下，步骤可解释为“逐图切换流程”：每一步对应一张静态图，并说明与上一张图的覆盖替换关系
-{{/if}}
-
-5. **视觉元素规划与布局**
-   - 列出需要展示的几何图形/公式/函数
-   - 说明每个元素的视觉表示方式
-   - **精确布局指令**：详细描述元素之间的空间关系，特别是文字标签（Label）相对于主体的具体方位（如 `next_to(obj, RIGHT, buff=0.2)` 的描述性表达），防止在复杂场景中发生重叠
-   - **严格方程化**：对于任何需要精确方位和关系的图像、曲线或图形，必须给出严格的数学计算和方程表示，严禁使用估计值。例如：
-     - 不要只说"画一个抛物线"，必须给出具体方程如 `y = x^2` 并说明定义域
-     - 不要只说"画一个正弦波"，必须给出具体方程如 `y = sin(x)` 并说明振幅、频率、相位
-     - 不要只说"在某个位置"，必须给出精确坐标或相对位置的数学表达式
-
-6. **动画节奏建议**
-   - 哪些部分需要快/慢节奏
-   - 哪些地方应该有停顿或强调
-   - 建议的动画时长比例
-
-7. **配色方案建议（最多 5 色，不含背景）**
-   - 主体元素的颜色
-   - 辅助元素的颜色
-   - 高亮/强调元素的颜色
-
-8. **全局视觉规格表**
-   - 表格列建议：元素类型、区域、颜色、层级、生命周期（活跃步骤）、建议缩放、运动规则、避障策略
-   - 必须增加“覆盖切换策略”字段，明确每个选项切换时的淡出/保留规则
-
-### 输出格式
-
-请将最终设计方案包裹在 <design> 和 </design> 标签中，标签外不要输出任何内容。
-
-格式示例：
 <design>
-# 动画设计方案
+# Design
+
+## Goal
+- what the viewer should understand
+- the main obstacle
+- the visual strategy
+
+## Layout
+- the global screen layout
+- the main zones
+- the important anchor coordinates
+
+## Object Rules
+- persistent core objects
+- temporary helper objects
+- default exit behavior for non-core objects
+
+## Shot Plan
+### Shot 1: ...
+duration ...
+layout ...
+focus ...
+enter ...
+keep ...
+exit ...
+transform ...
+scale ...
+note ...
+- start state: ...
+- action: ...
+- end state: ...
+
+### Shot 2: ...
 ...
+
+## Review
+- overlap check
+- lifecycle check
+- focus check
+- pacing check
 </design>
 
-请使用以下结构输出：
-
-# 动画设计方案
-
-## 核心概念解读
-[...]
-
-## 全局视觉隐喻
-[...]
-
-## 分屏布局定义
-[...]
-
-## 动画流程
-### 步骤1: [标题]
-[FOCUS: ...] [ENTER: ...] [KEEP: ...] [EXIT: ...] [SCALE: ...]
-[详细描述...]
-
-### 步骤2: [标题]
-[FOCUS: ...] [ENTER: ...] [KEEP: ...] [EXIT: ...] [SCALE: ...]
-[详细描述...]
-
-[...]
-
-## 视觉元素规划
-[...]
-
-## 动画节奏建议
-[...]
-
-## 配色方案建议
-[...]
-
-## 全局视觉规格表
-[...]
-
-注意：你的方案将被用于生成实际的 Manim 代码，因此请确保足够详细且技术上可行。
+## Constraint Layer
+### Must Not Do
+- Do not write long motivational explanation.
+- Do not leave object exits unclear.
+- Do not allow object overlap.
+- Do not let the storyboard become loose prose.

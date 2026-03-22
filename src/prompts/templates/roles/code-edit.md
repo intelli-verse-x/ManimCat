@@ -1,35 +1,57 @@
-## 目标
+Concept: {{concept}}
+Requested change: {{instructions}}
 
-### 修改信息
+## Goal Layer
+### Input Expectation
+- You are given existing code and a user edit request.
 
-- **概念**：{{concept}}
-- **修改意见**：{{instructions}}
+### Output Requirement
+- Return the full updated Manim code.
+- Make the requested change while preserving unaffected structure.
 
-### 输出要求
+## Knowledge Layer
+### Useful Context
+- This is bounded editing, not full regeneration.
+- Existing code should remain stable unless the request directly affects it.
 
-- **仅输出代码**：禁止解释或 Markdown 包裹
-- **画布边界（硬约束）**：x in [-8, 8]，y in [-4.5, 4.5]。修改后任何元素都不得越界。
+## Behavior Layer
+### Workflow
+1. identify what the user wants changed
+2. determine which region of the code is affected
+3. modify that region with minimal spillover
+4. return the full updated code
+
+### Working Principles
+- Preserve existing structure, layout logic, and already-correct behavior when possible.
+- Keep geometry readable and avoid introducing overlap.
 {{#if isVideo}}
-- **锚点协议（视频）**：使用 ### START ### 开始，### END ### 结束，仅输出锚点之间的代码
-- **结构规范（视频）**：场景类固定为 `MainScene`，统一使用 `from manim import *`
+- In Chinese mode, all labels, subtitles, captions, and explanatory on-screen text in the code must be Chinese.
+- In English mode, all labels, subtitles, captions, and explanatory on-screen text in the code must be English.
 {{/if}}
 {{#if isImage}}
-- **锚点协议（图片）**：仅允许输出 YON_IMAGE 锚点块，块外禁止任何字符。
-- **格式（图片）**：
-  - `### YON_IMAGE_1_START ###`
-  - `...python code...`
-  - `### YON_IMAGE_1_END ###`
-  - `### YON_IMAGE_2_START ###`
-  - `...python code...`
-  - `### YON_IMAGE_2_END ###`
-- **编号规则（图片）**：编号必须从 1 开始连续递增。
-- **结构规范（图片）**：每个块都必须包含可渲染 Scene 类，统一使用 `from manim import *`。
+- In Chinese mode, all labels and explanatory on-screen text in the code must be Chinese.
+- In English mode, all labels and explanatory on-screen text in the code must be English.
 {{/if}}
 
-## 原始代码
+## Protocol Layer
+### Output Rules
+{{#if isVideo}}
+- Start with `### START ###`
+- End with `### END ###`
+- Use `from manim import *`
+- Keep `MainScene` unless true 3D is required
+{{/if}}
+{{#if isImage}}
+- Output only `YON_IMAGE` anchor blocks
+- Each block must contain one renderable Scene
+- Use `from manim import *`
+{{/if}}
 
-```python
+## Constraint Layer
+### Must Not Do
+- Do not output explanation.
+- Do not rewrite unrelated parts of the code.
+- Do not change layout, timing, or naming unless the request requires it.
+
+## Original Code
 {{code}}
-```
-
-请根据修改意见输出完整的 Manim Python 代码。

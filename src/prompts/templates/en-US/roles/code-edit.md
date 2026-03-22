@@ -1,35 +1,57 @@
-## Goal
+Concept: {{concept}}
+Requested change: {{instructions}}
 
-### Modification Input
+## Goal Layer
+### Input Expectation
+- You are given existing code and a user edit request.
 
-- **Concept**: {{concept}}
-- **Requested changes**: {{instructions}}
+### Output Requirement
+- Return the full updated Manim code.
+- Make the requested change while preserving unaffected structure.
 
-### Output Requirements
+## Knowledge Layer
+### Useful Context
+- This is bounded editing, not full regeneration.
+- Existing code should remain stable unless the request directly affects it.
 
-- **Code only**: no explanations and no Markdown wrapping
-- **Canvas bounds (hard constraint)**: x in [-8, 8], y in [-4.5, 4.5]. No element may end up out of bounds after the modification.
+## Behavior Layer
+### Workflow
+1. identify what the user wants changed
+2. determine which region of the code is affected
+3. modify that region with minimal spillover
+4. return the full updated code
+
+### Working Principles
+- Preserve existing structure, layout logic, and already-correct behavior when possible.
+- Keep geometry readable and avoid introducing overlap.
 {{#if isVideo}}
-- **Anchor protocol (video)**: start with `### START ###`, end with `### END ###`, and output only the code between them
-- **Structure rules (video)**: the scene class must remain `MainScene`, and `from manim import *` must be used consistently
+- In Chinese mode, all labels, subtitles, captions, and explanatory on-screen text in the code must be Chinese.
+- In English mode, all labels, subtitles, captions, and explanatory on-screen text in the code must be English.
 {{/if}}
 {{#if isImage}}
-- **Anchor protocol (image)**: only `YON_IMAGE` anchor blocks are allowed, with no characters outside the blocks
-- **Format (image)**:
-  - `### YON_IMAGE_1_START ###`
-  - `...python code...`
-  - `### YON_IMAGE_1_END ###`
-  - `### YON_IMAGE_2_START ###`
-  - `...python code...`
-  - `### YON_IMAGE_2_END ###`
-- **Numbering rule (image)**: numbering must start from 1 and increase continuously without gaps
-- **Structure rules (image)**: every block must contain a renderable `Scene` class, always using `from manim import *`
+- In Chinese mode, all labels and explanatory on-screen text in the code must be Chinese.
+- In English mode, all labels and explanatory on-screen text in the code must be English.
 {{/if}}
 
+## Protocol Layer
+### Output Rules
+{{#if isVideo}}
+- Start with `### START ###`
+- End with `### END ###`
+- Use `from manim import *`
+- Keep `MainScene` unless true 3D is required
+{{/if}}
+{{#if isImage}}
+- Output only `YON_IMAGE` anchor blocks
+- Each block must contain one renderable Scene
+- Use `from manim import *`
+{{/if}}
+
+## Constraint Layer
+### Must Not Do
+- Do not output explanation.
+- Do not rewrite unrelated parts of the code.
+- Do not change layout, timing, or naming unless the request requires it.
+
 ## Original Code
-
-```python
 {{code}}
-```
-
-Please output the full Manim Python code according to the requested changes.

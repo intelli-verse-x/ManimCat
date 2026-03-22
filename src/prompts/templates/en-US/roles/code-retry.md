@@ -1,32 +1,55 @@
+Concept: {{concept}}
+Attempt: {{attempt}}
+Error: {{errorMessage}}
+
 ## Goal Layer
-
-### Input Expectations
-
-- **Concept**: {{concept}}
-- **Error message** (attempt {{attempt}}): {{errorMessage}}
-- **Current full code**: provided below
+### Input Expectation
+- You are given the current full code.
 {{#if codeSnippet}}
-- **Error-related code snippet**: prefer to localize the fix around this snippet
+- You are also given an error-related snippet. Prefer to repair near it.
 {{/if}}
 
-### Output Requirements
+### Output Requirement
+- Return patch blocks only.
+- Fix only the code directly related to the current failure.
+- Preserve everything else unless the error directly forces a wider change.
 
-- Return one or more patch blocks only. Do not return JSON.
-- The patch format must be exactly:
+## Knowledge Layer
+### Useful Context
+- This is local patch repair, not full regeneration.
+- Minimal exact replacement is preferred.
+
+## Behavior Layer
+### Workflow
+1. locate the failure
+2. choose the smallest exact search snippet
+3. replace only the necessary code
+4. return one or more patch blocks
+
+### Working Principles
+- If a one-line fix works, do not replace a whole block.
+- If several separate local failures exist, return multiple minimal patches.
+- Preserve Manim structure compatibility.
+- If the patch touches on-screen text, preserve the current locale language and do not introduce mixed-language text.
+{{#if isVideo}}
+- In video mode, preserve a renderable `MainScene`.
+{{/if}}
+{{#if isImage}}
+- In image mode, preserve the existing `YON_IMAGE` anchor structure and continuous numbering.
+{{/if}}
+
+## Protocol Layer
+### Output Format
+Use exactly:
 [[PATCH]]
 [[SEARCH]]
 original code snippet
 [[REPLACE]]
 replacement code snippet
 [[END]]
-- Every `[[SEARCH]]` block must be an exact snippet that already exists in the current code
-- Every `[[REPLACE]]` block must be the new code that should replace its matching snippet
-- Fix only the code that is directly relevant to the current error; do not refactor unrelated parts
-- If a one-line or intra-line fix works, do not replace a larger block; if there are several similar local failures, return multiple minimal patches
 
-### Few-Shot Examples
-
-Example 1: missing ThreeDScene import
+### Few-Shot Example
+Example:
 
 Error:
 Name "ThreeDScene" is not defined
@@ -46,53 +69,16 @@ from manim import *
 from manim import ThreeDScene
 [[END]]
 
-Example 2: invalid import syntax
-
-Error:
-SyntaxError: invalid syntax
-
-Current code:
-from manim import *, ThreeDScene
-
-Correct output:
-[[PATCH]]
-[[SEARCH]]
-from manim import *, ThreeDScene
-[[REPLACE]]
-from manim import *
-from manim import ThreeDScene
-[[END]]
-
-## Behavior Layer
-
-### Repair Principles
-
-1. Use the error message to identify the most likely local source of failure.
-2. Prefer the error-related snippet when localizing the patch, but ensure `original_snippet` can be found exactly inside the full code.
-3. If the failure spans several non-contiguous local regions, return multiple patches rather than the whole file.
-4. Preserve Manim structure compatibility:
-{{#if isVideo}}
-   - In video mode, keep a renderable `MainScene`
-{{/if}}
-{{#if isImage}}
-   - In image mode, preserve the existing `YON_IMAGE` anchor structure and continuous numbering
-{{/if}}
-5. The first line must be `[[PATCH]]`, with no extra text.
-
----
+## Constraint Layer
+### Must Not Do
+- Do not return full code.
+- Do not add explanation.
+- Do not broaden the patch if a smaller one works.
 
 ## Current Full Code
-
-```python
 {{code}}
-```
 
 {{#if codeSnippet}}
-## Error-Related Code Snippet
-
-```python
+## Error-Related Snippet
 {{codeSnippet}}
-```
 {{/if}}
-
-Now output patch blocks only, and nothing else.

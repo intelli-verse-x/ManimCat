@@ -3,7 +3,7 @@ import { getSharedModule, type PromptOverrides } from '../prompts'
 import type { ChatMessage } from './code-retry/types'
 
 interface SharedBlock {
-  name: 'knowledge' | 'rules' | 'apiIndex' | 'soulIndex'
+  name: 'apiIndexModule' | 'specification' | 'apiIndex' | 'soulIndex'
   content: string
 }
 
@@ -48,17 +48,17 @@ function removeDuplicateOccurrences(text: string, fragment: string): string {
 }
 
 function buildSharedBlocks(promptOverrides?: PromptOverrides): SharedBlock[] {
-  const knowledge = normalizeText(getSharedModule('knowledge', promptOverrides)).trim()
-  const rules = normalizeText(getSharedModule('rules', promptOverrides)).trim()
+  const apiIndexModule = normalizeText(getSharedModule('apiIndex', promptOverrides)).trim()
+  const specification = normalizeText(getSharedModule('specification', promptOverrides)).trim()
   const apiIndex = normalizeText(API_INDEX).trim()
   const soulIndex = normalizeText(SOUL_INDEX).trim()
   const blocks: SharedBlock[] = []
 
-  if (knowledge.length > 0) {
-    blocks.push({ name: 'knowledge', content: knowledge })
+  if (apiIndexModule.length > 0) {
+    blocks.push({ name: 'apiIndexModule', content: apiIndexModule })
   }
-  if (rules.length > 0) {
-    blocks.push({ name: 'rules', content: rules })
+  if (specification.length > 0) {
+    blocks.push({ name: 'specification', content: specification })
   }
   if (apiIndex.length > 0) {
     blocks.push({ name: 'apiIndex', content: apiIndex })

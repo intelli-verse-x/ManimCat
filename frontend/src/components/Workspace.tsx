@@ -82,8 +82,8 @@ export function Workspace({ isOpen, onClose, initialModule = 'history', onReuseP
       codeEdit: t('prompts.role.codeEdit'),
     };
     const sharedLabels: Record<SharedModuleType, string> = {
-      knowledge: t('prompts.shared.knowledge'),
-      rules: t('prompts.shared.rules'),
+      apiIndex: t('prompts.shared.apiIndex'),
+      specification: t('prompts.shared.specification'),
     };
 
     if (selection.kind === 'role') {
@@ -101,9 +101,9 @@ export function Workspace({ isOpen, onClose, initialModule = 'history', onReuseP
         ? t('prompts.role.systemDescription')
         : t('prompts.role.userDescription');
     }
-    return selection.module === 'knowledge'
-      ? t('prompts.shared.knowledgeDescription')
-      : t('prompts.shared.rulesDescription');
+    return selection.module === 'apiIndex'
+      ? t('prompts.shared.apiIndexDescription')
+      : t('prompts.shared.specificationDescription');
   };
 
   const promptContent = getCurrentContent();

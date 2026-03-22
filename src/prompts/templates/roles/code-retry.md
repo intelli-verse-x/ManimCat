@@ -1,43 +1,66 @@
-## 目标层
+Concept: {{concept}}
+Attempt: {{attempt}}
+Error: {{errorMessage}}
 
-### 输入预期
-
-- **概念**：{{concept}}
-- **错误信息**（第 {{attempt}} 次尝试）：{{errorMessage}}
-- **当前完整代码**：见下方
+## Goal Layer
+### Input Expectation
+- You are given the current full code.
 {{#if codeSnippet}}
-- **报错相关代码片段**：优先围绕这段定位并替换
+- You are also given an error-related snippet. Prefer to repair near it.
 {{/if}}
 
-### 产出要求
+### Output Requirement
+- Return patch blocks only.
+- Fix only the code directly related to the current failure.
+- Preserve everything else unless the error directly forces a wider change.
 
-- 只返回一个或多个 patch 块，不要返回 JSON
-- patch 格式必须严格如下：
+## Knowledge Layer
+### Useful Context
+- This is local patch repair, not full regeneration.
+- Minimal exact replacement is preferred.
+
+## Behavior Layer
+### Workflow
+1. locate the failure
+2. choose the smallest exact search snippet
+3. replace only the necessary code
+4. return one or more patch blocks
+
+### Working Principles
+- If a one-line fix works, do not replace a whole block.
+- If several separate local failures exist, return multiple minimal patches.
+- Preserve Manim structure compatibility.
+- If the patch touches on-screen text, preserve the current locale language and do not introduce mixed-language text.
+{{#if isVideo}}
+- In video mode, preserve a renderable `MainScene`.
+{{/if}}
+{{#if isImage}}
+- In image mode, preserve the existing `YON_IMAGE` anchor structure and continuous numbering.
+{{/if}}
+
+## Protocol Layer
+### Output Format
+Use exactly:
 [[PATCH]]
 [[SEARCH]]
-原代码片段
+original code snippet
 [[REPLACE]]
-替换后代码片段
+replacement code snippet
 [[END]]
-- 每个 `[[SEARCH]]` 都必须是当前代码里已经存在的原文片段
-- 每个 `[[REPLACE]]` 都必须是对应的替换后新片段
-- 只改和当前错误直接相关的局部，不要顺手重构，不要改无关风格
-- 若能改一行内局部，就不要改整段；若有多个同类错误点，可一次返回多个最小 patch
 
-### Few-Shot 示例
+### Few-Shot Example
+Example:
 
-示例 1：缺失 ThreeDScene 导入
-
-错误：
+Error:
 Name "ThreeDScene" is not defined
 
-当前代码：
+Current code:
 from manim import *
 
 class MainScene(ThreeDScene):
     pass
 
-正确输出：
+Correct output:
 [[PATCH]]
 [[SEARCH]]
 from manim import *
@@ -46,53 +69,16 @@ from manim import *
 from manim import ThreeDScene
 [[END]]
 
-示例 2：非法 import 拼接
+## Constraint Layer
+### Must Not Do
+- Do not return full code.
+- Do not add explanation.
+- Do not broaden the patch if a smaller one works.
 
-错误：
-SyntaxError: invalid syntax
-
-当前代码：
-from manim import *, ThreeDScene
-
-正确输出：
-[[PATCH]]
-[[SEARCH]]
-from manim import *, ThreeDScene
-[[REPLACE]]
-from manim import *
-from manim import ThreeDScene
-[[END]]
-
-## 行为层
-
-### 修复原则
-
-1. 根据错误信息找出最可能出错的局部代码。
-2. 优先参考“报错相关代码片段”，但必须确保 `original_snippet` 能在完整代码中精确找到。
-3. 如果错误位于多个非连续局部，可以一次返回多个 patch；不要返回完整文件。
-4. 保持 Manim 结构兼容：
-{{#if isVideo}}
-   - 视频模式下保持可渲染的 `MainScene`
-{{/if}}
-{{#if isImage}}
-   - 图片模式下保持现有 `YON_IMAGE` 锚点结构与编号连续
-{{/if}}
-5. 第一行必须是 `[[PATCH]]`，不要附加任何文字。
-
----
-
-## 当前完整代码
-
-```python
+## Current Full Code
 {{code}}
-```
 
 {{#if codeSnippet}}
-## 报错相关代码片段
-
-```python
+## Error-Related Snippet
 {{codeSnippet}}
-```
 {{/if}}
-
-现在只输出 patch 块，不要任何解释。

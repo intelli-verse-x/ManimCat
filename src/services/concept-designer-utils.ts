@@ -16,8 +16,8 @@ export function applyPromptTemplate(
 ): string {
   let output = template
 
-  output = output.replace(/\{\{knowledge\}\}/g, getSharedModule('knowledge', promptOverrides))
-  output = output.replace(/\{\{rules\}\}/g, getSharedModule('rules', promptOverrides))
+  output = output.replace(/\{\{apiIndexModule\}\}/g, getSharedModule('apiIndex', promptOverrides))
+  output = output.replace(/\{\{sharedSpecification\}\}/g, getSharedModule('specification', promptOverrides))
 
   for (const [key, value] of Object.entries(values)) {
     output = output.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g'), value || '')

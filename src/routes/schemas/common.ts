@@ -46,8 +46,8 @@ export const promptOverridesSchema = z.object({
     .optional(),
   shared: z
     .object({
-      knowledge: z.string().max(40000).optional(),
-      rules: z.string().max(40000).optional()
+      apiIndex: z.string().max(40000).optional(),
+      specification: z.string().max(40000).optional()
     })
     .optional()
 })

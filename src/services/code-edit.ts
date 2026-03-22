@@ -24,8 +24,8 @@ function applyPromptTemplate(
   let output = template
 
   // 替换共享模块占位符
-  output = output.replace(/\{\{knowledge\}\}/g, getSharedModule('knowledge', promptOverrides))
-  output = output.replace(/\{\{rules\}\}/g, getSharedModule('rules', promptOverrides))
+  output = output.replace(/\{\{apiIndexModule\}\}/g, getSharedModule('apiIndex', promptOverrides))
+  output = output.replace(/\{\{sharedSpecification\}\}/g, getSharedModule('specification', promptOverrides))
 
   // 替换变量占位符
   for (const [key, value] of Object.entries(values)) {

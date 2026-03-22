@@ -43,7 +43,7 @@ export interface AIProvider {
 export type RoleType = 'problemFraming' | 'conceptDesigner' | 'codeGeneration' | 'codeRetry' | 'codeEdit';
 
 /** 共享模块类型 */
-export type SharedModuleType = 'knowledge' | 'rules';
+export type SharedModuleType = 'apiIndex' | 'specification';
 
 /** 提示词默认值（从服务端获取） */
 export interface PromptDefaults {

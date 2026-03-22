@@ -27,8 +27,8 @@ export function PromptSidebar({ selection, onSelect }: Props) {
   };
 
   const sharedLabels: Record<SharedModuleType, string> = {
-    knowledge: t('prompts.shared.knowledge'),
-    rules: t('prompts.shared.rules')
+    apiIndex: t('prompts.shared.apiIndex'),
+    specification: t('prompts.shared.specification')
   };
 
   const isRoleSelected = (role: RoleType, promptType: 'system' | 'user') =>

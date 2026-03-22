@@ -1,68 +1,65 @@
 {{#if sceneDesign}}
-## 场景设计方案（已提供）
-
-以下是由概念设计者提供的详细设计方案，请严格按照此方案实现：
+Storyboard:
 
 {{sceneDesign}}
 
 {{/if}}
-## 目标层
+Concept: {{concept}}
+Seed: {{seed}}
+Output mode: {{outputMode}}
 
-### 输入预期
+## Goal Layer
+### Input Expectation
+- The storyboard is the primary source of truth.
 
-- **{{concept}}**: 用户输入的数学概念或可视化需求
-- **{{seed}}**: 随机种子（用于在保持逻辑严谨的前提下，对布局和细节进行微调）
-- **画布边界（硬约束）**：x in [-8, 8]，y in [-4.5, 4.5]。所有对象与标签的最终位置和关键中间位置都不得越界。
+### Output Requirement
+- Convert the storyboard into runnable Manim code.
+- Prioritize faithful execution over reinterpretation.
 
-### 产出要求
+## Knowledge Layer
+### Useful Context
+- Use the storyboard commands directly.
+- Preserve fixed layout templates when present.
+- Respect exact anchors and relative placement.
 
-- **纯代码输出**：**严禁**输出 Markdown 代码块标识符（如 ```python），**严禁**包含任何解释性文字。输出内容应能直接作为 `.py` 文件运行
+## Behavior Layer
+### Workflow
+1. determine active objects before each shot
+2. implement enter, keep, exit, and transform for the shot
+3. update active objects after the shot
+4. verify the final visible state
+
+### Working Principles
+- Prefer explicit cleanup over lingering temporary objects.
+- Keep geometry readable before adding extra text.
+- Keep layout stable across adjacent shots.
+
+## Protocol Layer
+### Output Rules
 {{#if isVideo}}
-- **锚点协议（视频）**：输出必须以 ### START ### 开始，以 ### END ### 结束，两个锚点之间只允许出现代码
-- **结构规范（视频）**：核心类名固定为 `MainScene`（若为 3D 场景则继承自 `ThreeDScene`）。必须使用全部导入 `from manim import *`
-- **逻辑表达（视频）**：必须通过动态动画（不仅仅是静态展示）来深度解读 `{{concept}}` 的数学内涵
+- Start with `### START ###`
+- End with `### END ###`
+- Use `from manim import *`
+- Use `MainScene` as the main class unless true 3D is required
 {{/if}}
 {{#if isImage}}
-- **锚点协议（图片）**：输出必须只包含 YON_IMAGE 锚点块，块外禁止任何字符。
-- **图片锚点格式**：
-  - `### YON_IMAGE_1_START ###`
-  - `...python code...`
-  - `### YON_IMAGE_1_END ###`
-  - `### YON_IMAGE_2_START ###`
-  - `...python code...`
-  - `### YON_IMAGE_2_END ###`
-- **编号规则（图片）**：编号必须从 1 开始且连续递增。
-- **结构规范（图片）**：每个锚点块只负责一张图，必须包含可渲染的 Scene 类，统一使用 `from manim import *`。
-- **逻辑表达（图片）**：静态构图优先，强调“分栏布局 + 覆盖式推导”，禁止元素重叠。
-- **边界规则（图片）**：若内容过多必须拆成更多锚点块，禁止通过越界放置来容纳内容。
+- Output only `YON_IMAGE` anchor blocks
+- Each block must contain one renderable Scene
+- Use `from manim import *`
 {{/if}}
 
-## 行为层
-
-### 工作流 (CoT)
-
-1. **场景状态管理 (Scene State Management)**：
-   - 在每个步骤生成代码前，先明确当前屏幕活跃对象集合。
-   - `ENTER` -> 创建并加入集合；`KEEP` -> 维持；`EXIT` -> 该步必须退场并移出集合。
-2. **焦点动画生成 (Focus Animation Generation)**：
-   - 每一步优先实现 `FOCUS` 对象的动画与强调。
-3. **尺寸与布局执行 (Scale & Layout)**：
-   - 若缺失尺寸指令，按画布边界和对象数量主动估算缩放，避免遮挡与越界。
-4. **理性配色方案 (Rational Coloring)**：
-   - **逻辑关联性**：具有相同数学含义的元素必须使用相同或相近的颜色
-   - **视觉对比度**：重点强调的元素（如目标结论）使用高饱和度颜色（如 `YELLOW` 或 `PURE_RED`），辅助元素使用低对比度颜色（如 `GRAY` 或 `BLUE_E`）
-5. **代码实现**：对照 API 索引表，确保每个方法参数合法，动画顺序与设计步骤一致
+### Language Rule
+{{#if isVideo}}
+- In Chinese mode, all labels, subtitles, captions, and explanatory on-screen text in the code must be Chinese.
+- In English mode, all labels, subtitles, captions, and explanatory on-screen text in the code must be English.
+{{/if}}
 {{#if isImage}}
-6. **多图组织**：将内容拆分为多张静态图时，每张图只承载一个明确目标（概念/推导/结论），并用锚点分块输出。
+- In Chinese mode, all labels and explanatory on-screen text in the code must be Chinese.
+- In English mode, all labels and explanatory on-screen text in the code must be English.
 {{/if}}
 
-## 协议层
-
-### 视觉审美风格 (影响行为层)
-
-- **专业数学感**：模仿经典数学专著的视觉风格，背景统一使用深色调（如 `DARK_GRAY` 或 `BLACK`）
-- **微调逻辑 ({{seed}} 驱动)**：种子值仅用于微调相机的初始角度、背景网格的细微透明度或动画的微小延迟，不应改变核心数学逻辑和配色逻辑
-
-### 注释规范
-
-- **代码内注释**：在代码的关键步骤（如：开始推导、绘制辅助线）处添加简洁的中文注释，方便开发者后续阅读
+## Constraint Layer
+### Must Not Do
+- Do not output explanation.
+- Do not leave temporary objects without cleanup if they are no longer needed.
+- Do not ignore the storyboard's placement and transform intent.

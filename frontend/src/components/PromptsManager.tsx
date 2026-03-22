@@ -39,8 +39,8 @@ export function PromptsManager({ isOpen, onClose }: Props) {
     };
 
     const sharedLabels: Record<SharedModuleType, string> = {
-      knowledge: t('prompts.shared.knowledge'),
-      rules: t('prompts.shared.rules')
+      apiIndex: t('prompts.shared.apiIndex'),
+      specification: t('prompts.shared.specification')
     };
 
     if (selection.kind === 'role') {
@@ -60,9 +60,9 @@ export function PromptsManager({ isOpen, onClose }: Props) {
       }
       return t('prompts.role.userDescription');
     }
-    return selection.module === 'knowledge'
-      ? t('prompts.shared.knowledgeDescription')
-      : t('prompts.shared.rulesDescription');
+    return selection.module === 'apiIndex'
+      ? t('prompts.shared.apiIndexDescription')
+      : t('prompts.shared.specificationDescription');
   };
 
   if (!isOpen) return null;

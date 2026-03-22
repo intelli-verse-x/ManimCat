@@ -20,7 +20,7 @@ export type RoleType = 'problemFraming' | 'conceptDesigner' | 'codeGeneration' |
 export type PromptLocale = 'zh-CN' | 'en-US'
 
 /** 共享模块类型 */
-export type SharedModuleType = 'knowledge' | 'rules'
+export type SharedModuleType = 'apiIndex' | 'specification'
 
 /** 模板变量 */
 export interface TemplateVariables {
@@ -73,11 +73,9 @@ const ROLE_FILE_RELATIVE_PATHS: Record<RoleType, { system: string; user: string 
 }
 
 const SHARED_FILE_RELATIVE_PATHS: Record<SharedModuleType, string> = {
-  knowledge: path.join('shared', 'knowledge.md'),
-  rules: path.join('shared', 'rules.md')
+  apiIndex: path.join('shared', 'api-index.md'),
+  specification: path.join('shared', 'specification.md')
 }
-
-const ROLES_REQUIRE_SYSTEM_INDEX = new Set<RoleType>(['codeGeneration', 'codeRetry', 'codeEdit'])
 
 // ============================================================================
 // 缓存
@@ -167,13 +165,13 @@ function assembleTemplate(
   overrides?: PromptOverrides
 ): string {
   // 1. 加载共享模块
-  const knowledge = getSharedModule('knowledge', overrides)
-  const rules = getSharedModule('rules', overrides)
+  const apiIndex = getSharedModule('apiIndex', overrides)
+  const specification = getSharedModule('specification', overrides)
 
   // 2. 替换共享模块占位符
   let result = template
-    .replace(/\{\{knowledge\}\}/g, knowledge)
-    .replace(/\{\{rules\}\}/g, rules)
+    .replace(/\{\{apiIndexModule\}\}/g, apiIndex)
+    .replace(/\{\{sharedSpecification\}\}/g, specification)
 
   // 3. 处理条件块
   result = processConditionals(result, variables as Record<string, TemplateValue>)
@@ -201,12 +199,7 @@ export function getRoleSystemPrompt(
   const override = overrides?.roles?.[role]?.system
   const locale = resolveLocale(overrides)
   const basePrompt = override ?? readTemplate(resolveTemplateFile(ROLE_FILE_RELATIVE_PATHS[role].system, locale))
-
-  if (!ROLES_REQUIRE_SYSTEM_INDEX.has(role)) {
-    return basePrompt
-  }
-
-  return assembleSystemPromptWithSharedIndex(basePrompt, overrides)
+  return assembleTemplate(basePrompt, {}, overrides)
 }
 
 /**
@@ -234,48 +227,6 @@ export function getSharedModule(
   const locale = resolveLocale(overrides)
   const raw = overrides?.shared?.[module] ?? readTemplate(resolveTemplateFile(SHARED_FILE_RELATIVE_PATHS[module], locale))
   return resolveIndexPlaceholders(raw)
-}
-
-function assembleSystemPromptWithSharedIndex(
-  basePrompt: string,
-  overrides?: PromptOverrides
-): string {
-  const knowledge = getSharedModule('knowledge', overrides).trim()
-  const rules = getSharedModule('rules', overrides).trim()
-  const sharedBlock = [
-    '## System Knowledge (Auto-Injected)',
-    knowledge,
-    '',
-    '## System Rules (Auto-Injected)',
-    rules
-  ]
-    .filter(Boolean)
-    .join('\n')
-    .trim()
-
-  if (!sharedBlock) {
-    return basePrompt
-  }
-
-  let result = basePrompt.trim()
-  const normalizedApiIndex = API_INDEX.trim()
-  const normalizedSoulIndex = SOUL_INDEX.trim()
-
-  // Guard against duplicated index blocks in custom system overrides.
-  if (normalizedApiIndex && result.includes(normalizedApiIndex)) {
-    result = result.replace(normalizedApiIndex, '').trim()
-  }
-  if (normalizedSoulIndex && result.includes(normalizedSoulIndex)) {
-    result = result.replace(normalizedSoulIndex, '').trim()
-  }
-  if (knowledge && result.includes(knowledge)) {
-    result = result.replace(knowledge, '').trim()
-  }
-  if (rules && result.includes(rules)) {
-    result = result.replace(rules, '').trim()
-  }
-
-  return `${result}\n\n${sharedBlock}`.trim()
 }
 
 /**
@@ -311,8 +262,8 @@ export function getAllDefaultTemplates(locale: PromptLocale = 'zh-CN'): {
       }
     },
     shared: {
-      knowledge: getSharedModule('knowledge', localizedOverrides),
-      rules: getSharedModule('rules', localizedOverrides)
+      apiIndex: getSharedModule('apiIndex', localizedOverrides),
+      specification: getSharedModule('specification', localizedOverrides)
     }
   }
 }
