@@ -11,8 +11,11 @@
 
 import express, { type Request, type Response } from 'express'
 import { asyncHandler } from '../middlewares/error-handler'
+import { authMiddleware } from '../middlewares/auth.middleware'
+import { assertJobAccess } from '../services/job-access-store'
 import { createLogger } from '../utils/logger'
 import { getJobResult, getBullJobStatus, getJobStage } from '../services/job-store'
+import { getRequestClientId } from '../utils/request-client-id'
 
 const router = express.Router()
 const logger = createLogger('JobStatusRoute')
@@ -25,6 +28,7 @@ const logger = createLogger('JobStatusRoute')
  */
 router.get(
   '/jobs/:jobId',
+  authMiddleware,
   asyncHandler(async (req: Request, res: Response) => {
     const { jobId } = req.params
 
@@ -36,6 +40,11 @@ router.get(
     }
 
     logger.debug('检查任务状态', { jobId })
+    await assertJobAccess({
+      jobId,
+      apiKey: res.locals.manimcatApiKey as string,
+      clientId: getRequestClientId(req),
+    })
 
     // 首先从 Bull 队列检查任务状态
     const bullJobStatus = await getBullJobStatus(jobId)

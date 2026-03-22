@@ -21,7 +21,7 @@ const STUDIO_TRANSITION_MS = 2000;
 const STUDIO_EXIT_DELAY_MS = 800;
 
 function App() {
-  const { status, result, error, jobId, stage, generate, renderWithCode, modifyWithAI, reset, cancel } = useGeneration();
+  const { status, result, error, jobId, stage, generate, renderWithCode, modifyWithAI, reset, cancel, cancelAndReset } = useGeneration();
   const problemFraming = useProblemFraming();
   const game = useGame2048();
   useTabTitle(status, stage);
@@ -138,6 +138,10 @@ function App() {
   };
 
   const handleBackToHome = () => {
+    if (status === 'processing' || status === 'cancelling') {
+      cancelAndReset();
+      return;
+    }
     reset();
   };
 
@@ -201,13 +205,13 @@ function App() {
   };
 
   const handleOpenGame = () => {
-    if (status !== 'processing') {
+    if (status !== 'processing' && status !== 'cancelling') {
       return;
     }
     setScreen('game');
   };
 
-  const isBusy = status === 'processing';
+  const isBusy = status === 'processing' || status === 'cancelling';
 
   return (
     <div className="min-h-screen bg-bg-primary transition-colors duration-300 overflow-x-hidden">

@@ -24,6 +24,8 @@ import {
 } from './schemas/common'
 import { resolveCustomApiConfigByManimcatKey } from '../utils/manimcat-routing'
 import { resolveJobTimeoutMs } from '../utils/job-timeout'
+import { getRequestClientId } from '../utils/request-client-id'
+import { storeJobAccess } from '../services/job-access-store'
 
 const router = express.Router()
 const logger = createLogger('ModifyRoute')
@@ -76,6 +78,7 @@ async function handleModifyRequest(req: express.Request, res: express.Response) 
   if (!sanitizedInstructions) {
     throw new ValidationError('修改意见不能为空', { instructions })
   }
+  const clientId = getRequestClientId(req)
 
   const jobId = uuidv4()
 
@@ -103,14 +106,22 @@ async function handleModifyRequest(req: express.Request, res: express.Response) 
       customApiConfig: effectiveCustomApiConfig,
       promptOverrides,
       videoConfig,
-      clientId: String(req.headers['x-client-id'] || '').trim() || undefined,
+      clientId,
       timestamp: new Date().toISOString()
     },
     {
       jobId,
-      timeout: resolveJobTimeoutMs(videoConfig)
+      timeout: resolveJobTimeoutMs(videoConfig as any)
     }
   )
+
+  if (authenticatedManimcatApiKey) {
+    await storeJobAccess({
+      jobId,
+      apiKey: authenticatedManimcatApiKey,
+      clientId,
+    })
+  }
 
   await recordUsageSubmission('modify', outputMode)
 

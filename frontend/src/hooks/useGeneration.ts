@@ -7,8 +7,10 @@ import type { GenerateRequest, JobResult, ProcessingStage, ModifyRequest } from 
 import { useI18n } from '../i18n';
 import { localizeApiMessage } from '../i18n/runtime';
 
+type GenerationStatus = 'idle' | 'processing' | 'cancelling' | 'completed' | 'error';
+
 interface UseGenerationReturn {
-  status: 'idle' | 'processing' | 'completed' | 'error';
+  status: GenerationStatus;
   result: JobResult | null;
   error: string | null;
   jobId: string | null;
@@ -18,14 +20,17 @@ interface UseGenerationReturn {
   modifyWithAI: (request: ModifyRequest) => Promise<void>;
   reset: () => void;
   cancel: () => void;
+  cancelAndReset: () => void;
+}
+
+interface PersistedActiveJob {
+  jobId: string;
+  stage: ProcessingStage;
 }
 
 const POLL_INTERVAL = 1000;
 const MAX_TRANSIENT_POLL_ERRORS = 5;
-
-function getTimeoutConfig(): number {
-  return loadSettings().video.timeout || 1200;
-}
+const ACTIVE_JOB_STORAGE_KEY = 'manimcat_active_job';
 
 function hasIncompleteCustomProvider(provider: { apiUrl: string; apiKey: string; model: string } | null): boolean {
   if (!provider) {
@@ -36,9 +41,29 @@ function hasIncompleteCustomProvider(provider: { apiUrl: string; apiKey: string;
   return hasAny && !hasRequired;
 }
 
+function readPersistedActiveJob(): PersistedActiveJob | null {
+  const raw = sessionStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as PersistedActiveJob;
+    if (!parsed.jobId) {
+      return null;
+    }
+    return {
+      jobId: parsed.jobId,
+      stage: parsed.stage || 'analyzing',
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function useGeneration(): UseGenerationReturn {
   const { t, locale } = useI18n();
-  const [status, setStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
+  const [status, setStatus] = useState<GenerationStatus>('idle');
   const [result, setResult] = useState<JobResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
@@ -49,90 +74,84 @@ export function useGeneration(): UseGenerationReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
   const transientPollErrorCountRef = useRef(0);
 
-  const requestCancel = useCallback(async (id: string | null) => {
-    if (!id) {
-      return;
+  const clearPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
-
-    try {
-      await cancelJob(id);
-    } catch (err) {
-      console.warn(t('generation.cancelFailed'), err);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
-      abortControllerRef.current?.abort();
-    };
   }, []);
 
-  const updateStage = useCallback((count: number) => {
+  const persistActiveJob = useCallback((nextJobId: string, nextStage: ProcessingStage) => {
+    sessionStorage.setItem(ACTIVE_JOB_STORAGE_KEY, JSON.stringify({
+      jobId: nextJobId,
+      stage: nextStage,
+    }));
+  }, []);
+
+  const clearActiveJob = useCallback(() => {
+    sessionStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+  }, []);
+
+  const updateStage = useCallback((count: number): ProcessingStage => {
     if (count < 5) {
-      setStage('analyzing');
-    } else if (count < 15) {
-      setStage('generating');
-    } else if (count < 25) {
-      setStage('refining');
-    } else if (count < 60) {
-      setStage('rendering');
-    } else {
-      setStage('still-rendering');
+      return 'analyzing';
     }
+    if (count < 15) {
+      return 'generating';
+    }
+    if (count < 25) {
+      return 'refining';
+    }
+    if (count < 60) {
+      return 'rendering';
+    }
+    return 'still-rendering';
   }, []);
 
-  const startPolling = useCallback((id: string) => {
+  const syncTransientStage = useCallback((nextJobId: string, nextStage: ProcessingStage) => {
+    setStage(nextStage);
+    persistActiveJob(nextJobId, nextStage);
+  }, [persistActiveJob]);
+
+  const startPolling = useCallback((nextJobId: string, initialStage: ProcessingStage) => {
+    clearPolling();
     pollCountRef.current = 0;
     transientPollErrorCountRef.current = 0;
-    setJobId(id);
-
-    const maxPollCount = getTimeoutConfig();
+    setJobId(nextJobId);
+    setStatus('processing');
+    setError(null);
+    setResult(null);
+    syncTransientStage(nextJobId, initialStage);
 
     pollIntervalRef.current = window.setInterval(async () => {
-      pollCountRef.current++;
+      pollCountRef.current += 1;
 
       try {
-        const data = await getJobStatus(
-          id,
-          abortControllerRef.current?.signal,
-        );
+        const data = await getJobStatus(nextJobId, abortControllerRef.current?.signal);
         transientPollErrorCountRef.current = 0;
 
         if (data.status === 'completed') {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-          }
+          clearPolling();
+          clearActiveJob();
           setStatus('completed');
           setResult(data);
-        } else if (data.status === 'failed') {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-          }
+          return;
+        }
+
+        if (data.status === 'failed') {
+          clearPolling();
+          clearActiveJob();
           setStatus('error');
           if (data.cancel_reason) {
             setError(t('generation.cancelled', { reason: data.cancel_reason }));
           } else {
             setError(data.error ? localizeApiMessage(data.error) : t('generation.failed'));
           }
-        } else {
-          if (data.stage) {
-            setStage(data.stage);
-          } else {
-            updateStage(pollCountRef.current);
-          }
+          return;
         }
 
-        if (pollCountRef.current >= maxPollCount) {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-          }
-          await requestCancel(id);
-          setStatus('error');
-          setError(t('generation.timeout', { seconds: maxPollCount }));
-        }
+        const nextStage = data.stage || updateStage(pollCountRef.current);
+        syncTransientStage(nextJobId, nextStage);
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           return;
@@ -140,25 +159,13 @@ export function useGeneration(): UseGenerationReturn {
 
         if (err instanceof Error && (err.message.includes('ECONNREFUSED') || err.message.includes('Failed to fetch'))) {
           transientPollErrorCountRef.current += 1;
-
-          if (transientPollErrorCountRef.current < MAX_TRANSIENT_POLL_ERRORS) {
+          if (transientPollErrorCountRef.current <= MAX_TRANSIENT_POLL_ERRORS) {
             console.warn('Backend fetch failed, retry polling', {
               attempt: transientPollErrorCountRef.current,
-              jobId: id,
-              error: err.message
+              jobId: nextJobId,
+              error: err.message,
             });
-            return;
           }
-
-          console.error('Backend disconnected, stop polling', {
-            jobId: id,
-            attempts: transientPollErrorCountRef.current
-          });
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-          }
-          setStatus('error');
-          setError(t('generation.backendDisconnected'));
           return;
         }
 
@@ -172,32 +179,45 @@ export function useGeneration(): UseGenerationReturn {
             err.message.includes('expired')
           )
         ) {
-          if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-          }
+          clearPolling();
+          clearActiveJob();
           setStatus('error');
           setError(t('generation.jobExpired'));
           return;
         }
 
-        if (pollIntervalRef.current) {
-          clearInterval(pollIntervalRef.current);
-          pollIntervalRef.current = null;
-        }
+        clearPolling();
         setStatus('error');
         setError(err instanceof Error ? localizeApiMessage(err.message) : t('api.jobStatusFailed'));
-        return;
       }
     }, POLL_INTERVAL);
-  }, [requestCancel, t, updateStage]);
+  }, [clearActiveJob, clearPolling, syncTransientStage, t, updateStage]);
 
-  const renderWithCode = useCallback(async (request: GenerateRequest & { code: string }) => {
+  useEffect(() => {
+    abortControllerRef.current = new AbortController();
+    const persisted = readPersistedActiveJob();
+    if (persisted) {
+      startPolling(persisted.jobId, persisted.stage);
+    }
+
+    return () => {
+      clearPolling();
+      abortControllerRef.current?.abort();
+    };
+  }, [clearPolling, startPolling]);
+
+  const submitGeneration = useCallback(async (
+    request: GenerateRequest | ModifyRequest,
+    executor: (payload: GenerateRequest | ModifyRequest, signal: AbortSignal) => Promise<{ jobId: string }>,
+    initialStage: ProcessingStage,
+    fallbackMessage: string,
+  ) => {
     setStatus('processing');
     setError(null);
     setResult(null);
-    setStage('rendering');
+    setStage(initialStage);
     pollCountRef.current = 0;
+    abortControllerRef.current?.abort();
     abortControllerRef.current = new AbortController();
 
     try {
@@ -208,105 +228,102 @@ export function useGeneration(): UseGenerationReturn {
       if (hasIncompleteCustomProvider(activeProvider) && !customApiConfig) {
         throw new Error(t('settings.test.needUrlAndKey'));
       }
-      const response = await generateAnimation(
+
+      const response = await executor(
         { ...request, promptOverrides, customApiConfig },
         abortControllerRef.current.signal,
       );
-      startPolling(response.jobId);
+      startPolling(response.jobId, initialStage);
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
         return;
       }
+      clearActiveJob();
       setStatus('error');
-      setError(err instanceof Error ? err.message : t('generation.rerenderFailed'));
+      setError(err instanceof Error ? err.message : fallbackMessage);
     }
-  }, [locale, startPolling, t]);
-
-  const modifyWithAI = useCallback(async (request: ModifyRequest) => {
-    setStatus('processing');
-    setError(null);
-    setResult(null);
-    setStage('generating');
-    pollCountRef.current = 0;
-    abortControllerRef.current = new AbortController();
-
-    try {
-      const promptOverrides = loadPrompts(locale);
-      const settings = loadSettings();
-      const activeProvider = getActiveProvider(settings.api);
-      const customApiConfig = providerToCustomApiConfig(activeProvider);
-      if (hasIncompleteCustomProvider(activeProvider) && !customApiConfig) {
-        throw new Error(t('settings.test.needUrlAndKey'));
-      }
-      const response = await modifyAnimation(
-        { ...request, promptOverrides, customApiConfig },
-        abortControllerRef.current.signal,
-      );
-      startPolling(response.jobId);
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : t('generation.modifyFailed'));
-    }
-  }, [locale, startPolling, t]);
+  }, [clearActiveJob, locale, startPolling, t]);
 
   const generate = useCallback(async (request: GenerateRequest) => {
-    setStatus('processing');
-    setError(null);
-    setResult(null);
-    setStage('analyzing');
-    pollCountRef.current = 0;
-    abortControllerRef.current = new AbortController();
+    await submitGeneration(
+      request,
+      (payload, signal) => generateAnimation(payload as GenerateRequest, signal),
+      'analyzing',
+      t('generation.requestFailed'),
+    );
+  }, [submitGeneration, t]);
 
-    try {
-      const promptOverrides = loadPrompts(locale);
-      const settings = loadSettings();
-      const activeProvider = getActiveProvider(settings.api);
-      const customApiConfig = providerToCustomApiConfig(activeProvider);
-      if (hasIncompleteCustomProvider(activeProvider) && !customApiConfig) {
-        throw new Error(t('settings.test.needUrlAndKey'));
-      }
+  const renderWithCode = useCallback(async (request: GenerateRequest & { code: string }) => {
+    await submitGeneration(
+      request,
+      (payload, signal) => generateAnimation(payload as GenerateRequest, signal),
+      'rendering',
+      t('generation.rerenderFailed'),
+    );
+  }, [submitGeneration, t]);
 
-      const response = await generateAnimation(
-        { ...request, promptOverrides, customApiConfig },
-        abortControllerRef.current.signal,
-      );
-      startPolling(response.jobId);
-
-    } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : t('generation.requestFailed'));
-    }
-  }, [locale, startPolling, t]);
+  const modifyWithAI = useCallback(async (request: ModifyRequest) => {
+    await submitGeneration(
+      request,
+      (payload, signal) => modifyAnimation(payload as ModifyRequest, signal),
+      'generating',
+      t('generation.modifyFailed'),
+    );
+  }, [submitGeneration, t]);
 
   const reset = useCallback(() => {
+    clearPolling();
+    abortControllerRef.current?.abort();
+    clearActiveJob();
     setStatus('idle');
     setError(null);
     setResult(null);
     setJobId(null);
     setStage('analyzing');
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
+  }, [clearActiveJob, clearPolling]);
+
+  const runCancel = useCallback((resetAfterCancel: boolean) => {
+    if (!jobId) {
+      if (resetAfterCancel) {
+        reset();
+      }
+      return;
     }
+
+    clearPolling();
     abortControllerRef.current?.abort();
-  }, []);
+    abortControllerRef.current = new AbortController();
+    setStatus('cancelling');
+    setError(null);
+
+    void (async () => {
+      try {
+        await cancelJob(jobId);
+        clearActiveJob();
+        setResult(null);
+        setJobId(null);
+        setStage('analyzing');
+        if (resetAfterCancel) {
+          setStatus('idle');
+          setError(null);
+        } else {
+          setStatus('error');
+          setError(t('generation.cancelled', { reason: 'Cancelled by client' }));
+        }
+      } catch (err) {
+        console.warn(t('generation.cancelFailed'), err);
+        startPolling(jobId, stage);
+      }
+    })();
+  }, [clearActiveJob, clearPolling, jobId, reset, stage, startPolling, t]);
 
   const cancel = useCallback(() => {
-    if (pollIntervalRef.current) {
-      clearInterval(pollIntervalRef.current);
-    }
-    void requestCancel(jobId);
-    abortControllerRef.current?.abort();
-    setStatus('idle');
-    setError(null);
-    setJobId(null);
-    setStage('analyzing');
-  }, [jobId, requestCancel]);
+    runCancel(false);
+  }, [runCancel]);
+
+  const cancelAndReset = useCallback(() => {
+    runCancel(true);
+  }, [runCancel]);
 
   return {
     status,
@@ -319,5 +336,6 @@ export function useGeneration(): UseGenerationReturn {
     modifyWithAI,
     reset,
     cancel,
+    cancelAndReset,
   };
 }

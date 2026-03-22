@@ -77,12 +77,12 @@ export async function buildStudioWorkContext(input: BuildStudioWorkContextInput)
 function selectCurrentWork(works: StudioWork[]): StudioWork | undefined {
   return [...works]
     .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-    .find((work) => work.status === 'running' || work.status === 'proposed')
+    .find((work) => work.status === 'running' || work.status === 'queued' || work.status === 'proposed')
     ?? [...works].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0]
 }
 
 function mapWorkStatus(status: StudioWork['status']): 'pending' | 'running' | 'completed' | 'failed' {
-  if (status === 'proposed') {
+  if (status === 'proposed' || status === 'queued') {
     return 'pending'
   }
   if (status === 'cancelled') {

@@ -77,7 +77,7 @@ export interface SettingsConfig {
 }
 
 /** 任务状态 */
-export type JobStatus = 'processing' | 'completed' | 'failed';
+export type JobStatus = 'queued' | 'processing' | 'completed' | 'failed';
 
 /** 处理阶段 */
 export type ProcessingStage = 'analyzing' | 'generating' | 'refining' | 'rendering' | 'still-rendering';

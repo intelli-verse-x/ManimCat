@@ -172,7 +172,7 @@ export async function getJobStatus(
   options: RequestAuthOptions = {}
 ): Promise<JobResult> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}`, {
-    headers: getAuthHeaders('application/json', options),
+    headers: { ...getAuthHeaders('application/json', options), 'x-client-id': getClientId() },
     signal,
   });
 
@@ -186,7 +186,7 @@ export async function getJobStatus(
 export async function cancelJob(jobId: string, options: RequestAuthOptions = {}): Promise<void> {
   const response = await fetch(`${API_BASE}/jobs/${jobId}/cancel`, {
     method: 'POST',
-    headers: getAuthHeaders('application/json', options),
+    headers: { ...getAuthHeaders('application/json', options), 'x-client-id': getClientId() },
   });
 
   if (!response.ok) {

@@ -27,6 +27,8 @@ import { generateBodySchema } from './schemas/generate'
 import { resolveCustomApiConfigByManimcatKey } from '../utils/manimcat-routing'
 import type { ProblemFramingPlan } from '../types'
 import { resolveJobTimeoutMs } from '../utils/job-timeout'
+import { getRequestClientId } from '../utils/request-client-id'
+import { storeJobAccess } from '../services/job-access-store'
 
 const router = express.Router()
 const logger = createLogger('GenerateRoute')
@@ -71,6 +73,7 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
   const sanitizedConcept = concept.trim().replace(/\s+/g, ' ')
   const queuedConcept = mergeProblemPlanIntoConcept(sanitizedConcept, problemPlan)
   const sanitizedReferenceImages = sanitizeReferenceImages(referenceImages)
+  const clientId = getRequestClientId(req)
 
   if (sanitizedConcept.length === 0) {
     throw new ValidationError('提供的概念为空', { concept })
@@ -117,14 +120,22 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
       customApiConfig: effectiveCustomApiConfig,
       promptOverrides,
       videoConfig,
-      clientId: String(req.headers['x-client-id'] || '').trim() || undefined,
+      clientId,
       timestamp: new Date().toISOString()
     },
     {
       jobId,
-      timeout: resolveJobTimeoutMs(videoConfig)
+      timeout: resolveJobTimeoutMs(videoConfig as any)
     }
   )
+
+  if (authenticatedManimcatApiKey) {
+    await storeJobAccess({
+      jobId,
+      apiKey: authenticatedManimcatApiKey,
+      clientId,
+    })
+  }
 
   await recordUsageSubmission('generate', outputMode)
 

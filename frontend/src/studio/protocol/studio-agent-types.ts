@@ -14,7 +14,7 @@ export type StudioTaskStatus =
   | 'cancelled'
 export type StudioTaskType = 'tool-execution' | 'subagent-run' | 'static-check' | 'ai-review' | 'render'
 export type StudioWorkType = 'video' | 'review' | 'design' | 'edit' | 'render-fix'
-export type StudioWorkStatus = 'proposed' | 'running' | 'completed' | 'failed' | 'cancelled'
+export type StudioWorkStatus = 'proposed' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type StudioWorkResultKind = 'render-output' | 'review-report' | 'design-plan' | 'edit-result' | 'failure-report'
 export type StudioPermissionDecision = 'once' | 'always' | 'reject'
 

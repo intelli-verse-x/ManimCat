@@ -6,6 +6,7 @@
 
 import express from 'express'
 import { isDatabaseReady, listHistory, deleteHistory } from '../database'
+import { getRequestClientId } from '../utils/request-client-id'
 
 const router = express.Router()
 
@@ -13,7 +14,7 @@ const router = express.Router()
  * 从请求头中读取 client_id
  */
 function getClientId(req: express.Request): string {
-  return String(req.headers['x-client-id'] || '').trim()
+  return getRequestClientId(req) || ''
 }
 
 /**

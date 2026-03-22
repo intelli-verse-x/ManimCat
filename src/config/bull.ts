@@ -1,6 +1,6 @@
 ﻿import { default as Bull, type Queue, type QueueOptions } from 'bull'
 import Redis from 'ioredis'
-import { redisClient, REDIS_KEYS } from './redis'
+import { REDIS_KEYS } from './redis'
 import { createLogger } from '../utils/logger'
 import { terminateManimProcess } from '../utils/manim-process-registry'
 
@@ -44,51 +44,18 @@ const queueOptions: QueueOptions = {
 
 export const videoQueue: Queue = new Bull('video-generation', queueOptions)
 
-async function cleanupStaleJobs() {
+async function inspectExistingJobs() {
   try {
     await videoQueue.isReady()
 
     const stats = await getQueueStats()
-
-    if (stats.total === 0) {
-      return
-    }
-
-    const [removedWait, removedActive, removedFailed, removedCompleted, removedDelayed] = await Promise.all([
-      videoQueue.clean(0, 'wait'),
-      videoQueue.clean(0, 'active'),
-      videoQueue.clean(0, 'failed'),
-      videoQueue.clean(0, 'completed'),
-      videoQueue.clean(0, 'delayed')
-    ])
-
-    const totalRemoved = removedWait.length + removedActive.length + removedFailed.length + removedCompleted.length + removedDelayed.length
-
-    if (totalRemoved > 0) {
-      logger.info(`Startup cleanup: removed ${totalRemoved} queue jobs`, {
-        wait: removedWait.length,
-        active: removedActive.length,
-        failed: removedFailed.length,
-        completed: removedCompleted.length,
-        delayed: removedDelayed.length
-      })
-    }
-
-    const resultKeys = await redisClient.keys(`${REDIS_KEYS.JOB_RESULT}*`)
-    if (resultKeys.length > 0) {
-      await redisClient.del(...resultKeys)
-      logger.info(`Startup cleanup: removed ${resultKeys.length} job result entries`)
-    }
-
-    if (totalRemoved === 0 && resultKeys.length === 0) {
-      logger.info('Startup cleanup: no stale data found')
-    }
+    logger.info('Startup queue inspection', stats)
   } catch (error: any) {
-    logger.warn('Startup cleanup warning', { error: error?.message || String(error) })
+    logger.warn('Startup queue inspection warning', { error: error?.message || String(error) })
   }
 }
 
-cleanupStaleJobs()
+inspectExistingJobs()
 
 videoQueue.on('error', (error) => {
   logger.error('Queue error', { message: error.message })

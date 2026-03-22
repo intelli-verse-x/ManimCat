@@ -11,7 +11,7 @@ interface Game2048PageProps {
   isGameOver: boolean;
   hasWon: boolean;
   maxTile: number;
-  generationStatus: 'idle' | 'processing' | 'completed' | 'error';
+  generationStatus: 'idle' | 'processing' | 'cancelling' | 'completed' | 'error';
   generationStage: ProcessingStage;
   onMove: (direction: MoveDirection) => void;
   onRestart: () => void;
@@ -107,7 +107,7 @@ export function Game2048Page({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onMove]);
 
-  const generationProcessing = generationStatus === 'processing';
+  const generationProcessing = generationStatus === 'processing' || generationStatus === 'cancelling';
   const generationCompleted = generationStatus === 'completed';
 
   return (

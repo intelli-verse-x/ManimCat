@@ -1,3 +1,20 @@
+export function studioPanelClass(extra = ''): string {
+  const classes = [
+    'rounded-[28px]',
+    'border',
+    'border-black/10',
+    'bg-white/75',
+    'backdrop-blur-xl',
+    'shadow-[0_24px_80px_rgba(15,23,42,0.08)]',
+    'dark:border-white/10',
+    'dark:bg-black/20',
+  ]
+  if (extra.trim()) {
+    classes.push(extra.trim())
+  }
+  return classes.join(' ')
+}
+
 export function studioStatusBadge(status: string): string {
   switch (status) {
     case 'running':

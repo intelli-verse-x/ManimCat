@@ -167,31 +167,13 @@ export function StudioCommandPanel({
                     Model
                   </div>
                 {toolParts.map((part, i) => {
-                  if (part.type === 'tool') {
-                    const status = part.state.status === 'error' ? '✗' : part.state.status === 'completed' ? '✓' : '…'
-                    const args = 'input' in part.state ? truncateArgs(part.state.input) : ''
-                    return (
-                      <div key={i} className={`font-mono text-[13px] leading-6 ${toolCallTone(part.state.status)}`}>
-                        {'→ '}{part.tool}({args}) <span className={toolCallStatusTone(part.state.status)}>{status}</span>
-                      </div>
-                    )
-                  }
-
-                  if (part.type === 'text' || part.type === 'reasoning') {
-                    const text = part.text.trim()
-                    if (!text) return null
-                    return (
-                      <div key={i} className="text-[15px] leading-7 text-text-primary whitespace-pre-wrap">
-                        {text.split('\n').map((line, j) => (
-                          <div key={j}>
-                            <span>{line}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  }
-
-                  return null
+                  const status = part.state.status === 'error' ? '✗' : part.state.status === 'completed' ? '✓' : '…'
+                  const args = 'input' in part.state ? truncateArgs(part.state.input) : ''
+                  return (
+                    <div key={i} className={`font-mono text-[13px] leading-6 ${toolCallTone(part.state.status)}`}>
+                      {'→ '}{part.tool}({args}) <span className={toolCallStatusTone(part.state.status)}>{status}</span>
+                    </div>
+                  )
                 })}
 
                 {isStreamingTarget && streamedText ? (
@@ -204,7 +186,7 @@ export function StudioCommandPanel({
                   if (!text) return null
                   return (
                     <div key={`text-${i}`} className="text-[15px] leading-7 text-text-primary whitespace-pre-wrap">
-                      {text.split('\n').map((line, j) => (
+                      {text.split('\n').map((line: string, j: number) => (
                         <div key={j}>
                           <span>{line}</span>
                         </div>

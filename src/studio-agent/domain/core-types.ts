@@ -26,6 +26,7 @@ export type StudioWorkType = 'video' | 'review' | 'design' | 'edit' | 'render-fi
 
 export type StudioWorkStatus =
   | 'proposed'
+  | 'queued'
   | 'running'
   | 'completed'
   | 'failed'

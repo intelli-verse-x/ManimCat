@@ -16,7 +16,7 @@ interface LastRequest {
 }
 
 interface StudioPageProps {
-  status: 'idle' | 'processing' | 'completed' | 'error';
+  status: 'idle' | 'processing' | 'cancelling' | 'completed' | 'error';
   result: JobResult | null;
   error: string | null;
   jobId: string | null;

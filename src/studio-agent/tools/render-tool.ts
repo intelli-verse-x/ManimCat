@@ -72,7 +72,7 @@ async function executeRenderTool(
       runId: context.run.id,
       type: 'video',
       title,
-      status: 'running',
+      status: 'queued',
       metadata: lifecycleMetadata
     },
     task: {

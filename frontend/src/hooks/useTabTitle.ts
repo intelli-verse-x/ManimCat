@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import type { ProcessingStage } from '../types/api';
 import { useI18n } from '../i18n';
 
-type GenerationStatus = 'idle' | 'processing' | 'completed' | 'error';
+type GenerationStatus = 'idle' | 'processing' | 'cancelling' | 'completed' | 'error';
 
 function getStageTitle(stage: ProcessingStage, t: ReturnType<typeof useI18n>['t']): string {
   switch (stage) {
@@ -21,7 +21,7 @@ function getStageTitle(stage: ProcessingStage, t: ReturnType<typeof useI18n>['t'
 }
 
 function getTabTitle(status: GenerationStatus, stage: ProcessingStage, t: ReturnType<typeof useI18n>['t']): string {
-  if (status === 'processing') {
+  if (status === 'processing' || status === 'cancelling') {
     return t('tab.processing', { stage: getStageTitle(stage, t) });
   }
   if (status === 'completed') {

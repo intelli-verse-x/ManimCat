@@ -12,7 +12,7 @@ interface LastRequest {
 }
 
 interface StatusContentProps {
-  status: 'idle' | 'processing' | 'completed' | 'error';
+  status: 'idle' | 'processing' | 'cancelling' | 'completed' | 'error';
   result: JobResult | null;
   error: string | null;
   jobId: string | null;
@@ -84,7 +84,7 @@ export function StatusContent({
     );
   }
 
-  if (status === 'processing') {
+  if (status === 'processing' || status === 'cancelling') {
     return (
       <div className="animate-fade-in-soft bg-bg-secondary/20 rounded-2xl p-8">
         <LoadingSpinner stage={stage} jobId={jobId || undefined} onCancel={onCancel} onOpenGame={onOpenGame} />
