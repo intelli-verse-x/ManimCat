@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
 
 interface StudioCommandPanelProps {
@@ -23,9 +23,11 @@ export function StudioCommandPanel({
   const [input, setInput] = useState('')
   const [animatedAssistantText, setAnimatedAssistantText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
+  const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const streamRateRef = useRef(0)
   const latestTextMetaRef = useRef<{ text: string; at: number }>({ text: '', at: 0 })
+  const lastScrollSignatureRef = useRef('')
 
   const handleSubmit = async () => {
     const next = input.trim()
@@ -41,11 +43,27 @@ export function StudioCommandPanel({
     inputRef.current?.focus()
   }
 
+  const lastMessage = messages.at(-1) ?? null
+  const streamIntoLastAssistant =
+    Boolean(lastMessage && lastMessage.role === 'assistant' && (isBusy || latestAssistantText || animatedAssistantText))
+
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    const signature = [
+      messages.length,
+      lastMessage?.id ?? '',
+      latestAssistantText.length,
+      isBusy ? 'busy' : 'idle',
+    ].join(':')
+
+    if (signature === lastScrollSignatureRef.current) {
+      return
     }
-  }, [messages, animatedAssistantText, isBusy])
+
+    lastScrollSignatureRef.current = signature
+    if (typeof endRef.current?.scrollIntoView === 'function') {
+      endRef.current.scrollIntoView({ block: 'end' })
+    }
+  }, [isBusy, lastMessage?.id, latestAssistantText.length, messages.length])
 
   useEffect(() => {
     if (!disabled) {
@@ -80,9 +98,9 @@ export function StudioCommandPanel({
     const frame = window.requestAnimationFrame(() => {
       setAnimatedAssistantText((current) => {
         if (!latestAssistantText.startsWith(current)) {
-          return ''
+          return latestAssistantText.slice(0, 1)
         }
-        return current
+        return current || latestAssistantText.slice(0, 1)
       })
     })
 
@@ -112,10 +130,6 @@ export function StudioCommandPanel({
     return () => window.clearTimeout(timer)
   }, [animatedAssistantText, latestAssistantText])
 
-  const lastMessage = messages.at(-1) ?? null
-  const streamIntoLastAssistant =
-    Boolean(lastMessage && lastMessage.role === 'assistant' && (isBusy || latestAssistantText || animatedAssistantText))
-
   return (
     <section className="studio-terminal flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg-primary/30 shadow-[inset_0_0_40px_rgba(0,0,0,0.02)]">
       <header className="shrink-0 flex items-center justify-between gap-4 border-b border-border/10 px-8 py-4">
@@ -140,68 +154,24 @@ export function StudioCommandPanel({
 
         <div className="flex flex-col gap-5">
           {messages.map((message) => {
-            const isUser = message.role === 'user'
-
-            if (isUser) {
+            if (message.role === 'user') {
               return (
-                <div key={message.id} className="animate-fade-in-soft flex justify-end py-1">
-                  <div className="max-w-[88%] rounded-[22px] rounded-br-md bg-text-primary/6 px-5 py-3 text-[15px] leading-7 text-text-primary ring-1 ring-border/10">
-                    <div className="mb-1 text-[10px] uppercase tracking-[0.24em] text-text-secondary/55">
-                      User
-                    </div>
-                    <div className="whitespace-pre-wrap break-words">{message.text}</div>
-                  </div>
-                </div>
+                <UserMessageBubble key={message.id} message={message} />
               )
             }
 
             const parts = message.role === 'assistant' ? message.parts : []
             const isStreamingTarget = streamIntoLastAssistant && lastMessage?.id === message.id
-            const streamedText = (animatedAssistantText || latestAssistantText).trim()
             const textParts = parts.filter((part) => part.type === 'text' || part.type === 'reasoning')
             const toolParts = parts.filter((part) => part.type === 'tool')
             return (
-              <div key={message.id} className={`${isStreamingTarget ? '' : 'animate-fade-in-soft '}flex justify-start py-1`}>
-                <div className="max-w-[90%] rounded-[22px] rounded-bl-md bg-bg-secondary/55 px-5 py-4 text-text-primary ring-1 ring-border/10">
-                  <div className="mb-2 text-[10px] uppercase tracking-[0.24em] text-text-secondary/55">
-                    Model
-                  </div>
-                {toolParts.map((part, i) => {
-                  const status = part.state.status === 'error' ? '✗' : part.state.status === 'completed' ? '✓' : '…'
-                  const args = 'input' in part.state ? truncateArgs(part.state.input) : ''
-                  return (
-                    <div key={i} className={`font-mono text-[13px] leading-6 ${toolCallTone(part.state.status)}`}>
-                      {'→ '}{part.tool}({args}) <span className={toolCallStatusTone(part.state.status)}>{status}</span>
-                    </div>
-                  )
-                })}
-
-                {isStreamingTarget && streamedText ? (
-                  <div className="text-[15px] leading-7 text-text-primary whitespace-pre-wrap break-words">
-                    {streamedText}
-                    {(isBusy || latestAssistantText !== animatedAssistantText) && <span className="studio-type-caret">█</span>}
-                  </div>
-                ) : textParts.map((part, i) => {
-                  const text = part.text.trim()
-                  if (!text) return null
-                  return (
-                    <div key={`text-${i}`} className="text-[15px] leading-7 text-text-primary whitespace-pre-wrap">
-                      {text.split('\n').map((line: string, j: number) => (
-                        <div key={j}>
-                          <span>{line}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
-
-                {!isStreamingTarget && textParts.every((p) => !p.text.trim()) && (
-                  <div className="text-[15px] leading-7 text-text-secondary/60">
-                    <span>(无文本输出)</span>
-                  </div>
-                )}
-                </div>
-              </div>
+              <AssistantMessageBubble
+                key={message.id}
+                message={message}
+                isStreamingTarget={isStreamingTarget}
+                streamedText={animatedAssistantText}
+                showCaret={Boolean(isStreamingTarget && (isBusy || latestAssistantText !== animatedAssistantText))}
+              />
             )
           })}
 
@@ -230,6 +200,7 @@ export function StudioCommandPanel({
               </div>
             </div>
           )}
+          <div ref={endRef} />
         </div>
       </div>
 
@@ -257,6 +228,83 @@ export function StudioCommandPanel({
     </section>
   )
 }
+
+const UserMessageBubble = memo(function UserMessageBubble({
+  message,
+}: {
+  message: Extract<StudioMessage, { role: 'user' }>
+}) {
+  return (
+    <div className="animate-fade-in-soft flex justify-end py-1">
+      <div className="max-w-[88%] rounded-[22px] rounded-br-md bg-text-primary/6 px-5 py-3 text-[15px] leading-7 text-text-primary ring-1 ring-border/10">
+        <div className="mb-1 text-[10px] uppercase tracking-[0.24em] text-text-secondary/55">
+          User
+        </div>
+        <div className="whitespace-pre-wrap break-words">{message.text}</div>
+      </div>
+    </div>
+  )
+})
+
+const AssistantMessageBubble = memo(function AssistantMessageBubble({
+  message,
+  isStreamingTarget,
+  streamedText,
+  showCaret,
+}: {
+  message: Extract<StudioMessage, { role: 'assistant' }>
+  isStreamingTarget: boolean
+  streamedText: string
+  showCaret: boolean
+}) {
+  const textParts = message.parts.filter((part) => part.type === 'text' || part.type === 'reasoning')
+  const toolParts = message.parts.filter((part) => part.type === 'tool')
+  const hasStreamedText = streamedText.length > 0
+
+  return (
+    <div className={`${isStreamingTarget ? '' : 'animate-fade-in-soft '}flex justify-start py-1`}>
+      <div className="max-w-[90%] rounded-[22px] rounded-bl-md bg-bg-secondary/55 px-5 py-4 text-text-primary ring-1 ring-border/10">
+        <div className="mb-2 text-[10px] uppercase tracking-[0.24em] text-text-secondary/55">
+          Model
+        </div>
+        {toolParts.map((part, i) => {
+          const status = part.state.status === 'error' ? '✗' : part.state.status === 'completed' ? '✓' : '…'
+          const args = 'input' in part.state ? truncateArgs(part.state.input) : ''
+          return (
+            <div key={i} className={`font-mono text-[13px] leading-6 ${toolCallTone(part.state.status)}`}>
+              {'→ '}{part.tool}({args}) <span className={toolCallStatusTone(part.state.status)}>{status}</span>
+            </div>
+          )
+        })}
+
+        {isStreamingTarget && hasStreamedText ? (
+          <div className="text-[15px] leading-7 text-text-primary whitespace-pre-wrap break-words">
+            {streamedText}
+            {showCaret && <span className="studio-type-caret">█</span>}
+          </div>
+        ) : textParts.map((part, i) => {
+          const text = part.text.trim()
+          if (!text) return null
+          return (
+            <div key={`text-${i}`} className="text-[15px] leading-7 text-text-primary whitespace-pre-wrap">
+              {text.split('\n').map((line: string, j: number) => (
+                <div key={j}>
+                  <span>{line}</span>
+                </div>
+              ))}
+            </div>
+          )
+        })}
+
+        {!isStreamingTarget && textParts.every((part) => !part.text.trim()) && (
+          <div className="text-[15px] leading-7 text-text-secondary/60">
+            <span>(无文本输出)</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+})
 
 function truncateArgs(input?: Record<string, unknown>) {
   if (!input) return ''
