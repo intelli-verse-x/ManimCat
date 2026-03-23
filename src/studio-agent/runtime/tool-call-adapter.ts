@@ -49,7 +49,7 @@ export interface StudioToolCallExecutionOptions {
 export async function* createStudioToolCallExecutionEvents(
   input: StudioToolCallExecutionOptions
 ): AsyncGenerator<StudioProcessorStreamEvent> {
-  const tool = input.registry.get(input.toolName)
+  const tool = input.registry.get(input.toolName, input.session.studioKind)
   const commentary = input.commentary === undefined
     ? buildStudioPreToolCommentary({
         toolName: input.toolName,
@@ -223,4 +223,7 @@ function resolvePermissionPattern(input: Record<string, unknown>): string {
   }
   return '*'
 }
+
+
+
 

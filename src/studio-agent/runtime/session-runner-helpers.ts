@@ -1,5 +1,6 @@
 import { createStudioAssistantMessage, createStudioRun } from '../domain/factories'
 import type {
+  StudioKind,
   StudioMessagePart,
   StudioRun,
   StudioRuntimeTurnPlan,
@@ -29,13 +30,15 @@ export function buildSubagentPrompt(input: {
   files?: string[]
   skillName?: string
   skill?: StudioResolvedSkill
+  studioKind?: StudioKind
 }): string {
   return buildStudioSubagentPrompt({
     agentType: input.agentType,
     workflowInput: input.inputText,
     files: input.files,
     skill: input.skill,
-    requestedSkillName: input.skillName
+    requestedSkillName: input.skillName,
+    studioKind: input.studioKind
   })
 }
 
@@ -68,4 +71,5 @@ export function extractLatestAssistantText(parts: StudioMessagePart[]): string {
 export function withResolvedPlan<T extends { plan: StudioRuntimeTurnPlan }>(input: T): T {
   return input
 }
+
 

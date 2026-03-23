@@ -1,5 +1,6 @@
+import type { StudioKind } from './studio/protocol/studio-agent-types';
 import { useEffect, useRef, useState } from 'react';
-import type { OutputMode, Quality, ReferenceImage } from './types/api';
+import type { JobResult, OutputMode, Quality, ReferenceImage } from './types/api';
 import { useGeneration } from './hooks/useGeneration';
 import { useProblemFraming } from './hooks/useProblemFraming';
 import { useGame2048 } from './hooks/useGame2048';
@@ -11,11 +12,12 @@ import { ProviderConfigModal } from './components/ProviderConfigModal';
 import { Workspace } from './components/Workspace';
 import { StudioPage } from './pages/StudioPage';
 import { Game2048Page } from './pages/Game2048Page';
+import { PlotStudioShell } from './studio/PlotStudioShell';
 import { StudioShell } from './studio/StudioShell';
 import { StudioTransitionOverlay } from './studio/StudioTransitionOverlay';
 import { useI18n } from './i18n';
 
-type Screen = 'classic' | 'studio' | 'game';
+type Screen = 'classic' | 'manim-studio' | 'plot-studio' | 'game';
 
 const STUDIO_TRANSITION_MS = 2000;
 const STUDIO_EXIT_DELAY_MS = 800;
@@ -40,6 +42,7 @@ function App() {
   const [concept, setConcept] = useState('');
   const [lastCompletedResult, setLastCompletedResult] = useState<JobResult | null>(null);
   const [screen, setScreen] = useState<Screen>('classic');
+  const [activeStudioKind, setActiveStudioKind] = useState<StudioKind>('manim');
   const [studioTransitionVisible, setStudioTransitionVisible] = useState(false);
   const [studioIsExiting, setStudioIsExiting] = useState(false);
   const [studioShellExiting, setStudioShellExiting] = useState(false);
@@ -76,6 +79,7 @@ function App() {
     setAiModifyOpen(false);
     setLastCompletedResult(null);
     setScreen('classic');
+    setActiveStudioKind('manim');
     setStudioTransitionVisible(false);
     setStudioIsExiting(false);
     setStudioShellExiting(false);
@@ -87,18 +91,19 @@ function App() {
     problemFraming.reset();
   };
 
-  const handleOpenStudio = () => {
-    if (studioTransitionVisible || screen === 'studio') {
+  const handleOpenStudio = (studioKind: StudioKind) => {
+    if (studioTransitionVisible || screen === 'manim-studio' || screen === 'plot-studio') {
       return;
     }
 
+    setActiveStudioKind(studioKind);
     setStudioIsExiting(false);
     setStudioShellExiting(false);
     setStudioTransitionVisible(true);
     
     studioTransitionTimerRef.current = window.setTimeout(() => {
       setConcept('');
-      setScreen('studio');
+      setScreen(studioKind === 'plot' ? 'plot-studio' : 'manim-studio');
       
       studioTransitionTimerRef.current = window.setTimeout(() => {
         setStudioIsExiting(true);
@@ -264,8 +269,17 @@ function App() {
             onProblemGenerate={handleProblemGenerate}
           />
         </div>
-      ) : screen === 'studio' ? (
-        <StudioShell onExit={handleExitStudio} isExiting={studioShellExiting} />
+      ) : screen === 'manim-studio' ? (
+        <StudioShell
+          onExit={handleExitStudio}
+          isExiting={studioShellExiting}
+          studioKind={activeStudioKind}
+        />
+      ) : screen === 'plot-studio' ? (
+        <PlotStudioShell
+          onExit={handleExitStudio}
+          isExiting={studioShellExiting}
+        />
       ) : (
         <Game2048Page
           board={game.board}

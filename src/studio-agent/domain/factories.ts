@@ -3,6 +3,7 @@ import type {
   StudioAgentType,
   StudioAssistantMessage,
   StudioFileAttachment,
+  StudioKind,
   StudioMessagePart,
   StudioPermissionLevel,
   StudioPermissionRule,
@@ -30,6 +31,7 @@ export function createStudioSession(input: {
   projectId: string
   workspaceId?: string
   parentSessionId?: string
+  studioKind?: StudioKind
   agentType: StudioAgentType
   title: string
   directory: string
@@ -43,6 +45,7 @@ export function createStudioSession(input: {
     projectId: input.projectId,
     workspaceId: input.workspaceId,
     parentSessionId: input.parentSessionId,
+    studioKind: input.studioKind ?? 'manim',
     agentType: input.agentType,
     title: input.title,
     directory: input.directory,
@@ -229,4 +232,5 @@ export function replaceMessagePart(parts: StudioMessagePart[], nextPart: StudioM
   next[index] = nextPart
   return next
 }
+
 

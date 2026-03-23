@@ -1,6 +1,7 @@
 import { createStudioSession } from '../domain/factories'
 import type {
   StudioEventBus,
+  StudioKind,
   StudioPermissionLevel,
   StudioPermissionReply,
   StudioPermissionRequest,
@@ -12,12 +13,14 @@ import type {
 } from '../domain/types'
 import { InMemoryStudioEventBus, type StudioEventListener } from '../events/event-bus'
 import { adaptStudioEvent, type StudioExternalEvent } from '../events/studio-event-adapter'
+import { registerManimStudioTools } from '../manim/register-manim-tools'
 import type { StudioPersistence } from '../persistence/studio-persistence'
+import { registerPlotStudioTools } from '../plot/register-plot-tools'
 import type { StudioPermissionService } from '../permissions/permission-service'
 import { defaultRulesForLevel } from '../permissions/policy'
+import { registerSharedStudioTools } from '../shared/register-shared-tools'
 import { createLocalStudioSkillResolver } from '../skills/local-skill-resolver'
 import type { StudioBlobStore } from '../storage/studio-blob-store'
-import { createPlaceholderStudioTools } from '../tools/placeholder-tools'
 import { StudioToolRegistry } from '../tools/registry'
 import { StudioBuilderRuntime } from './builder-runtime'
 import { createStudioDefaultTurnPlanResolver } from './default-turn-plan-resolver'
@@ -58,6 +61,7 @@ export interface StudioRuntimeService {
     projectId: string
     directory: string
     title?: string
+    studioKind?: StudioKind
     agentType?: StudioSession['agentType']
     permissionLevel?: StudioPermissionLevel
     workspaceId?: string
@@ -77,9 +81,9 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
   const eventBus: SubscribableStudioEventBus = input.eventBus ?? new InMemoryStudioEventBus()
   const externalEventLog: StudioExternalEvent[] = []
 
-  for (const tool of createPlaceholderStudioTools()) {
-    registry.register(tool)
-  }
+  registerSharedStudioTools(registry)
+  registerManimStudioTools(registry)
+  registerPlotStudioTools(registry)
 
   const resolveSkill = createLocalStudioSkillResolver()
   const resolveTurnPlan = createStudioDefaultTurnPlanResolver({ registry })
@@ -125,17 +129,20 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
     async createSession(sessionInput) {
       const permissionLevel = sessionInput.permissionLevel ?? 'L2'
       const normalizedDirectory = input.workspaceProvider.normalizeDirectory(sessionInput.directory)
+      const studioKind = sessionInput.studioKind ?? 'manim'
 
       return input.persistence.sessionStore.create(
         createStudioSession({
           projectId: sessionInput.projectId,
           workspaceId: sessionInput.workspaceId,
+          studioKind,
           agentType: sessionInput.agentType ?? 'builder',
-          title: sessionInput.title ?? 'Studio Session',
+          title: sessionInput.title ?? getDefaultSessionTitle(studioKind),
           directory: normalizedDirectory,
           permissionLevel,
           permissionRules: defaultRulesForLevel(permissionLevel),
           metadata: createStudioSessionMetadata({
+            existing: { studioKind },
             agentConfig: {
               toolChoice: sessionInput.toolChoice
             }
@@ -215,4 +222,8 @@ async function syncTaskState(input: {
 async function collectWorkResults(works: StudioWork[], persistence: StudioPersistence): Promise<StudioWorkResult[]> {
   const resultSets = await Promise.all(works.map((work) => persistence.workResultStore.listByWorkId(work.id)))
   return resultSets.flat()
+}
+
+function getDefaultSessionTitle(studioKind: StudioKind): string {
+  return studioKind === 'plot' ? 'Plot Studio Session' : 'Manim Studio Session'
 }

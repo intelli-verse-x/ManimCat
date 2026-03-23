@@ -1,3 +1,4 @@
+import type { StudioKind } from '../studio/protocol/studio-agent-types';
 import type { OutputMode, ProcessingStage, Quality, ReferenceImage, JobResult } from '../types/api';
 import ManimCatLogo from '../components/ManimCatLogo';
 import { TopLeftActions } from '../components/app/top-left-actions';
@@ -27,7 +28,7 @@ interface StudioPageProps {
   isBusy: boolean;
   lastRequest: LastRequest | null;
   onConceptChange: (value: string) => void;
-  onSecretStudioOpen?: () => void;
+  onSecretStudioOpen?: (studioKind: StudioKind) => void;
   onSubmit: (data: LastRequest) => void;
   onCodeChange: (code: string) => void;
   onRerender: () => void;

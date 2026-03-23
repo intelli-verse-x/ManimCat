@@ -21,6 +21,7 @@ router.post('/studio-agent/sessions', authMiddleware, asyncHandler(async (req, r
     projectId,
     directory,
     title: parsed.title,
+    studioKind: parsed.studioKind,
     agentType: parsed.agentType,
     permissionLevel: parsed.permissionLevel,
     workspaceId: parsed.workspaceId,
@@ -205,4 +206,5 @@ router.post('/studio-agent/permissions/reply', authMiddleware, replyPermissionHa
 router.post('/studio-agent/permissions/:requestID/reply', authMiddleware, replyPermissionHandler)
 
 export default router
+
 

@@ -64,7 +64,7 @@ export async function* createStudioOpenAIToolLoop(
     throw new Error('Studio agent requires a provider model')
   }
 
-  const tools = buildStudioChatTools(input.registry, input.session.agentType)
+  const tools = buildStudioChatTools(input.registry, input.session.agentType, input.session.studioKind)
   const storedMessages = await input.messageStore.listBySessionId(input.session.id)
   const conversation = buildStudioConversationMessages({
     messages: storedMessages
@@ -286,5 +286,8 @@ function eventToTranscript(event: StudioProcessorStreamEvent, current: string): 
   }
   return current
 }
+
+
+
 
 

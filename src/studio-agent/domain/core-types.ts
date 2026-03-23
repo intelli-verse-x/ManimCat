@@ -1,6 +1,7 @@
 import type { StudioFileAttachment } from './message-types'
 
 export type StudioAgentType = 'builder' | 'reviewer' | 'designer'
+export type StudioKind = 'manim' | 'plot'
 export type StudioToolChoice = 'auto' | 'required' | 'none'
 
 export type StudioPermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4'
@@ -23,7 +24,7 @@ export type StudioTaskType =
   | 'ai-review'
   | 'render'
 
-export type StudioWorkType = 'video' | 'review' | 'design' | 'edit' | 'render-fix'
+export type StudioWorkType = 'video' | 'plot' | 'review' | 'design' | 'edit' | 'render-fix'
 
 export type StudioWorkStatus =
   | 'proposed'
@@ -54,6 +55,7 @@ export interface StudioSession {
   projectId: string
   workspaceId?: string
   parentSessionId?: string
+  studioKind?: StudioKind
   agentType: StudioAgentType
   title: string
   directory: string
@@ -126,3 +128,6 @@ export interface StudioSessionEvent {
   updatedAt: string
   consumedAt?: string
 }
+
+
+

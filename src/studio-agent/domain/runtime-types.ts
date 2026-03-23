@@ -13,7 +13,7 @@ export interface StudioRuntimeTurnPlan {
 
 export interface StudioWorkContextCurrentWork {
   id: string
-  type: 'review' | 'design' | 'render' | 'edit' | 'video' | 'render-fix'
+  type: 'review' | 'design' | 'render' | 'edit' | 'video' | 'plot' | 'render-fix'
   status: 'pending' | 'running' | 'completed' | 'failed'
   title: string
 }
@@ -132,3 +132,4 @@ export type StudioProcessorStreamEvent =
   | StudioStreamReasoningDelta
   | StudioStreamReasoningEnd
   | StudioStreamFinishStep
+

@@ -1,5 +1,5 @@
 import type OpenAI from 'openai'
-import type { StudioAgentType } from '../domain/types'
+import type { StudioAgentType, StudioKind } from '../domain/types'
 import type { StudioToolRegistry } from '../tools/registry'
 
 const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
@@ -143,7 +143,7 @@ const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
     type: 'object',
     properties: {
       concept: { type: 'string', description: 'Render task summary.' },
-      code: { type: 'string', description: 'Manim code to render.' },
+      code: { type: 'string', description: 'Render code for the current studio. In Manim Studio this is Manim code; in Plot Studio this is matplotlib Python code.' },
       outputMode: {
         type: 'string',
         enum: ['video', 'image'],
@@ -160,19 +160,40 @@ const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
   }
 }
 
+const PLOT_RENDER_PARAMETER_SCHEMA: Record<string, Record<string, unknown>> = {
+  render: {
+    type: 'object',
+    properties: {
+      concept: { type: 'string', description: 'Static plot task summary.' },
+      code: { type: 'string', description: 'Matplotlib Python code to execute for Plot Studio.' }
+    },
+    required: ['concept', 'code'],
+    additionalProperties: false
+  }
+}
+
 export function buildStudioChatTools(
   registry: StudioToolRegistry,
-  agentType: StudioAgentType
+  agentType: StudioAgentType,
+  studioKind?: StudioKind
 ): OpenAI.Chat.Completions.ChatCompletionTool[] {
-  return registry.listForAgent(agentType).map((tool) => ({
+  return registry.listForAgent(agentType, studioKind).map((tool) => ({
     type: 'function',
     function: {
       name: tool.name,
       description: tool.description,
-      parameters: TOOL_PARAMETER_SCHEMAS[tool.name] ?? {
+      parameters: resolveToolParameterSchema(tool.name, studioKind) ?? {
         type: 'object',
         additionalProperties: true
       }
     }
   }))
+}
+
+function resolveToolParameterSchema(toolName: string, studioKind?: StudioKind) {
+  if (studioKind === 'plot') {
+    return PLOT_RENDER_PARAMETER_SCHEMA[toolName] ?? TOOL_PARAMETER_SCHEMAS[toolName]
+  }
+
+  return TOOL_PARAMETER_SCHEMAS[toolName]
 }

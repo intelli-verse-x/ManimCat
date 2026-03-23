@@ -1,3 +1,4 @@
+import type { StudioKind } from '../../studio/protocol/studio-agent-types';
 import { InputForm } from '../InputForm';
 import { LoadingSpinner } from '../LoadingSpinner';
 import { ResultSection } from '../ResultSection';
@@ -20,7 +21,7 @@ interface StatusContentProps {
   submittedAt: string | null;
   concept: string;
   onConceptChange: (value: string) => void;
-  onSecretStudioOpen?: () => void;
+  onSecretStudioOpen?: (studioKind: StudioKind) => void;
   currentCode: string;
   isBusy: boolean;
   lastRequest: LastRequest | null;

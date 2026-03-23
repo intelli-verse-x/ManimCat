@@ -1,6 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import type { StudioAgentType } from '../domain/types'
+import type { StudioAgentType, StudioKind } from '../domain/types'
 
 const TEMPLATE_ROOT = path.join(process.cwd(), 'src', 'studio-agent', 'prompts', 'templates')
 const templateCache = new Map<string, string>()
@@ -20,7 +20,16 @@ export function clearStudioAgentPromptCache(): void {
   templateCache.clear()
 }
 
-export function getStudioAgentSystemPrompt(agentType: StudioAgentType): string {
-  const filePath = path.join(TEMPLATE_ROOT, 'roles', `${agentType}.system.md`)
-  return readTemplate(filePath).trim()
+export function getStudioAgentSystemPrompt(
+  agentType: StudioAgentType,
+  studioKind: StudioKind = 'manim'
+): string {
+  const studioSpecificPath = path.join(TEMPLATE_ROOT, 'studios', studioKind, 'roles', `${agentType}.system.md`)
+  if (fs.existsSync(studioSpecificPath)) {
+    return readTemplate(studioSpecificPath).trim()
+  }
+
+  const fallbackPath = path.join(TEMPLATE_ROOT, 'roles', `${agentType}.system.md`)
+  return readTemplate(fallbackPath).trim()
 }
+

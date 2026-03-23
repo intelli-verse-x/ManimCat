@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { customApiConfigSchema } from '../schemas/common'
 
 const studioToolChoiceSchema = z.enum(['auto', 'required', 'none'])
+const studioKindSchema = z.enum(['manim', 'plot'])
 
 const studioCreateRunRequestSchema = z.object({
   sessionId: z.string().trim().min(1),
@@ -15,6 +16,7 @@ export const studioCreateSessionRequestSchema = z.object({
   projectId: z.string().trim().min(1).optional(),
   directory: z.string().trim().min(1).optional(),
   title: z.string().optional(),
+  studioKind: studioKindSchema.optional(),
   agentType: z.enum(['builder', 'reviewer', 'designer']).optional(),
   permissionLevel: z.enum(['L0', 'L1', 'L2', 'L3', 'L4']).optional(),
   workspaceId: z.string().optional(),

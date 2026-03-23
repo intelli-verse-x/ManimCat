@@ -4,7 +4,7 @@ import {
   getPendingStudioPermissions,
   getStudioSessionSnapshot,
 } from '../api/studio-agent-api'
-import type { StudioPermissionRequest, StudioTask } from '../protocol/studio-agent-types'
+import type { StudioKind, StudioPermissionRequest, StudioTask } from '../protocol/studio-agent-types'
 import type { StudioSessionState } from '../store/studio-types'
 import { useStudioEvents } from './use-studio-events'
 import { useStudioPermissions } from './use-studio-permissions'
@@ -26,7 +26,12 @@ import {
   selectWorkResult,
 } from '../store/studio-selectors'
 
-export function useStudioSession() {
+interface UseStudioSessionOptions {
+  studioKind?: StudioKind
+  title?: string
+}
+
+export function useStudioSession(options: UseStudioSessionOptions = {}) {
   const [state, dispatch] = useReducer(studioEventReducer, undefined, createInitialStudioState)
   const bootstrappedRef = useRef(false)
   const refreshInFlightRef = useRef(false)
@@ -74,14 +79,15 @@ export function useStudioSession() {
 
     const session = await createStudioSession({
       projectId: 'manimcat-studio',
-      title: 'ManimCat Studio',
+      title: options.title ?? getDefaultStudioTitle(options.studioKind ?? 'manim'),
+      studioKind: options.studioKind ?? 'manim',
       agentType: 'builder',
       permissionLevel: 'L2',
     })
 
     await loadSnapshot(session.id, mode === 'replace' ? 'replace' : 'merge')
     return session
-  }, [loadSnapshot])
+  }, [loadSnapshot, options.studioKind, options.title])
 
   useEffect(() => {
     if (bootstrappedRef.current) {
@@ -243,6 +249,10 @@ export function useStudioSession() {
       }
     },
   }
+}
+
+function getDefaultStudioTitle(studioKind: StudioKind): string {
+  return studioKind === 'plot' ? 'Plot Studio' : 'Manim Studio'
 }
 
 function filterPermissionsForSession(requests: StudioPermissionRequest[], sessionId?: string | null) {

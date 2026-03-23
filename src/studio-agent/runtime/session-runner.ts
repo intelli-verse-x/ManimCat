@@ -169,7 +169,8 @@ export class StudioSessionRunner {
         inputText: input.inputText,
         skillName: input.skillName,
         skill,
-        files: input.files
+        files: input.files,
+        studioKind: input.childSession.studioKind
       }),
       customApiConfig: input.customApiConfig,
       toolChoice: input.toolChoice ?? resolveStudioToolChoice({ session: input.childSession })
@@ -416,5 +417,6 @@ function hasUsableCustomApiConfig(config?: CustomApiConfig): config is CustomApi
 
   return [config.apiUrl, config.apiKey, config.model].every((value) => typeof value === 'string' && value.trim().length > 0)
 }
+
 
 

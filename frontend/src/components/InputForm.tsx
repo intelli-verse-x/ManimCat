@@ -1,5 +1,6 @@
 // 输入表单组件 - MD3 风格
 
+import type { StudioKind } from '../studio/protocol/studio-agent-types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OutputMode, Quality, ReferenceImage } from '../types/api';
 import { loadSettings } from '../lib/settings';
@@ -13,7 +14,7 @@ import { CanvasWorkspaceModal } from './canvas/CanvasWorkspaceModal';
 interface InputFormProps {
   concept: string;
   onConceptChange: (value: string) => void;
-  onSecretStudioOpen?: () => void;
+  onSecretStudioOpen?: (studioKind: StudioKind) => void;
   onSubmit: (data: {
     concept: string;
     quality: Quality;
@@ -23,7 +24,10 @@ interface InputFormProps {
   loading: boolean;
 }
 
-const STUDIO_KEYWORD = 'hellocats';
+const STUDIO_KEYWORDS: Record<string, StudioKind> = {
+  hellomanim: 'manim',
+  helloplot: 'plot',
+};
 const TRIGGER_DELAY_MS = 1200;
 
 export function InputForm({ concept, onConceptChange, onSecretStudioOpen, onSubmit, loading }: InputFormProps) {
@@ -125,19 +129,20 @@ export function InputForm({ concept, onConceptChange, onSecretStudioOpen, onSubm
     onConceptChange(value);
 
     const normalizedConcept = value.trim().toLowerCase();
-    if (normalizedConcept === STUDIO_KEYWORD && !loading) {
+    const matchedStudioKind = STUDIO_KEYWORDS[normalizedConcept];
+    if (matchedStudioKind && !loading) {
       if (!studioKeywordTriggeredRef.current) {
         studioKeywordTriggeredRef.current = true;
         setIsRecognizing(true);
         triggerTimerRef.current = window.setTimeout(() => {
-          onSecretStudioOpen?.();
+          onSecretStudioOpen?.(matchedStudioKind);
           setIsRecognizing(false);
         }, TRIGGER_DELAY_MS);
       }
       return;
     }
 
-    if (studioKeywordTriggeredRef.current && normalizedConcept !== STUDIO_KEYWORD) {
+    if (studioKeywordTriggeredRef.current && !matchedStudioKind) {
       studioKeywordTriggeredRef.current = false;
       setIsRecognizing(false);
       if (triggerTimerRef.current) {

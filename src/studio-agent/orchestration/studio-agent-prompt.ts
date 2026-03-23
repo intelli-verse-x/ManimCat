@@ -8,8 +8,9 @@ interface BuildStudioAgentSystemPromptInput {
 
 export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPromptInput): string {
   const sections = [
-    getStudioAgentSystemPrompt(input.session.agentType),
-    'You are running inside ManimCat Studio.',
+    getStudioAgentSystemPrompt(input.session.agentType, input.session.studioKind ?? 'manim'),
+    input.session.studioKind === 'plot' ? 'You are running inside ManimCat Plot Studio.' : 'You are running inside ManimCat Manim Studio.',
+    input.session.studioKind === 'plot' ? 'The render tool executes matplotlib Python and produces static plots.' : 'The render tool executes Manim and produces animation or image renders.',
     `Workspace root: ${input.session.directory}`,
     'Use tools directly when they are needed. Do not invent tool results or claim work was done unless the tool actually completed.',
     'Prefer the smallest safe next action. Read before editing when the target file is not already known.',
@@ -75,3 +76,7 @@ function formatWorkContext(workContext?: StudioWorkContext): string {
 
   return lines.join('\n')
 }
+
+
+
+

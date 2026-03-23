@@ -31,7 +31,7 @@ export async function buildStudioWorkContext(input: BuildStudioWorkContextInput)
     if (works.length) {
       const currentWork = selectCurrentWork(works)
       const lastRenderWork = [...works]
-        .filter((work) => work.type === 'video' || work.type === 'render-fix')
+        .filter((work) => work.type === 'video' || work.type === 'plot' || work.type === 'render-fix')
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))[0]
 
       context.currentWork = currentWork
@@ -109,3 +109,4 @@ function listAttachments(attachments: StudioFileAttachment[] | undefined, prefix
   const paths = attachments?.filter((attachment) => attachment.mimeType?.startsWith(prefix)).map((attachment) => attachment.path) ?? []
   return paths.length ? paths : undefined
 }
+

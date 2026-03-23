@@ -1,4 +1,4 @@
-import type { StudioAgentType } from '../domain/types'
+import type { StudioAgentType, StudioKind } from '../domain/types'
 import type { StudioResolvedSkill } from '../runtime/tool-runtime-context'
 import { getStudioAgentSystemPrompt } from './agent-prompt-loader'
 
@@ -8,6 +8,7 @@ interface BuildStudioSubagentPromptInput {
   files?: string[]
   skill?: StudioResolvedSkill
   requestedSkillName?: string
+  studioKind?: StudioKind
 }
 
 const WORKFLOW_INPUT_PATTERN = /<workflow_input>\s*([\s\S]*?)\s*<\/workflow_input>/i
@@ -15,7 +16,7 @@ const WORKFLOW_INPUT_PATTERN = /<workflow_input>\s*([\s\S]*?)\s*<\/workflow_inpu
 export function buildStudioSubagentPrompt(input: BuildStudioSubagentPromptInput): string {
   const sections = [
     `<agent_prompt role="${input.agentType}">`,
-    getStudioAgentSystemPrompt(input.agentType),
+    getStudioAgentSystemPrompt(input.agentType, input.studioKind ?? 'manim'),
     'Respond in plain text, not Markdown.',
     'Do not use markdown bold markers such as **text**, do not use backticks or inline code formatting, and do not use fenced code blocks.',
     'Avoid decorative formatting, heading markers, and excessive blank lines.',
@@ -65,3 +66,4 @@ export function extractStudioWorkflowInput(inputText: string): string {
 
   return match[1].trim()
 }
+

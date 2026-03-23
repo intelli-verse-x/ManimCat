@@ -4,14 +4,19 @@ import { StudioCommandPanel } from './components/StudioCommandPanel'
 import { StudioPipelinePanel } from './components/StudioPipelinePanel'
 import { useStudioReview } from './hooks/use-studio-review'
 import { useStudioSession } from './hooks/use-studio-session'
+import type { StudioKind } from './protocol/studio-agent-types'
 
 interface StudioShellProps {
   onExit: () => void
   isExiting?: boolean
+  studioKind?: StudioKind
 }
 
-export function StudioShell({ onExit, isExiting }: StudioShellProps) {
-  const studio = useStudioSession()
+export function StudioShell({ onExit, isExiting, studioKind = 'manim' }: StudioShellProps) {
+  const studio = useStudioSession({
+    studioKind,
+    title: studioKind === 'plot' ? 'Plot Studio' : 'Manim Studio'
+  })
   const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null)
   const effectiveSelectedWorkId =
     selectedWorkId && studio.works.some((work) => work.id === selectedWorkId)

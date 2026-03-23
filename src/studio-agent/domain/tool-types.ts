@@ -1,4 +1,4 @@
-import type { StudioAgentType, StudioRun, StudioSession } from './core-types'
+import type { StudioAgentType, StudioKind, StudioRun, StudioSession } from './core-types'
 import type { StudioAssistantMessage, StudioFileAttachment } from './message-types'
 import type { StudioEventBus } from './event-types'
 import type {
@@ -71,6 +71,7 @@ export interface StudioToolDefinition<TInput = unknown> {
   category: StudioToolCategory
   permission: string
   allowedAgents: StudioAgentType[]
+  allowedStudioKinds?: StudioKind[]
   requiresTask: boolean
   execute: (input: TInput, context: StudioToolContext) => Promise<StudioToolResult>
 }

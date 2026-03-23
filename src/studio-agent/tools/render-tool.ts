@@ -18,10 +18,11 @@ interface RenderToolInput {
 export function createStudioRenderTool(): StudioToolDefinition<RenderToolInput> {
   return {
     name: 'render',
-    description: 'Create a render task backed by the existing queue.',
+    description: 'Create a Manim render task backed by the existing queue.',
     category: 'render',
     permission: 'render',
     allowedAgents: ['builder'],
+    allowedStudioKinds: ['manim'],
     requiresTask: true,
     execute: async (input, context) => executeRenderTool(input, context as StudioRuntimeBackedToolContext)
   }
@@ -103,3 +104,4 @@ async function executeRenderTool(
     }
   }
 }
+

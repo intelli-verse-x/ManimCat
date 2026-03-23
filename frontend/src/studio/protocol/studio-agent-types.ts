@@ -2,6 +2,7 @@ import type { CustomApiConfig } from '../../types/api'
 import type { StudioReviewMetadata } from './studio-review-types'
 
 export type StudioAgentType = 'builder' | 'reviewer' | 'designer'
+export type StudioKind = 'manim' | 'plot'
 export type StudioPermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4'
 export type StudioRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type StudioTaskStatus =
@@ -13,7 +14,7 @@ export type StudioTaskStatus =
   | 'failed'
   | 'cancelled'
 export type StudioTaskType = 'tool-execution' | 'subagent-run' | 'static-check' | 'ai-review' | 'render'
-export type StudioWorkType = 'video' | 'review' | 'design' | 'edit' | 'render-fix'
+export type StudioWorkType = 'video' | 'plot' | 'review' | 'design' | 'edit' | 'render-fix'
 export type StudioWorkStatus = 'proposed' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type StudioWorkResultKind = 'render-output' | 'review-report' | 'design-plan' | 'edit-result' | 'failure-report'
 export type StudioPermissionDecision = 'once' | 'always' | 'reject'
@@ -29,6 +30,7 @@ export interface StudioSession {
   projectId: string
   workspaceId?: string
   parentSessionId?: string
+  studioKind?: StudioKind
   agentType: StudioAgentType
   title: string
   directory: string
@@ -234,6 +236,7 @@ export interface StudioCreateSessionInput {
   projectId: string
   directory?: string
   title?: string
+  studioKind?: StudioKind
   agentType?: StudioAgentType
   permissionLevel?: StudioPermissionLevel
   workspaceId?: string
@@ -245,3 +248,6 @@ export interface StudioCreateRunInput {
   projectId?: string
   customApiConfig?: CustomApiConfig
 }
+
+
+

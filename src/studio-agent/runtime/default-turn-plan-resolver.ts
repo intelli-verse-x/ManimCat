@@ -20,7 +20,7 @@ export function createStudioDefaultTurnPlanResolver(
 
   return async (input) => {
     const intent = parseStudioTurnIntent(input.inputText)
-    const agentToolNames = new Set(options.registry.listForAgent(input.session.agentType).map((tool) => tool.name))
+    const agentToolNames = new Set(options.registry.listForAgent(input.session.agentType, input.session.studioKind).map((tool) => tool.name))
     const supportedToolNames = new Set(
       [...agentToolNames].filter((toolName) => enabledToolNames.has(toolName))
     )
@@ -57,3 +57,6 @@ export function createStudioDefaultTurnPlanResolver(
     return plan
   }
 }
+
+
+

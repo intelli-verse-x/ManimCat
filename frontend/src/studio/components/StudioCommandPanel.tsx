@@ -133,8 +133,8 @@ export function StudioCommandPanel({
   return (
     <section className="studio-terminal flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg-primary/30 shadow-[inset_0_0_40px_rgba(0,0,0,0.02)]">
       <header className="shrink-0 flex items-center justify-between gap-4 border-b border-border/10 px-8 py-4">
-        <div className="font-mono text-sm text-text-secondary/60">
-          {session?.directory ?? '...'}
+        <div className="text-base font-medium tracking-[-0.02em] text-text-primary/86">
+          {session?.title ?? 'Studio'}
         </div>
         <button
           type="button"
@@ -160,10 +160,7 @@ export function StudioCommandPanel({
               )
             }
 
-            const parts = message.role === 'assistant' ? message.parts : []
             const isStreamingTarget = streamIntoLastAssistant && lastMessage?.id === message.id
-            const textParts = parts.filter((part) => part.type === 'text' || part.type === 'reasoning')
-            const toolParts = parts.filter((part) => part.type === 'tool')
             return (
               <AssistantMessageBubble
                 key={message.id}
