@@ -11,6 +11,8 @@ import { useStudioPermissions } from './use-studio-permissions'
 import { useStudioRun } from './use-studio-run'
 import { studioEventReducer } from '../store/studio-event-reducer'
 import { createInitialStudioState } from '../store/studio-session-store'
+import { useI18n } from '../../i18n'
+import type { I18nContextValue } from '../../i18n/context'
 import {
   selectLatestAssistantText,
   selectLatestRun,
@@ -32,6 +34,7 @@ interface UseStudioSessionOptions {
 }
 
 export function useStudioSession(options: UseStudioSessionOptions = {}) {
+  const { t } = useI18n()
   const [state, dispatch] = useReducer(studioEventReducer, undefined, createInitialStudioState)
   const bootstrappedRef = useRef(false)
   const refreshInFlightRef = useRef(false)
@@ -79,7 +82,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
 
     const session = await createStudioSession({
       projectId: 'manimcat-studio',
-      title: options.title ?? getDefaultStudioTitle(options.studioKind ?? 'manim'),
+      title: options.title ?? getDefaultStudioTitle(options.studioKind ?? 'manim', t),
       studioKind: options.studioKind ?? 'manim',
       agentType: 'builder',
       permissionLevel: 'L2',
@@ -87,7 +90,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
 
     await loadSnapshot(session.id, mode === 'replace' ? 'replace' : 'merge')
     return session
-  }, [loadSnapshot, options.studioKind, options.title])
+  }, [loadSnapshot, options.studioKind, options.title, t])
 
   useEffect(() => {
     if (bootstrappedRef.current) {
@@ -251,8 +254,8 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
   }
 }
 
-function getDefaultStudioTitle(studioKind: StudioKind): string {
-  return studioKind === 'plot' ? 'Plot Studio' : 'Manim Studio'
+function getDefaultStudioTitle(studioKind: StudioKind, t: I18nContextValue['t']): string {
+  return studioKind === 'plot' ? t('studio.plotTitle') : t('studio.manimTitle')
 }
 
 function filterPermissionsForSession(requests: StudioPermissionRequest[], sessionId?: string | null) {

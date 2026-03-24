@@ -5,6 +5,7 @@ import { StudioPipelinePanel } from './components/StudioPipelinePanel'
 import { useStudioReview } from './hooks/use-studio-review'
 import { useStudioSession } from './hooks/use-studio-session'
 import type { StudioKind } from './protocol/studio-agent-types'
+import { useI18n } from '../i18n'
 
 interface StudioShellProps {
   onExit: () => void
@@ -13,9 +14,10 @@ interface StudioShellProps {
 }
 
 export function StudioShell({ onExit, isExiting, studioKind = 'manim' }: StudioShellProps) {
+  const { t } = useI18n()
   const studio = useStudioSession({
     studioKind,
-    title: studioKind === 'plot' ? 'Plot Studio' : 'Manim Studio'
+    title: studioKind === 'plot' ? t('studio.plotTitle') : t('studio.manimTitle')
   })
   const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null)
   const effectiveSelectedWorkId =

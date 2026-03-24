@@ -1,13 +1,16 @@
 import type { StudioTask } from '../protocol/studio-agent-types'
+import { translateTaskStatus, translateTaskType } from '../labels'
 import { formatStudioTime } from '../theme'
+import { useI18n } from '../../i18n'
 
 interface StudioTaskTimelineProps {
   tasks: StudioTask[]
 }
 
 export function StudioTaskTimeline({ tasks }: StudioTaskTimelineProps) {
+  const { t } = useI18n()
   if (!tasks.length) {
-    return <div className="text-sm text-text-secondary/55">暂无关联任务。</div>
+    return <div className="text-sm text-text-secondary/55">{t('studio.timeline.empty')}</div>
   }
 
   return (
@@ -20,7 +23,7 @@ export function StudioTaskTimeline({ tasks }: StudioTaskTimelineProps) {
           <div className="min-w-0 flex-1">
             <div className="text-sm text-text-primary/84">{task.title}</div>
             <div className="mt-0.5 text-[11px] text-text-secondary/50">
-              {translateTaskType(task.type)} · {translateTaskStatus(task.status)} · {formatStudioTime(task.updatedAt)}
+              {translateTaskType(task.type, t)} · {translateTaskStatus(task.status, t)} · {formatStudioTime(task.updatedAt)}
             </div>
             {task.detail && <div className="mt-1 text-xs leading-5 text-text-secondary/55">{task.detail}</div>}
           </div>
@@ -43,39 +46,5 @@ function taskDotColor(status: string) {
       return 'bg-amber-500'
     default:
       return 'bg-text-secondary/30'
-  }
-}
-
-function translateTaskStatus(status: string) {
-  switch (status) {
-    case 'running':
-      return '运行中'
-    case 'completed':
-      return '已完成'
-    case 'failed':
-      return '失败'
-    case 'queued':
-      return '排队中'
-    case 'pending_confirmation':
-      return '待确认'
-    default:
-      return status
-  }
-}
-
-function translateTaskType(type: string) {
-  switch (type) {
-    case 'render':
-      return '渲染'
-    case 'review':
-      return '审查'
-    case 'edit':
-      return '编辑'
-    case 'design':
-      return '设计'
-    case 'fix':
-      return '修复'
-    default:
-      return type
   }
 }

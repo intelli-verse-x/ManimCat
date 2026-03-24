@@ -1,5 +1,7 @@
 import type { StudioPermissionDecision, StudioPermissionRequest } from '../protocol/studio-agent-types'
+import { translatePermissionDecision } from '../labels'
 import { truncateStudioText } from '../theme'
+import { useI18n } from '../../i18n'
 
 interface StudioPermissionPanelProps {
   requests: StudioPermissionRequest[]
@@ -7,26 +9,23 @@ interface StudioPermissionPanelProps {
   onReply: (requestId: string, reply: StudioPermissionDecision) => Promise<void> | void
 }
 
-const REPLIES: { key: StudioPermissionDecision; label: string }[] = [
-  { key: 'once', label: '允许一次' },
-  { key: 'always', label: '始终允许' },
-  { key: 'reject', label: '拒绝' },
-]
+const REPLIES: StudioPermissionDecision[] = ['once', 'always', 'reject']
 
 export function StudioPermissionPanel({
   requests,
   replyingPermissionIds,
   onReply,
 }: StudioPermissionPanelProps) {
+  const { t } = useI18n()
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.28em] text-text-secondary/45">权限审批</div>
-          <div className="mt-1 text-sm text-text-secondary/60">阻塞中的审批请求</div>
+          <div className="text-[10px] uppercase tracking-[0.28em] text-text-secondary/45">{t('studio.permission.title')}</div>
+          <div className="mt-1 text-sm text-text-secondary/60">{t('studio.permission.description')}</div>
         </div>
         <span className="rounded-full bg-bg-secondary/50 px-2.5 py-1 text-xs text-text-secondary/65">
-          {requests.length} 项待审
+          {t('studio.permission.pendingCount', { count: requests.length })}
         </span>
       </div>
 
@@ -40,7 +39,7 @@ export function StudioPermissionPanel({
             >
               <div className="text-sm text-text-primary/84">{request.permission}</div>
               <div className="mt-1 text-xs text-text-secondary/55">
-                {request.patterns.join(', ') || '无匹配模式'}
+                {request.patterns.join(', ') || t('studio.permission.noPatternMatch')}
               </div>
               {request.metadata && (
                 <div className="mt-1 text-[11px] text-text-secondary/45">
@@ -48,26 +47,26 @@ export function StudioPermissionPanel({
                 </div>
               )}
               <div className="mt-2 flex flex-wrap gap-2">
-                {REPLIES.map(({ key, label }) => (
+                {REPLIES.map((decision) => (
                   <button
-                    key={key}
+                    key={decision}
                     type="button"
                     disabled={replying}
-                    onClick={() => void onReply(request.id, key)}
+                    onClick={() => void onReply(request.id, decision)}
                     className={`px-2.5 py-1 text-xs transition ${
-                      key === 'reject'
+                      decision === 'reject'
                         ? 'text-rose-500/70 hover:text-rose-500'
                         : 'text-text-secondary/60 hover:text-text-primary/80'
                     } disabled:cursor-not-allowed disabled:opacity-40`}
                   >
-                    {label}
+                    {translatePermissionDecision(decision, t)}
                   </button>
                 ))}
               </div>
             </article>
           )
         })}
-        {requests.length === 0 && <div className="text-sm text-text-secondary/55">暂无待审批的权限请求。</div>}
+        {requests.length === 0 && <div className="text-sm text-text-secondary/55">{t('studio.permission.empty')}</div>}
       </div>
     </section>
   )

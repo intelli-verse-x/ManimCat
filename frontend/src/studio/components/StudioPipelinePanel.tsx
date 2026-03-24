@@ -8,8 +8,10 @@ import type {
 } from '../protocol/studio-agent-types'
 import type { StudioReviewViewModel } from '../store/studio-selectors'
 import { formatStudioTime, studioSeverityBadge, truncateStudioText } from '../theme'
+import { translateEventStatus, translateResultKind, translateRunStatus, translateSeverity, translateSnapshotStatus } from '../labels'
 import { StudioPermissionPanel } from './StudioPermissionPanel'
 import { StudioTaskTimeline } from './StudioTaskTimeline'
+import { useI18n } from '../../i18n'
 
 interface StudioPipelinePanelProps {
   latestRun: StudioRun | null
@@ -44,6 +46,7 @@ export function StudioPipelinePanel({
   onReply,
   onRefresh,
 }: StudioPipelinePanelProps) {
+  const { t } = useI18n()
   const findings = review?.findings ?? []
   const activeTask =
     [...tasks].reverse().find((task) => task.status === 'running' || task.status === 'queued' || task.status === 'pending_confirmation') ??
@@ -57,25 +60,25 @@ export function StudioPipelinePanel({
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
-                <div className="text-[10px] uppercase tracking-[0.3em] text-text-secondary/45">执行区</div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-text-secondary/45">{t('studio.pipeline.execution')}</div>
                 <span className="studio-paw-float text-sm opacity-30" style={{ animationDelay: '1.5s' }}>🐾</span>
               </div>
-              <div className="mt-2 text-base font-medium text-text-primary/88">{work?.title ?? '等待执行目标'}</div>
+              <div className="mt-2 text-base font-medium text-text-primary/88">{work?.title ?? t('studio.pipeline.waitingTarget')}</div>
             </div>
             <button
               type="button"
               onClick={() => void onRefresh()}
               className="px-3 py-1.5 text-[11px] text-text-secondary/50 transition hover:text-text-primary/70"
             >
-              刷新
+              {t('studio.pipeline.refresh')}
             </button>
           </div>
 
           <div className="mt-5 space-y-2.5">
-            <StatusRow label="运行" value={latestRun ? translateRunStatus(latestRun.status) : '待命'} tone={latestRun?.status ?? 'idle'} />
-            <StatusRow label="事件流" value={translateEventStatus(eventStatus)} tone={eventStatus} />
-            <StatusRow label="快照" value={translateSnapshotStatus(snapshotStatus)} tone={snapshotStatus} />
-            <StatusRow label="当前任务" value={activeTask ? activeTask.title : '暂无'} tone={activeTask?.status ?? 'idle'} />
+            <StatusRow label={t('studio.pipeline.running')} value={latestRun ? translateRunStatus(latestRun.status, t) : t('studio.idle')} tone={latestRun?.status ?? 'idle'} />
+            <StatusRow label={t('studio.pipeline.eventStream')} value={translateEventStatus(eventStatus, t)} tone={eventStatus} />
+            <StatusRow label={t('studio.pipeline.snapshot')} value={translateSnapshotStatus(snapshotStatus, t)} tone={snapshotStatus} />
+            <StatusRow label={t('studio.pipeline.currentTask')} value={activeTask ? activeTask.title : t('studio.pipeline.none')} tone={activeTask?.status ?? 'idle'} />
           </div>
         </section>
 
@@ -84,7 +87,7 @@ export function StudioPipelinePanel({
         {latestQuestion && (
           <>
             <section className="border-l-2 border-amber-500/40 pl-4">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-amber-700/65 dark:text-amber-400/65">待确认问题</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-amber-700/65 dark:text-amber-400/65">{t('studio.pipeline.pendingQuestion')}</div>
               <div className="mt-3 text-sm leading-7 text-text-primary/86">{latestQuestion.question}</div>
               {latestQuestion.details && <div className="mt-2 text-xs leading-6 text-text-secondary/62">{latestQuestion.details}</div>}
             </section>
@@ -95,7 +98,7 @@ export function StudioPipelinePanel({
         {errorMessage && (
           <>
             <section className="border-l-2 border-rose-500/40 pl-4">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-rose-700/65 dark:text-rose-400/65">状态异常</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-rose-700/65 dark:text-rose-400/65">{t('studio.pipeline.statusError')}</div>
               <div className="mt-3 text-sm leading-7 text-text-primary/86">{errorMessage}</div>
             </section>
             <SectionDivider />
@@ -105,7 +108,7 @@ export function StudioPipelinePanel({
         {latestAssistantText && (
           <>
             <section className="border-l-2 border-sky-500/40 pl-4">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-sky-700/65 dark:text-sky-400/65">最新执行反馈</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-sky-700/65 dark:text-sky-400/65">{t('studio.pipeline.latestFeedback')}</div>
               <div className="mt-3 text-sm leading-7 text-text-primary/82">{truncateStudioText(latestAssistantText, 180)}</div>
             </section>
             <SectionDivider />
@@ -115,8 +118,8 @@ export function StudioPipelinePanel({
         <section>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-text-secondary/45">任务时间线</div>
-              <div className="mt-1 text-sm text-text-secondary/60">子代理执行、渲染、检查都会显示在这里</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-text-secondary/45">{t('studio.pipeline.timeline')}</div>
+              <div className="mt-1 text-sm text-text-secondary/60">{t('studio.pipeline.timelineHint')}</div>
             </div>
             <span className="rounded-full bg-bg-secondary/50 px-3 py-1 text-xs text-text-secondary/65">{tasks.length}</span>
           </div>
@@ -130,9 +133,9 @@ export function StudioPipelinePanel({
         {result && (
           <>
             <section>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-text-secondary/45">结果摘要</div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-text-secondary/45">{t('studio.pipeline.resultSummary')}</div>
               <div className="mt-3 flex items-center justify-between gap-3">
-                <div className="text-sm font-medium text-text-primary/86">{translateResultKind(result.kind)}</div>
+                <div className="text-sm font-medium text-text-primary/86">{translateResultKind(result.kind, t)}</div>
                 <div className="text-xs text-text-secondary/55">{formatStudioTime(result.createdAt)}</div>
               </div>
               <div className="mt-3 text-sm leading-7 text-text-secondary/70">{result.summary}</div>
@@ -143,7 +146,7 @@ export function StudioPipelinePanel({
                       <div className="flex items-start justify-between gap-3">
                         <div className="text-sm text-text-primary/84">{finding.title}</div>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${studioSeverityBadge(finding.severity)}`}>
-                          {translateSeverity(finding.severity)}
+                          {translateSeverity(finding.severity, t)}
                         </span>
                       </div>
                       <div className="mt-1.5 text-[11px] leading-5 text-text-secondary/65">{truncateStudioText(finding.rationale, 100)}</div>
@@ -218,80 +221,5 @@ function severityColor(severity: string) {
       return 'rgb(14 165 233 / 0.4)'
     default:
       return 'rgb(0 0 0 / 0.1)'
-  }
-}
-
-function translateRunStatus(status: string) {
-  switch (status) {
-    case 'running':
-      return '运行中'
-    case 'completed':
-      return '已完成'
-    case 'failed':
-      return '失败'
-    case 'cancelled':
-      return '已取消'
-    case 'pending':
-      return '排队中'
-    default:
-      return status
-  }
-}
-
-function translateEventStatus(status: string) {
-  switch (status) {
-    case 'connecting':
-      return '连接中'
-    case 'connected':
-      return '已连接'
-    case 'reconnecting':
-      return '重连中'
-    case 'disconnected':
-      return '已断开'
-    default:
-      return '待命'
-  }
-}
-
-function translateSnapshotStatus(status: string) {
-  switch (status) {
-    case 'loading':
-      return '加载中'
-    case 'ready':
-      return '已就绪'
-    case 'error':
-      return '失败'
-    default:
-      return '待命'
-  }
-}
-
-function translateResultKind(kind: string) {
-  switch (kind) {
-    case 'render-output':
-      return '渲染产物'
-    case 'review-report':
-      return '审查报告'
-    case 'design-plan':
-      return '设计方案'
-    case 'edit-result':
-      return '编辑结果'
-    case 'failure-report':
-      return '失败报告'
-    default:
-      return kind
-  }
-}
-
-function translateSeverity(severity: string) {
-  switch (severity) {
-    case 'high':
-      return '高'
-    case 'medium':
-      return '中'
-    case 'low':
-      return '低'
-    default:
-      return severity
   }
 }

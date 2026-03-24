@@ -9,6 +9,7 @@ import type {
   StudioWorkResult,
 } from '../protocol/studio-agent-types'
 import { truncateStudioText } from '../theme'
+import { useI18n } from '../../i18n'
 
 interface PlotWorkListItem {
   work: StudioWork
@@ -39,8 +40,9 @@ export function PlotPreviewPanel({
   result,
   onSelectWork,
 }: PlotPreviewPanelProps) {
+  const { t } = useI18n()
   const previewAttachment = result?.attachments?.find(isPreviewAttachment) ?? result?.attachments?.[0] ?? null
-  const outputPath = formatOutputPath(previewAttachment, session)
+  const outputPath = formatOutputPath(previewAttachment, session, t('studio.plot.inlinePreview'), t('studio.plot.waitingOutputFile'))
   const stripItems = works.slice(0, 12)
 
   return (
@@ -55,7 +57,7 @@ export function PlotPreviewPanel({
             </div>
           </div>
           <div className="flex items-center gap-4 font-mono text-[10px] tracking-widest text-text-secondary/30">
-            <span>READY</span>
+            <span>{t('studio.plot.ready')}</span>
             <span className="studio-cursor">_</span>
           </div>
         </div>
@@ -67,20 +69,13 @@ export function PlotPreviewPanel({
           <div className="flex h-full min-h-[360px] items-center justify-center sm:min-h-[460px] lg:min-h-[560px]">
             <PlotPreviewSurface attachment={previewAttachment} result={result} />
           </div>
-          
-          {/* 这里就是你提到的右上角，现在我们改为半透明消隐设计 */}
-          <div className="absolute right-6 top-6 hidden items-center gap-3 lg:flex">
-             <div className="rounded-full border border-white/10 bg-black/5 px-3 py-1.5 backdrop-blur-md dark:bg-white/5">
-                <span className="font-mono text-[9px] uppercase tracking-tighter text-text-secondary/60">Canvas Engine: Matplotlib</span>
-             </div>
-          </div>
         </div>
 
         {/* 底部条状预览 - 增加呼吸感 */}
         <div className="mt-8">
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-3">
-              <div className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-secondary/35">历史产出</div>
+              <div className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-secondary/35">{t('studio.plot.history')}</div>
               <div className="h-px w-8 bg-border/10" />
               <span className="font-mono text-[10px] text-text-secondary/40">
                 {works.length.toString().padStart(2, '0')}
@@ -134,12 +129,13 @@ function PlotPreviewSurface({
   attachment: StudioFileAttachment | null | undefined
   result: StudioWorkResult | null
 }) {
+  const { t } = useI18n()
   if (attachment?.mimeType?.startsWith('image/') || isImagePath(attachment?.path)) {
     return (
       <div className="flex h-full w-full items-center justify-center">
         <img
           src={attachment?.path}
-          alt={attachment?.name ?? 'plot preview'}
+          alt={attachment?.name ?? t('studio.plot.previewAlt')}
           className="max-h-full max-w-full object-contain"
         />
       </div>
@@ -149,7 +145,7 @@ function PlotPreviewSurface({
   if (result?.kind === 'failure-report') {
     return (
       <div className="flex flex-col items-center justify-center opacity-30">
-        <div className="text-sm font-medium text-rose-600/70 uppercase tracking-widest">Render Failed</div>
+        <div className="text-sm font-medium text-rose-600/70 uppercase tracking-widest">{t('studio.renderFailed')}</div>
       </div>
     )
   }
@@ -165,6 +161,8 @@ function isPreviewAttachment(attachment: { path: string; mimeType?: string } | u
 function formatOutputPath(
   attachment: StudioFileAttachment | null | undefined,
   session: StudioSession | null,
+  inlinePreviewLabel: string,
+  waitingOutputLabel: string,
 ) {
   if (attachment?.name) {
     return attachment.name
@@ -172,12 +170,12 @@ function formatOutputPath(
 
   if (attachment?.path) {
     if (attachment.path.startsWith('data:')) {
-      return 'inline-preview.png'
+      return inlinePreviewLabel
     }
     return truncateStudioText(attachment.path, 88)
   }
 
-  return session?.directory ?? '等待输出文件'
+  return session?.directory ?? waitingOutputLabel
 }
 
 function isImageAttachment(attachment: { path: string; mimeType?: string } | undefined) {

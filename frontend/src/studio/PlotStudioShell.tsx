@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { StudioCommandPanel } from './components/StudioCommandPanel'
 import { useStudioSession } from './hooks/use-studio-session'
 import { PlotPreviewPanel } from './plot/PlotPreviewPanel'
+import { useI18n } from '../i18n'
 
 interface PlotStudioShellProps {
   onExit: () => void
@@ -9,9 +10,10 @@ interface PlotStudioShellProps {
 }
 
 export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
+  const { t } = useI18n()
   const studio = useStudioSession({
     studioKind: 'plot',
-    title: 'Plot Studio'
+    title: t('studio.plotTitle')
   })
   const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null)
   const effectiveSelectedWorkId =

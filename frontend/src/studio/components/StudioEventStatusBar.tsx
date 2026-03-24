@@ -1,5 +1,7 @@
 import type { StudioRun } from '../protocol/studio-agent-types'
+import { translateEventStatus, translateRunStatus, translateSnapshotStatus } from '../labels'
 import { formatStudioTime, studioPanelClass, studioStatusBadge, truncateStudioText } from '../theme'
+import { useI18n } from '../../i18n'
 
 interface StudioEventStatusBarProps {
   sessionTitle?: string
@@ -27,37 +29,38 @@ export function StudioEventStatusBar({
   latestAssistantText,
   latestQuestion,
 }: StudioEventStatusBarProps) {
+  const { t } = useI18n()
   return (
     <section className={studioPanelClass('p-4')}>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs uppercase tracking-[0.28em] text-text-secondary">Studio Session</span>
-        <span className="text-sm font-medium text-text-primary">{sessionTitle ?? 'Initializing'}</span>
+        <span className="text-xs uppercase tracking-[0.28em] text-text-secondary">{t('studio.event.session')}</span>
+        <span className="text-sm font-medium text-text-primary">{sessionTitle ?? t('studio.initializing')}</span>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${studioStatusBadge(snapshotStatus)}`}>
-          snapshot {snapshotStatus}
+          {t('studio.event.snapshot', { status: translateSnapshotStatus(snapshotStatus, t) })}
         </span>
         <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${studioStatusBadge(eventStatus)}`}>
-          events {eventStatus}
+          {t('studio.event.events', { status: translateEventStatus(eventStatus, t) })}
         </span>
         {latestRun && (
           <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${studioStatusBadge(latestRun.status)}`}>
-            run {latestRun.status}
+            {t('studio.event.run', { status: translateRunStatus(latestRun.status, t) })}
           </span>
         )}
       </div>
 
       <div className="mt-3 grid gap-3 text-sm text-text-secondary md:grid-cols-3">
         <div>
-          <div className="text-xs uppercase tracking-[0.2em]">Latest Event</div>
-          <div className="mt-1 text-text-primary">{lastEventType ?? 'Waiting for stream'}</div>
+          <div className="text-xs uppercase tracking-[0.2em]">{t('studio.event.latestEvent')}</div>
+          <div className="mt-1 text-text-primary">{lastEventType ?? t('studio.event.waitingForStream')}</div>
           <div className="mt-1 text-xs">{formatStudioTime(lastEventAt)}</div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-[0.2em]">Assistant Stream</div>
-          <div className="mt-1 text-text-primary">{latestAssistantText ? truncateStudioText(latestAssistantText) : 'No live text yet'}</div>
+          <div className="text-xs uppercase tracking-[0.2em]">{t('studio.event.assistantStream')}</div>
+          <div className="mt-1 text-text-primary">{latestAssistantText ? truncateStudioText(latestAssistantText) : t('studio.event.noLiveText')}</div>
         </div>
         <div>
-          <div className="text-xs uppercase tracking-[0.2em]">Pending Question</div>
-          <div className="mt-1 text-text-primary">{latestQuestion?.question ?? 'None'}</div>
+          <div className="text-xs uppercase tracking-[0.2em]">{t('studio.event.pendingQuestion')}</div>
+          <div className="mt-1 text-text-primary">{latestQuestion?.question ?? t('studio.event.none')}</div>
           {latestQuestion?.details && <div className="mt-1 text-xs">{truncateStudioText(latestQuestion.details, 90)}</div>}
         </div>
       </div>

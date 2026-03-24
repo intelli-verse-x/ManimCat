@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
+import { useI18n } from '../../i18n'
 
 interface StudioCommandPanelProps {
   session: StudioSession | null
@@ -20,6 +21,7 @@ export function StudioCommandPanel({
   onRun,
   onExit,
 }: StudioCommandPanelProps) {
+  const { t } = useI18n()
   const [input, setInput] = useState('')
   const [animatedAssistantText, setAnimatedAssistantText] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -136,7 +138,7 @@ export function StudioCommandPanel({
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-accent-rgb/20 animate-pulse" />
           <div className="text-[13px] font-bold uppercase tracking-[0.2em] text-text-primary/70">
-            {session?.title ?? 'Studio'}
+            {session?.title ?? t('studio.title')}
           </div>
         </div>
         <button
@@ -144,7 +146,7 @@ export function StudioCommandPanel({
           onClick={onExit}
           className="rounded-full border border-border/10 px-4 py-1.5 text-[11px] uppercase tracking-widest text-text-secondary/50 transition hover:bg-rose-500/10 hover:text-rose-500/80"
         >
-          Close
+          {t('common.close')}
         </button>
       </header>
 
@@ -152,7 +154,7 @@ export function StudioCommandPanel({
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center opacity-30">
             <div className="mb-4 text-3xl">🐾</div>
-            <div className="font-mono text-[10px] uppercase tracking-[0.4em]">Ready for commands</div>
+            <div className="font-mono text-[10px] uppercase tracking-[0.4em]">{t('studio.readyForCommands')}</div>
           </div>
         )}
 
@@ -179,7 +181,7 @@ export function StudioCommandPanel({
           {(isBusy || latestAssistantText || animatedAssistantText) && !streamIntoLastAssistant && (
             <div className="group animate-fade-in">
                <div className="mb-4 flex items-center gap-3">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-accent-rgb/60">Agent</span>
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-accent-rgb/60">{t('studio.agent')}</span>
                 <div className="h-px flex-1 bg-border/5" />
               </div>
               {animatedAssistantText ? (
@@ -189,7 +191,7 @@ export function StudioCommandPanel({
                 </div>
               ) : (
                 <div className="flex items-center gap-4 pl-1 ml-1 border-l border-accent-rgb/10">
-                  <span className="text-[13px] font-mono tracking-widest text-text-secondary/40 italic">Thinking</span>
+                  <span className="text-[13px] font-mono tracking-widest text-text-secondary/40 italic">{t('common.loading')}</span>
                   <span className="studio-thinking-dots" aria-hidden="true">
                     <span />
                     <span />
@@ -217,12 +219,12 @@ export function StudioCommandPanel({
                 void handleSubmit()
               }
             }}
-            placeholder={disabled ? 'Initializing...' : 'Send instruction to ManimCat...'}
+            placeholder={disabled ? t('studio.initializing') : t('studio.commandPlaceholder')}
             disabled={disabled}
             className="flex-1 bg-transparent text-[14px] font-medium leading-relaxed text-text-primary outline-none placeholder:text-text-secondary/25 disabled:cursor-not-allowed disabled:opacity-50"
           />
           <div className="flex items-center gap-2 opacity-30">
-             <div className="font-mono text-[9px] uppercase tracking-widest text-text-secondary">Enter to send</div>
+             <div className="font-mono text-[9px] uppercase tracking-widest text-text-secondary">{t('studio.enterToSend')}</div>
           </div>
         </div>
       </footer>
@@ -235,11 +237,12 @@ const UserMessageItem = memo(function UserMessageItem({
 }: {
   message: Extract<StudioMessage, { role: 'user' }>
 }) {
+  const { t } = useI18n()
   return (
     <div className="animate-fade-in-soft group">
       <div className="rounded-2xl bg-bg-secondary/20 px-6 py-5 transition-colors group-hover:bg-bg-secondary/40">
         <div className="mb-4 flex items-center gap-3">
-          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-secondary/35">Input / User</span>
+          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-secondary/35">{t('studio.inputUser')}</span>
           <div className="h-px flex-1 bg-border/5" />
         </div>
         <div className="text-[14px] font-medium leading-7 text-text-primary/80">
@@ -261,6 +264,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
   streamedText: string
   showCaret: boolean
 }) {
+  const { t } = useI18n()
   const textParts = message.parts.filter((part) => part.type === 'text' || part.type === 'reasoning')
   const toolParts = message.parts.filter((part) => part.type === 'tool')
   const hasStreamedText = streamedText.length > 0
@@ -269,7 +273,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
     <div className={`${isStreamingTarget ? '' : 'animate-fade-in-soft '}group`}>
       <div className="rounded-2xl bg-bg-tertiary/40 px-6 py-6 transition-colors group-hover:bg-bg-tertiary/60">
         <div className="mb-5 flex items-center gap-3">
-          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-primary/45">Output / Agent</span>
+          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-primary/45">{t('studio.outputAgent')}</span>
           <div className="h-px flex-1 bg-border/10" />
         </div>
         
@@ -307,7 +311,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
 
           {!isStreamingTarget && textParts.every((part) => !part.text.trim()) && (
             <div className="text-[13px] italic text-text-secondary/30">
-              (No response output)
+              {t('studio.noResponseOutput')}
             </div>
           )}
         </div>
