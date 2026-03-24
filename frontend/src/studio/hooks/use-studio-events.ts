@@ -58,6 +58,9 @@ function resolveEventSessionId(event: StudioExternalEvent): string | null {
     case 'work.updated':
     case 'work-result.updated':
     case 'assistant.text':
+    case 'tool.input-start':
+    case 'tool.call':
+    case 'tool.result':
     case 'question.requested':
       return event.properties.sessionId
     case 'permission.asked':

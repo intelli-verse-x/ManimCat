@@ -55,6 +55,16 @@ export function StudioCommandPanel({
   const lastMessage = messages.at(-1) ?? null
   const streamIntoLastAssistant =
     Boolean(lastMessage && lastMessage.role === 'assistant' && (isBusy || latestAssistantText || animatedAssistantText))
+  const visibleMessages = messages.filter((message, index) => {
+    if (message.role === 'user') {
+      return true
+    }
+
+    return shouldRenderAssistantMessage(message, {
+      isLast: index === messages.length - 1,
+      isBusy,
+    })
+  })
 
   useEffect(() => {
     const signature = [
@@ -202,7 +212,7 @@ export function StudioCommandPanel({
         )}
 
         <div className="flex flex-col space-y-12">
-          {messages.map((message) => {
+          {visibleMessages.map((message) => {
             if (message.role === 'user') {
               return (
                 <UserMessageItem key={message.id} message={message} />
@@ -323,7 +333,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
             </div>
           ) : isStreamingTarget && !hasRenderableText ? (
             <div className="flex items-center gap-4 border-l border-accent-rgb/10 pl-1 ml-1">
-              <span className="text-[13px] font-mono tracking-widest text-text-secondary/40 italic">{t('common.loading')}</span>
+              <span className="text-[13px] font-mono tracking-widest text-text-secondary/40">{t('studio.thinking')}</span>
               <span className="studio-thinking-dots" aria-hidden="true">
                 <span />
                 <span />
@@ -341,7 +351,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
           })}
 
           {!isStreamingTarget && !hasRenderableText && (
-            <div className="text-[13px] italic text-text-secondary/30">
+            <div className="text-[13px] text-text-secondary/30">
               {t('studio.noResponseOutput')}
             </div>
           )}
@@ -421,4 +431,20 @@ function clamp(value: number, min: number, max: number) {
 
 function shouldRedirectKeyToInput(event: KeyboardEvent): boolean {
   return event.key.length === 1 || event.key === 'Backspace'
+}
+
+function shouldRenderAssistantMessage(
+  message: Extract<StudioMessage, { role: 'assistant' }>,
+  options: { isLast: boolean; isBusy: boolean },
+): boolean {
+  const hasRenderableText = message.parts.some((part) => (
+    (part.type === 'text' || part.type === 'reasoning') && part.text.trim()
+  ))
+  const hasToolParts = message.parts.some((part) => part.type === 'tool')
+
+  if (hasRenderableText || hasToolParts) {
+    return true
+  }
+
+  return options.isLast && options.isBusy
 }

@@ -141,4 +141,49 @@ describe('StudioCommandPanel', () => {
       vi.useRealTimers()
     }
   })
+
+  it('hides stale empty assistant placeholders once a real assistant reply exists', () => {
+    const now = '2026-03-22T00:00:00.000Z'
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[
+          {
+            id: 'message-empty',
+            sessionId: 'session-1',
+            role: 'assistant',
+            agent: 'builder',
+            parts: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'message-real',
+            sessionId: 'session-1',
+            role: 'assistant',
+            agent: 'builder',
+            parts: [
+              {
+                id: 'part-1',
+                messageId: 'message-real',
+                sessionId: 'session-1',
+                type: 'text',
+                text: '正式回复',
+              },
+            ],
+            createdAt: now,
+            updatedAt: now,
+          },
+        ]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('正式回复')).toBeInTheDocument()
+    expect(screen.queryByText('暂无响应输出')).not.toBeInTheDocument()
+  })
 })

@@ -91,6 +91,77 @@ describe('studioEventReducer', () => {
     expect(readFirstAssistantText(message)).toBe('hello')
     expect(next.runtime.assistantTextByRunId['run-1']).toBe('hello')
   })
+
+  it('materializes tool events into the optimistic assistant message in real time', () => {
+    const state = {
+      ...createInitialStudioState(),
+      entities: {
+        ...createInitialStudioState().entities,
+        session: createSession(),
+        messagesById: {
+          'local-assistant-1': createAssistantMessage(),
+        },
+        messageOrder: ['local-assistant-1'],
+      },
+      runtime: {
+        ...createInitialStudioState().runtime,
+        optimisticAssistantMessageIdByRunId: {
+          'run-1': 'local-assistant-1',
+        },
+      },
+    }
+
+    const started = studioEventReducer(state, {
+      type: 'event_received',
+      event: {
+        type: 'tool.input-start',
+        properties: {
+          sessionId: 'session-1',
+          runId: 'run-1',
+          toolName: 'write',
+          callId: 'call-1',
+          raw: '{"path":"heart.py"}',
+        },
+      },
+    })
+
+    const running = studioEventReducer(started, {
+      type: 'event_received',
+      event: {
+        type: 'tool.call',
+        properties: {
+          sessionId: 'session-1',
+          runId: 'run-1',
+          toolName: 'write',
+          callId: 'call-1',
+          input: { path: 'heart.py' },
+        },
+      },
+    })
+
+    const completed = studioEventReducer(running, {
+      type: 'event_received',
+      event: {
+        type: 'tool.result',
+        properties: {
+          sessionId: 'session-1',
+          runId: 'run-1',
+          toolName: 'write',
+          callId: 'call-1',
+          status: 'completed',
+          output: 'ok',
+          title: 'Completed write',
+        },
+      },
+    })
+
+    const message = completed.entities.messagesById['local-assistant-1']
+    expect(message?.role).toBe('assistant')
+    const toolPart = message?.role === 'assistant' ? message.parts.find((part) => part.type === 'tool') : null
+    expect(toolPart?.type).toBe('tool')
+    expect(toolPart?.tool).toBe('write')
+    expect(toolPart?.state.status).toBe('completed')
+  })
 })
 
 function createSession(): StudioSession {

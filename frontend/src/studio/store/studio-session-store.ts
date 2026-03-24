@@ -232,9 +232,73 @@ function mergeMessages(
         delete merged[messageId]
       }
     }
+
+    const remainingOptimisticAssistantEntries = Object.entries(merged)
+      .filter((entry): entry is [string, Extract<StudioMessage, { role: 'assistant' }>] => {
+        const [messageId, message] = entry
+        return message.role === 'assistant' && isOptimisticLocalMessageId(messageId)
+      })
+      .sort(([, left], [, right]) => compareByCreatedAt(left, right))
+
+    const remainingServerAssistantMessages = incomingServerAssistantMessages
+      .filter((message) => !usedAssistantMessageIds.has(message.id))
+      .sort(compareByCreatedAt)
+
+    for (const [messageId, message] of remainingOptimisticAssistantEntries) {
+      const matchedServerMessage = remainingServerAssistantMessages.find((serverMessage) => (
+        isEmptyAssistantPlaceholder(message)
+          || doAssistantMessagesLookEquivalent(message, serverMessage)
+      ))
+      if (!matchedServerMessage) {
+        continue
+      }
+
+      const matchedIndex = remainingServerAssistantMessages.findIndex((candidate) => candidate.id === matchedServerMessage.id)
+      if (matchedIndex >= 0) {
+        remainingServerAssistantMessages.splice(matchedIndex, 1)
+      }
+
+      merged[matchedServerMessage.id] = {
+        ...matchedServerMessage,
+        createdAt: message.createdAt,
+      }
+      delete merged[messageId]
+    }
   }
 
   return merged
+}
+
+function isEmptyAssistantPlaceholder(message: Extract<StudioMessage, { role: 'assistant' }>): boolean {
+  return !message.parts.some((part) => {
+    if (part.type === 'tool') {
+      return true
+    }
+
+    return Boolean(part.text.trim())
+  })
+}
+
+function doAssistantMessagesLookEquivalent(
+  left: Extract<StudioMessage, { role: 'assistant' }>,
+  right: Extract<StudioMessage, { role: 'assistant' }>,
+): boolean {
+  const leftText = extractAssistantComparableText(left)
+  const rightText = extractAssistantComparableText(right)
+  if (!leftText || !rightText) {
+    return false
+  }
+
+  return leftText === rightText || leftText.includes(rightText) || rightText.includes(leftText)
+}
+
+function extractAssistantComparableText(message: Extract<StudioMessage, { role: 'assistant' }>): string {
+  return message.parts
+    .filter((part) => part.type === 'text' || part.type === 'reasoning')
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim()
 }
 
 function sortRecordIdsBy<T extends { id: string }>(

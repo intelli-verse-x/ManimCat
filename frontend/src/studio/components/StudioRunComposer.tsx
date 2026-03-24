@@ -34,7 +34,7 @@ export function StudioRunComposer({ session, messages, disabled, onRun, onRefres
         <button
           type="button"
           onClick={onExit}
-          className="rounded-full border border-black/10 px-3 py-1.5 text-sm text-text-secondary transition hover:border-black/20 hover:text-text-primary dark:border-white/10"
+          className="text-sm text-text-secondary transition hover:text-text-primary"
         >
           Exit
         </button>

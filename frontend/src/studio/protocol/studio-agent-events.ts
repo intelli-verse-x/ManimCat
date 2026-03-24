@@ -1,4 +1,5 @@
 import type {
+  StudioFileAttachment,
   StudioPermissionDecision,
   StudioPermissionRequest,
   StudioRun,
@@ -50,6 +51,44 @@ export interface StudioAssistantTextExternalEvent {
   }
 }
 
+export interface StudioToolInputStartExternalEvent {
+  type: 'tool.input-start'
+  properties: {
+    sessionId: string
+    runId: string
+    toolName: string
+    callId: string
+    raw: string
+  }
+}
+
+export interface StudioToolCallExternalEvent {
+  type: 'tool.call'
+  properties: {
+    sessionId: string
+    runId: string
+    toolName: string
+    callId: string
+    input: Record<string, unknown>
+  }
+}
+
+export interface StudioToolResultExternalEvent {
+  type: 'tool.result'
+  properties: {
+    sessionId: string
+    runId: string
+    toolName: string
+    callId: string
+    status: 'completed' | 'failed'
+    title?: string
+    output?: string
+    metadata?: Record<string, unknown>
+    attachments?: StudioFileAttachment[]
+    error?: string
+  }
+}
+
 export interface StudioPermissionAskedExternalEvent {
   type: 'permission.asked'
   properties: StudioPermissionRequest
@@ -94,6 +133,9 @@ export type StudioExternalEvent =
   | StudioWorkResultUpdatedExternalEvent
   | StudioRunUpdatedExternalEvent
   | StudioAssistantTextExternalEvent
+  | StudioToolInputStartExternalEvent
+  | StudioToolCallExternalEvent
+  | StudioToolResultExternalEvent
   | StudioPermissionAskedExternalEvent
   | StudioPermissionRepliedExternalEvent
   | StudioQuestionRequestedExternalEvent
