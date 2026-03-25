@@ -16,15 +16,17 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
   })
   const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null)
   const [orderedWorkIds, setOrderedWorkIds] = useState<string[]>([])
+  const incomingIds = studio.workSummaries.map((entry) => entry.work.id)
+  const incomingIdsKey = incomingIds.join('|')
 
   useEffect(() => {
-    const incomingIds = studio.workSummaries.map((entry) => entry.work.id)
     setOrderedWorkIds((current) => {
       const preserved = current.filter((id) => incomingIds.includes(id))
       const appended = incomingIds.filter((id) => !preserved.includes(id))
-      return [...appended, ...preserved]
+      const next = [...appended, ...preserved]
+      return areSameIds(current, next) ? current : next
     })
-  }, [studio.workSummaries])
+  }, [incomingIdsKey])
 
   const orderedWorkSummaries = useMemo(() => {
     const byId = new Map(studio.workSummaries.map((entry) => [entry.work.id, entry]))
@@ -33,12 +35,15 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
       .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
   }, [orderedWorkIds, studio.workSummaries])
 
+  const latestWorkId = orderedWorkSummaries[0]?.work.id ?? null
+
   useEffect(() => {
-    const latestWorkId = orderedWorkSummaries[0]?.work.id ?? null
-    if (latestWorkId) {
-      setSelectedWorkId(latestWorkId)
+    if (!latestWorkId) {
+      return
     }
-  }, [orderedWorkSummaries[0]?.work.id, orderedWorkSummaries[0]?.result?.id])
+
+    setSelectedWorkId((current) => (current === latestWorkId ? current : latestWorkId))
+  }, [latestWorkId])
 
   const effectiveSelectedWorkId =
     selectedWorkId && orderedWorkSummaries.some((entry) => entry.work.id === selectedWorkId)
@@ -47,7 +52,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
   const selected = studio.selectWork(effectiveSelectedWorkId)
 
   const handleReorderWorks = (nextWorkIds: string[]) => {
-    setOrderedWorkIds(nextWorkIds)
+    setOrderedWorkIds((current) => (areSameIds(current, nextWorkIds) ? current : nextWorkIds))
   }
 
   return (
@@ -96,4 +101,18 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
       <StudioPermissionModeModal {...studio.permissionModeModal} />
     </>
   )
+}
+
+function areSameIds(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+
+  return true
 }

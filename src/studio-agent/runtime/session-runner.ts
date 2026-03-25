@@ -225,7 +225,20 @@ export class StudioSessionRunner {
   }
 
   private async executePreparedRun(prepared: StudioPreparedRunContext) {
+    logger.info('Executing prepared studio run', {
+      sessionId: prepared.input.session.id,
+      runId: prepared.run.id,
+      agent: prepared.input.session.agentType,
+      hasCustomApiConfig: hasUsableCustomApiConfig(prepared.input.customApiConfig),
+      requestedToolChoice: prepared.input.toolChoice ?? null,
+    })
+
     if (hasUsableCustomApiConfig(prepared.input.customApiConfig)) {
+      logger.info('Studio run using direct agent loop', {
+        sessionId: prepared.input.session.id,
+        runId: prepared.run.id,
+        model: prepared.input.customApiConfig.model,
+      })
       return this.executeAgentLoop({
         prepared,
         customApiConfig: prepared.input.customApiConfig,
@@ -240,6 +253,13 @@ export class StudioSessionRunner {
       assistantMessage: prepared.assistantMessage,
       inputText: prepared.input.inputText,
       workContext: prepared.workContext
+    })
+
+    logger.info('Studio run resolved turn plan', {
+      sessionId: prepared.input.session.id,
+      runId: prepared.run.id,
+      hasAssistantText: Boolean(plan.assistantText),
+      toolCallCount: plan.toolCalls?.length ?? 0,
     })
 
     return this.executeResolvedPlan({
@@ -278,6 +298,12 @@ export class StudioSessionRunner {
     toolChoice?: StudioToolChoice
   }): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
     try {
+      logger.info('Studio run executing resolved plan stream', {
+        sessionId: input.prepared.input.session.id,
+        runId: input.prepared.run.id,
+        hasAssistantText: Boolean(input.plan.assistantText),
+        toolCallCount: input.plan.toolCalls?.length ?? 0,
+      })
       const outcome = await this.processor.processStream({
         session: input.prepared.input.session,
         run: input.prepared.run,
@@ -337,6 +363,12 @@ export class StudioSessionRunner {
     toolChoice?: StudioToolChoice
   }): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
     try {
+      logger.info('Studio run entering OpenAI tool loop', {
+        sessionId: input.prepared.input.session.id,
+        runId: input.prepared.run.id,
+        model: input.customApiConfig.model,
+        toolChoice: input.toolChoice ?? null,
+      })
       const outcome = await this.processor.processStream({
         session: input.prepared.input.session,
         run: input.prepared.run,

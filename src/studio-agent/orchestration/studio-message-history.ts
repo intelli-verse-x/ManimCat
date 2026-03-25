@@ -1,20 +1,12 @@
 import type OpenAI from 'openai'
 import type { StudioAssistantMessage, StudioMessage, StudioToolPart } from '../domain/types'
-
-interface StudioStoredAssistantToolCall {
-  id?: string
-  type?: 'function'
-  function?: {
-    name?: string
-    arguments?: string
-  }
-  [key: string]: unknown
-}
-
-interface StudioStoredAssistantPayload {
-  content?: string | Array<Record<string, unknown>> | null
-  tool_calls?: StudioStoredAssistantToolCall[]
-}
+import { createLogger } from '../../utils/logger'
+import {
+  summarizeConversationMessageForDebug,
+  type StudioStoredAssistantPayload,
+  type StudioStoredAssistantToolCall,
+} from './studio-provider-message'
+const logger = createLogger('StudioMessageHistory')
 
 export function buildStudioConversationMessages(input: {
   messages: StudioMessage[]
@@ -34,14 +26,24 @@ function toConversationMessages(message: StudioMessage): OpenAI.Chat.Completions
   const raw = readStoredAssistantPayload(message)
   const toolMessages = buildToolMessages(message)
   if (raw) {
-    return [
-      {
-        role: 'assistant',
-        content: raw.content as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam['content'],
-        tool_calls: raw.tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
-      },
+    const assistantMessage: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam = {
+      role: 'assistant',
+      content: raw.content as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam['content'],
+      tool_calls: raw.tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
+    }
+
+    const conversationMessages = [
+      assistantMessage,
       ...toolMessages
     ]
+
+    logger.info('Rehydrating stored assistant provider payload', {
+      messageId: message.id,
+      sessionId: message.sessionId,
+      conversationMessages: conversationMessages.map((item) => summarizeConversationMessageForDebug(item)),
+    })
+
+    return conversationMessages
   }
 
   const content = flattenAssistantMessage(message)

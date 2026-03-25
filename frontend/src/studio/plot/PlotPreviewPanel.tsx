@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ImageLightbox } from '../../components/image-preview/lightbox'
 import { useI18n } from '../../i18n'
 import type {
@@ -48,21 +48,33 @@ export function PlotPreviewPanel({
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [draggingWorkId, setDraggingWorkId] = useState<string | null>(null)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [previewMotionKey, setPreviewMotionKey] = useState(0)
 
   const stripItems = works.slice(0, 12)
-  const images = useMemo(() => {
-    return stripItems
-      .map((entry) => ({
+  const historyImages = useMemo(() => {
+    return stripItems.flatMap((entry) => (
+      getImageAttachments(entry.result?.attachments).map((attachment, imageIndex) => ({
         workId: entry.work.id,
-        attachment: entry.result?.attachments?.find(isImageAttachment) ?? null,
+        attachment,
         title: entry.work.title,
+        imageIndex,
       }))
-      .filter((entry): entry is { workId: string; attachment: StudioFileAttachment; title: string } => Boolean(entry.attachment))
+    ))
   }, [stripItems])
-
-  const activeImageIndex = Math.max(0, images.findIndex((entry) => entry.workId === selectedWorkId))
-  const activeImage = images[activeImageIndex] ?? null
-  const previewAttachment = result?.attachments?.find(isPreviewAttachment) ?? result?.attachments?.[0] ?? activeImage?.attachment ?? null
+  const currentWorkImages = useMemo(() => getImageAttachments(result?.attachments), [result?.attachments])
+  const currentImagePathsKey = currentWorkImages.map((attachment) => attachment.path).join('|')
+  const clampedImageIndex = currentWorkImages.length === 0
+    ? 0
+    : Math.min(selectedImageIndex, currentWorkImages.length - 1)
+  const selectedHistoryIndex = historyImages.findIndex((entry) => (
+    entry.workId === selectedWorkId && entry.imageIndex === clampedImageIndex
+  ))
+  const activeHistoryIndex = selectedHistoryIndex >= 0
+    ? selectedHistoryIndex
+    : historyImages.findIndex((entry) => entry.workId === selectedWorkId)
+  const activeHistoryEntry = historyImages[activeHistoryIndex] ?? null
+  const previewAttachment = currentWorkImages[clampedImageIndex] ?? activeHistoryEntry?.attachment ?? null
   const outputPath = formatOutputPath(previewAttachment, session, t('studio.plot.inlinePreview'), t('studio.plot.waitingOutputFile'))
 
   useEffect(() => {
@@ -71,21 +83,84 @@ export function PlotPreviewPanel({
     }
   }, [lightboxOpen])
 
-  const handlePrev = () => {
-    if (images.length <= 1) {
-      return
-    }
-    const nextIndex = activeImageIndex <= 0 ? images.length - 1 : activeImageIndex - 1
-    onSelectWork(images[nextIndex].workId)
-  }
+  useEffect(() => {
+    setSelectedImageIndex(0)
+  }, [selectedWorkId, result?.id])
 
-  const handleNext = () => {
-    if (images.length <= 1) {
+  useEffect(() => {
+    setSelectedImageIndex((current) => {
+      if (currentWorkImages.length === 0) {
+        return current === 0 ? current : 0
+      }
+      const next = Math.min(current, currentWorkImages.length - 1)
+      return next === current ? current : next
+    })
+  }, [currentImagePathsKey, currentWorkImages.length])
+
+  useEffect(() => {
+    if (!previewAttachment?.path) {
       return
     }
-    const nextIndex = activeImageIndex >= images.length - 1 ? 0 : activeImageIndex + 1
-    onSelectWork(images[nextIndex].workId)
-  }
+    setPreviewMotionKey((current) => current + 1)
+  }, [previewAttachment?.path, result?.id])
+
+  const handlePrev = useCallback(() => {
+    if (historyImages.length <= 1) {
+      return
+    }
+    const baseIndex = activeHistoryIndex >= 0 ? activeHistoryIndex : 0
+    const nextIndex = baseIndex <= 0 ? historyImages.length - 1 : baseIndex - 1
+    const nextEntry = historyImages[nextIndex]
+    onSelectWork(nextEntry.workId)
+    setSelectedImageIndex(nextEntry.imageIndex)
+  }, [activeHistoryIndex, historyImages, onSelectWork])
+
+  const handleNext = useCallback(() => {
+    if (historyImages.length <= 1) {
+      return
+    }
+    const baseIndex = activeHistoryIndex >= 0 ? activeHistoryIndex : 0
+    const nextIndex = baseIndex >= historyImages.length - 1 ? 0 : baseIndex + 1
+    const nextEntry = historyImages[nextIndex]
+    onSelectWork(nextEntry.workId)
+    setSelectedImageIndex(nextEntry.imageIndex)
+  }, [activeHistoryIndex, historyImages, onSelectWork])
+
+  useEffect(() => {
+    if (lightboxOpen || historyImages.length <= 1) {
+      return undefined
+    }
+
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) {
+        return
+      }
+
+      const target = event.target as HTMLElement | null
+      if (
+        target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || target?.isContentEditable
+      ) {
+        return
+      }
+
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault()
+        handlePrev()
+        return
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault()
+        handleNext()
+      }
+    }
+
+    window.addEventListener('keydown', handleWindowKeyDown, true)
+    return () => window.removeEventListener('keydown', handleWindowKeyDown, true)
+  }, [handleNext, handlePrev, historyImages.length, lightboxOpen])
 
   const moveWork = (targetWorkId: string) => {
     if (!draggingWorkId || draggingWorkId === targetWorkId) {
@@ -114,6 +189,7 @@ export function PlotPreviewPanel({
             <div className="min-w-0 font-mono text-[10px] uppercase tracking-[0.2em] text-text-secondary/40 transition-colors group-hover:text-text-secondary/70">
               {outputPath}
             </div>
+            <PlotCornerPaw className="h-3.5 w-3.5 text-text-secondary/20 transition-colors duration-500 group-hover:text-text-secondary/32" />
           </div>
         </div>
       </div>
@@ -122,9 +198,12 @@ export function PlotPreviewPanel({
         <div className="relative min-h-0 flex-1">
           <div className="flex h-full min-h-[360px] items-center justify-center sm:min-h-[460px] lg:min-h-[560px]">
             <PlotPreviewSurface
+              key={`${previewMotionKey}:${previewAttachment?.path ?? 'empty'}`}
               attachment={previewAttachment}
               result={result}
-              canNavigate={images.length > 1}
+              canNavigate={historyImages.length > 1}
+              currentIndex={activeHistoryIndex >= 0 ? activeHistoryIndex : 0}
+              total={historyImages.length}
               onOpen={() => setLightboxOpen(true)}
               onPrev={handlePrev}
               onNext={handleNext}
@@ -138,25 +217,27 @@ export function PlotPreviewPanel({
               <div className="text-[10px] font-bold uppercase tracking-[0.4em] text-text-secondary/35">{t('studio.plot.history')}</div>
               <div className="h-px w-8 bg-border/10" />
               <span className="font-mono text-[10px] text-text-secondary/40">
-                {works.length.toString().padStart(2, '0')}
+                {historyImages.length.toString().padStart(2, '0')}
               </span>
             </div>
           </div>
 
           <div className="mt-4 flex gap-4 overflow-x-auto pb-4 pt-1">
-            {stripItems.map((entry, index) => {
-              const selected = entry.work.id === selectedWorkId
-              const thumbnail = entry.result?.attachments?.find(isImageAttachment) ?? null
+            {historyImages.map((entry, index) => {
+              const selected = entry.workId === selectedWorkId && entry.imageIndex === clampedImageIndex
               return (
                 <button
-                  key={entry.work.id}
+                  key={`${entry.workId}-${entry.imageIndex}-${entry.attachment.path}`}
                   type="button"
                   draggable
-                  onClick={() => onSelectWork(entry.work.id)}
-                  onDragStart={() => setDraggingWorkId(entry.work.id)}
+                  onClick={() => {
+                    onSelectWork(entry.workId)
+                    setSelectedImageIndex(entry.imageIndex)
+                  }}
+                  onDragStart={() => setDraggingWorkId(entry.workId)}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={() => {
-                    moveWork(entry.work.id)
+                    moveWork(entry.workId)
                     setDraggingWorkId(null)
                   }}
                   onDragEnd={() => setDraggingWorkId(null)}
@@ -164,19 +245,18 @@ export function PlotPreviewPanel({
                     selected
                       ? 'scale-[0.96] border border-accent-rgb/25 bg-bg-secondary/60 shadow-inner'
                       : 'border border-transparent bg-bg-secondary/30 hover:scale-[0.98] hover:bg-bg-secondary/50'
-                  } ${draggingWorkId === entry.work.id ? 'opacity-50' : ''}`}
+                  } ${draggingWorkId === entry.workId ? 'opacity-50' : ''}`}
                 >
-                  {thumbnail ? (
-                    <img
-                      src={thumbnail.path}
-                      alt={thumbnail.name ?? entry.work.title}
-                      className={`h-full w-full object-cover transition-transform duration-700 ${selected ? 'scale-100' : 'scale-110 opacity-60 group-hover:scale-100 group-hover:opacity-100'}`}
-                    />
-                  ) : (
-                    <div className="font-mono text-[9px] tracking-tighter text-text-secondary/40">
-                      PLOT_{String(index + 1).padStart(2, '0')}
+                  <img
+                    src={entry.attachment.path}
+                    alt={entry.attachment.name ?? entry.title}
+                    className={`h-full w-full object-cover transition-transform duration-700 ${selected ? 'scale-100' : 'scale-110 opacity-60 group-hover:scale-100 group-hover:opacity-100'}`}
+                  />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/45 to-transparent px-2 py-1 text-left">
+                    <div className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/80">
+                      {String(index + 1).padStart(2, '0')}
                     </div>
-                  )}
+                  </div>
                   {selected && <div className="pointer-events-none absolute inset-0 bg-accent-rgb/5" />}
                 </button>
               )
@@ -187,14 +267,14 @@ export function PlotPreviewPanel({
 
       <ImageLightbox
         isOpen={lightboxOpen}
-        activeImage={activeImage?.attachment.path}
-        activeIndex={activeImageIndex}
-        total={images.length}
+        activeImage={previewAttachment?.path}
+        activeIndex={activeHistoryIndex >= 0 ? activeHistoryIndex : 0}
+        total={historyImages.length}
         zoom={zoom}
-        onZoomOut={() => setZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))}
-        onZoomIn={() => setZoom((value) => Math.min(4, Math.round((value + 0.1) * 10) / 10))}
-        onPrev={images.length > 1 ? handlePrev : undefined}
-        onNext={images.length > 1 ? handleNext : undefined}
+        variant="studio-light"
+        onZoomChange={setZoom}
+        onPrev={historyImages.length > 1 ? handlePrev : undefined}
+        onNext={historyImages.length > 1 ? handleNext : undefined}
         onClose={() => {
           setLightboxOpen(false)
           setZoom(1)
@@ -208,6 +288,8 @@ function PlotPreviewSurface(input: {
   attachment: StudioFileAttachment | null | undefined
   result: StudioWorkResult | null
   canNavigate: boolean
+  currentIndex: number
+  total: number
   onOpen: () => void
   onPrev: () => void
   onNext: () => void
@@ -215,7 +297,7 @@ function PlotPreviewSurface(input: {
   const { t } = useI18n()
   if (input.attachment?.mimeType?.startsWith('image/') || isImagePath(input.attachment?.path)) {
     return (
-      <div className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[20px] bg-bg-secondary/30 shadow-[0_28px_60px_rgba(15,23,42,0.08)]">
+      <div className="relative flex h-full w-full items-center justify-center overflow-visible">
         {input.canNavigate && (
           <>
             <button
@@ -232,12 +314,15 @@ function PlotPreviewSurface(input: {
             >
               →
             </button>
+            <div className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-black/30 px-3 py-1 font-mono text-[10px] tracking-[0.18em] text-white/85 backdrop-blur-sm">
+              {String(input.currentIndex + 1).padStart(2, '0')} / {String(input.total).padStart(2, '0')}
+            </div>
           </>
         )}
         <button
           type="button"
           onClick={input.onOpen}
-          className="flex h-full w-full cursor-zoom-in items-center justify-center"
+          className="flex h-full w-full cursor-zoom-in items-center justify-center animate-fade-in-soft"
           title={t('image.openTitle')}
         >
           <img
@@ -263,6 +348,10 @@ function PlotPreviewSurface(input: {
 
 function isPreviewAttachment(attachment: { path: string; mimeType?: string } | undefined) {
   return isImageAttachment(attachment)
+}
+
+function getImageAttachments(attachments: StudioFileAttachment[] | undefined): StudioFileAttachment[] {
+  return (attachments ?? []).filter(isImageAttachment)
 }
 
 function formatOutputPath(
@@ -295,4 +384,18 @@ function isImageAttachment(attachment: { path: string; mimeType?: string } | und
 
 function isImagePath(path?: string) {
   return Boolean(path && /\.(png|jpg|jpeg|gif|webp|svg)$/i.test(path))
+}
+
+function PlotCornerPaw({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" aria-hidden="true" className={`studio-paw-float ${className}`.trim()}>
+      <g fill="currentColor">
+        <ellipse cx="20" cy="18" rx="6" ry="8" transform="rotate(-18 20 18)" />
+        <ellipse cx="32" cy="13" rx="6" ry="8" />
+        <ellipse cx="44" cy="18" rx="6" ry="8" transform="rotate(18 44 18)" />
+        <ellipse cx="18" cy="31" rx="5" ry="7" transform="rotate(-30 18 31)" />
+        <path d="M32 28c-10 0-18 7-18 16 0 7 6 11 11 11 3 0 5-1 7-3 2 2 4 3 7 3 5 0 11-4 11-11 0-9-8-16-18-16Z" />
+      </g>
+    </svg>
+  )
 }

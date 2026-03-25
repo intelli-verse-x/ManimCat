@@ -186,4 +186,49 @@ describe('StudioCommandPanel', () => {
     expect(screen.getByText('正式回复')).toBeInTheDocument()
     expect(screen.queryByText('暂无响应输出')).not.toBeInTheDocument()
   })
+
+  it('renders markdown and math in studio messages', () => {
+    const now = '2026-03-22T00:00:00.000Z'
+    const { container } = render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[
+          {
+            id: 'message-user',
+            sessionId: 'session-1',
+            role: 'user',
+            text: '请解释 **二次函数** 的顶点。',
+            createdAt: now,
+            updatedAt: now,
+          },
+          {
+            id: 'message-assistant',
+            sessionId: 'session-1',
+            role: 'assistant',
+            agent: 'builder',
+            parts: [
+              {
+                id: 'part-1',
+                messageId: 'message-assistant',
+                sessionId: 'session-1',
+                type: 'text',
+                text: '公式是 $y = ax^2 + bx + c$，其中 **顶点** 可由\n\n$$x = -\\frac{b}{2a}$$\n\n求出。',
+              },
+            ],
+            createdAt: now,
+            updatedAt: now,
+          },
+        ]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelector('strong')).not.toBeNull()
+    expect(container.querySelector('.katex')).not.toBeNull()
+    expect(screen.getByText(/二次函数/)).toBeInTheDocument()
+  })
 })

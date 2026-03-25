@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
 import { useI18n } from '../../i18n'
+import { StudioMarkdown } from './StudioMarkdown'
 
 interface StudioCommandPanelProps {
   session: StudioSession | null
@@ -197,7 +198,7 @@ export function StudioCommandPanel({
         <button
           type="button"
           onClick={onExit}
-          className="rounded-full border border-border/10 px-4 py-1.5 text-[11px] uppercase tracking-widest text-text-secondary/50 transition hover:bg-rose-500/10 hover:text-rose-500/80"
+          className="text-[11px] font-medium uppercase tracking-[0.28em] text-text-secondary/45 transition hover:text-rose-500/80"
         >
           {t('common.close')}
         </button>
@@ -276,9 +277,10 @@ const UserMessageItem = memo(function UserMessageItem({
           <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-secondary/35">{t('studio.inputUser')}</span>
           <div className="h-px flex-1 bg-border/5" />
         </div>
-        <div className="text-[14px] font-medium leading-7 text-text-primary/80">
-          <div className="whitespace-pre-wrap break-words">{message.text}</div>
-        </div>
+        <StudioMarkdown
+          content={message.text}
+          className="text-[14px] font-medium leading-7 text-text-primary/80"
+        />
       </div>
     </div>
   )
@@ -327,10 +329,11 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
           )}
 
           {isStreamingTarget && hasStreamedText ? (
-            <div className="text-[15px] font-medium leading-8 text-text-primary/90 whitespace-pre-wrap break-words">
-              {streamedText}
-              {showCaret && <span className="studio-type-caret opacity-30">█</span>}
-            </div>
+            <StudioMarkdown
+              content={streamedText}
+              className="text-[15px] font-medium leading-8 text-text-primary/90"
+              showCaret={showCaret}
+            />
           ) : isStreamingTarget && !hasRenderableText ? (
             <div className="flex items-center gap-4 border-l border-accent-rgb/10 pl-1 ml-1">
               <span className="text-[13px] font-mono tracking-widest text-text-secondary/40">{t('studio.thinking')}</span>
@@ -344,9 +347,11 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
             const text = part.text.trim()
             if (!text) return null
             return (
-              <div key={`text-${i}`} className="text-[15px] font-medium leading-8 text-text-primary/90 whitespace-pre-wrap">
-                {text}
-              </div>
+              <StudioMarkdown
+                key={`text-${i}`}
+                content={text}
+                className="text-[15px] font-medium leading-8 text-text-primary/90"
+              />
             )
           })}
 

@@ -311,6 +311,43 @@ select option:checked {
   animation: studio-type-caret-blink 0.9s step-end infinite;
 }
 
+.studio-markdown {
+  word-break: break-word;
+}
+
+.studio-markdown > :first-child {
+  margin-top: 0;
+}
+
+.studio-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.studio-markdown p,
+.studio-markdown ul,
+.studio-markdown ol,
+.studio-markdown blockquote,
+.studio-markdown table,
+.studio-markdown hr {
+  margin: 0.9rem 0;
+}
+
+.studio-markdown ul,
+.studio-markdown ol {
+  padding-left: 1.4rem;
+}
+
+.studio-markdown li + li {
+  margin-top: 0.3rem;
+}
+
+.studio-markdown .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.1rem 0;
+}
+
 .canvas-transition-grid {
   background-image:
     linear-gradient(rgba(var(--border-rgb), 0.05) 1px, transparent 1px),

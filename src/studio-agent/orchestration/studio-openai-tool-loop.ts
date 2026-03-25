@@ -31,6 +31,14 @@ import {
 } from '../runs/autonomy-policy'
 import { buildStudioAgentSystemPrompt } from './studio-agent-prompt'
 import { buildStudioConversationMessages } from './studio-message-history'
+import {
+  persistProviderMessageSnapshot,
+  summarizeAssistantMessageForDebug,
+  summarizeConversationMessageForDebug,
+  summarizeConversationTailForDebug,
+  toAssistantConversationMessage,
+} from './studio-provider-message'
+import { requestStudioChatCompletion } from './studio-provider-request'
 import { determineStudioAgentLoopAction } from './studio-agent-loop-policy'
 import { buildStudioChatTools } from './studio-tool-schema'
 import { buildStudioPreToolCommentary } from '../runtime/pre-tool-commentary'
@@ -119,14 +127,28 @@ export async function* createStudioOpenAIToolLoop(
     })
     autonomy = readStudioRunAutonomyMetadata(input.run.metadata)
 
-    const completion = await client.chat.completions.create({
+    logger.info('Studio provider request starting', {
+      sessionId: input.session.id,
+      runId: input.run.id,
+      step: step + 1,
+      conversationMessages: conversation.length + 1,
+      toolCount: tools.length,
+      assistantMessageId: currentAssistantMessage.id,
+      conversationTail: summarizeConversationTailForDebug(conversation),
+    })
+    const completion = await requestStudioChatCompletion({
+      client,
       model,
       messages: [
         { role: 'system', content: systemPrompt },
         ...conversation
       ],
       tools,
-      tool_choice: toolChoice
+      toolChoice: toolChoice,
+      sessionId: input.session.id,
+      runId: input.run.id,
+      step: step + 1,
+      assistantMessageId: currentAssistantMessage.id,
     })
 
     const choice = completion.choices[0]
@@ -142,6 +164,7 @@ export async function* createStudioOpenAIToolLoop(
       finishReason: choice?.finish_reason ?? null,
       toolCallCount: toolCalls.length,
       hasAssistantText: Boolean(assistantText),
+      providerMessage: summarizeAssistantMessageForDebug(message),
     })
 
     await persistProviderMessageSnapshot({
@@ -189,6 +212,13 @@ export async function* createStudioOpenAIToolLoop(
     }
 
     conversation.push(toAssistantConversationMessage(message, assistantText, toolCalls))
+    logger.info('Prepared assistant conversation message for next step', {
+      sessionId: input.session.id,
+      runId: input.run.id,
+      step: step + 1,
+      assistantMessageId: currentAssistantMessage.id,
+      replayMessage: summarizeConversationMessageForDebug(conversation.at(-1)),
+    })
 
     let stepFailureMessage: string | null = null
     const hasAssistantText = Boolean(assistantText)
@@ -407,54 +437,5 @@ function eventToTranscript(event: StudioProcessorStreamEvent, current: string): 
     return `Tool execution failed: ${event.error}`
   }
   return current
-}
-
-function toAssistantConversationMessage(
-  message: OpenAI.Chat.Completions.ChatCompletionMessage | undefined,
-  assistantText: string,
-  toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
-): OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam {
-  return {
-    role: 'assistant',
-    content: message?.content ?? (assistantText || null),
-    tool_calls: toolCalls.length
-      ? toolCalls.map((toolCall) => ({
-          ...toolCall,
-          function: {
-            ...toolCall.function,
-            arguments: toolCall.function.arguments
-          }
-        }))
-      : undefined
-  }
-}
-
-async function persistProviderMessageSnapshot(input: {
-  messageStore: StudioMessageStore
-  assistantMessage: StudioAssistantMessage
-  providerMessage?: OpenAI.Chat.Completions.ChatCompletionMessage
-}): Promise<void> {
-  if (!input.providerMessage) {
-    return
-  }
-
-  const metadata = {
-    ...(input.assistantMessage.metadata ?? {}),
-    providerMessage: {
-      content: input.providerMessage.content ?? null,
-      tool_calls: input.providerMessage.tool_calls?.map((toolCall) => ({
-        ...toolCall,
-        function: {
-          ...toolCall.function,
-          arguments: toolCall.function.arguments
-        }
-      })) ?? []
-    }
-  }
-
-  input.assistantMessage.metadata = metadata
-  await input.messageStore.updateAssistantMessage(input.assistantMessage.id, {
-    metadata
-  })
 }
 

@@ -1,4 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState, type WheelEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { useModalTransition } from '../../hooks/useModalTransition';
 import { useI18n } from '../../i18n';
 
 interface ImageLightboxProps {
@@ -7,8 +9,10 @@ interface ImageLightboxProps {
   activeIndex: number;
   total: number;
   zoom: number;
-  onZoomOut: () => void;
-  onZoomIn: () => void;
+  variant?: 'dark' | 'studio-light';
+  minZoom?: number;
+  maxZoom?: number;
+  onZoomChange: (nextZoom: number) => void;
   onPrev?: () => void;
   onNext?: () => void;
   onClose: () => void;
@@ -20,67 +24,212 @@ export function ImageLightbox({
   activeIndex,
   total,
   zoom,
-  onZoomOut,
-  onZoomIn,
+  variant = 'dark',
+  minZoom = 0.5,
+  maxZoom = 4,
+  onZoomChange,
   onPrev,
   onNext,
   onClose,
 }: ImageLightboxProps) {
   const { t } = useI18n();
+  const { shouldRender, isExiting } = useModalTransition(isOpen, 320);
+  const shellRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [transformOrigin, setTransformOrigin] = useState('center center');
+  const isStudioLight = variant === 'studio-light';
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!shouldRender) {
       return undefined;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        event.preventDefault();
         onClose();
       } else if (event.key === 'ArrowLeft') {
+        event.preventDefault();
         onPrev?.();
       } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
         onNext?.();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, onNext, onPrev]);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [onClose, onNext, onPrev, shouldRender]);
 
-  if (!isOpen || !activeImage) {
+  useEffect(() => {
+    if (!shouldRender || typeof document === 'undefined') {
+      return undefined;
+    }
+
+    const { body } = document;
+    const previousOverflow = body.style.overflow;
+    body.style.overflow = 'hidden';
+
+    return () => {
+      body.style.overflow = previousOverflow;
+    };
+  }, [shouldRender]);
+
+  useEffect(() => {
+    if (!shouldRender) {
+      setTransformOrigin('center center');
+    }
+  }, [shouldRender]);
+
+  useEffect(() => {
+    if (!shouldRender) {
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      shellRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [shouldRender]);
+
+  if (!shouldRender || !activeImage) {
     return null;
   }
 
-  return (
-    <div className="fixed inset-0 z-[80] bg-black/85 backdrop-blur-sm flex flex-col">
+  const imageScaleStyle = {
+    transform: `scale(${zoom})`,
+    transformOrigin,
+  };
+
+  const handleStepZoom = (delta: number) => {
+    onZoomChange(roundZoom(clampZoom(zoom + delta, minZoom, maxZoom)));
+  };
+
+  const handleStudioWheel = (event: WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+
+    const image = imageRef.current;
+    const viewport = viewportRef.current;
+    if (!image || !viewport) {
+      return;
+    }
+
+    const nextZoom = roundZoom(clampZoom(zoom + (event.deltaY < 0 ? 0.12 : -0.12), minZoom, maxZoom));
+    if (nextZoom === zoom) {
+      return;
+    }
+
+    const imageRect = image.getBoundingClientRect();
+    const viewportRect = viewport.getBoundingClientRect();
+    const normalizedX = clampRatio((event.clientX - imageRect.left) / Math.max(imageRect.width, 1));
+    const normalizedY = clampRatio((event.clientY - imageRect.top) / Math.max(imageRect.height, 1));
+    const originX = `${(normalizedX * 100).toFixed(2)}%`;
+    const originY = `${(normalizedY * 100).toFixed(2)}%`;
+    const pointerOffsetX = event.clientX - viewportRect.left + viewport.scrollLeft;
+    const pointerOffsetY = event.clientY - viewportRect.top + viewport.scrollTop;
+    const zoomRatio = nextZoom / Math.max(zoom, 0.0001);
+
+    setTransformOrigin(`${originX} ${originY}`);
+    onZoomChange(nextZoom);
+
+    window.requestAnimationFrame(() => {
+      const nextScrollLeft = pointerOffsetX * zoomRatio - (event.clientX - viewportRect.left);
+      const nextScrollTop = pointerOffsetY * zoomRatio - (event.clientY - viewportRect.top);
+      viewport.scrollLeft = Math.max(0, nextScrollLeft);
+      viewport.scrollTop = Math.max(0, nextScrollTop);
+    });
+  };
+
+  if (isStudioLight) {
+    return createPortal(
+      <div
+        ref={shellRef}
+        tabIndex={-1}
+        className={`fixed inset-0 z-[180] overflow-hidden bg-white/30 text-text-primary backdrop-blur-2xl ${
+          isExiting ? 'animate-fade-out-soft' : 'animate-fade-in-soft'
+        }`}
+      >
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.94),_rgba(255,255,255,0.5)_42%,_rgba(244,244,245,0.26)_100%)]" />
+          <div className="absolute left-[-8%] top-[-10%] h-[38vh] w-[38vw] rounded-full bg-white/55 blur-[110px]" />
+          <div className="absolute bottom-[-16%] right-[-6%] h-[42vh] w-[34vw] rounded-full bg-slate-200/45 blur-[120px]" />
+        </div>
+
+        <button
+          type="button"
+          aria-label={t('common.close')}
+          onClick={onClose}
+          className="absolute inset-0 h-full w-full cursor-default"
+        />
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-6 top-5 z-20 text-[11px] font-medium uppercase tracking-[0.28em] text-text-secondary/55 transition hover:text-text-primary"
+        >
+          {t('common.close')}
+        </button>
+
+        <div
+          ref={viewportRef}
+          className="relative z-10 flex h-full w-full items-center justify-center overflow-auto p-4 sm:p-6"
+          onWheel={handleStudioWheel}
+        >
+          <img
+            ref={imageRef}
+            src={activeImage}
+            alt={t('image.lightboxAlt', { index: activeIndex + 1 })}
+            className={`max-w-none select-none drop-shadow-[0_30px_80px_rgba(148,163,184,0.28)] ${
+              isExiting ? 'animate-fade-out-soft' : 'animate-fade-in-soft'
+            }`}
+            style={{
+              ...imageScaleStyle,
+              maxWidth: 'min(98vw, 2200px)',
+              maxHeight: 'min(95vh, 1800px)',
+            }}
+          />
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return createPortal(
+    <div
+      ref={shellRef}
+      tabIndex={-1}
+      className="fixed inset-0 z-[180] flex flex-col bg-black/85 text-white/90 backdrop-blur-sm"
+    >
       <div className="flex items-center justify-between px-5 py-3 text-white/90">
         <div className="text-xs">
           {t('image.lightboxTitle', { current: activeIndex + 1, total })}
         </div>
         <div className="flex items-center gap-3">
           {onPrev ? (
-            <button type="button" onClick={onPrev} className="px-2 py-1 rounded bg-white/15 hover:bg-white/25 text-xs">
+            <button type="button" onClick={onPrev} className="rounded bg-white/15 px-2 py-1 text-xs hover:bg-white/25">
               ←
             </button>
           ) : null}
           {onNext ? (
-            <button type="button" onClick={onNext} className="px-2 py-1 rounded bg-white/15 hover:bg-white/25 text-xs">
+            <button type="button" onClick={onNext} className="rounded bg-white/15 px-2 py-1 text-xs hover:bg-white/25">
               →
             </button>
           ) : null}
-          <button type="button" onClick={onZoomOut} className="px-2 py-1 rounded bg-white/15 hover:bg-white/25 text-xs">
+          <button type="button" onClick={() => handleStepZoom(-0.1)} className="rounded bg-white/15 px-2 py-1 text-xs hover:bg-white/25">
             -
           </button>
           <span className="text-xs tabular-nums">{Math.round(zoom * 100)}%</span>
-          <button type="button" onClick={onZoomIn} className="px-2 py-1 rounded bg-white/15 hover:bg-white/25 text-xs">
+          <button type="button" onClick={() => handleStepZoom(0.1)} className="rounded bg-white/15 px-2 py-1 text-xs hover:bg-white/25">
             +
           </button>
-          <button type="button" onClick={onClose} className="px-2 py-1 rounded bg-white/15 hover:bg-white/25 text-xs">
+          <button type="button" onClick={onClose} className="rounded bg-white/15 px-2 py-1 text-xs hover:bg-white/25">
             {t('common.close')}
           </button>
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-center overflow-auto px-6 pb-6">
+      <div className="flex flex-1 items-center justify-center overflow-auto px-6 pb-6">
         <img
           src={activeImage}
           alt={t('image.lightboxAlt', { index: activeIndex + 1 })}
@@ -88,6 +237,19 @@ export function ImageLightbox({
           style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
+}
+
+function clampZoom(value: number, minZoom: number, maxZoom: number) {
+  return Math.min(maxZoom, Math.max(minZoom, value));
+}
+
+function roundZoom(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function clampRatio(value: number) {
+  return Math.min(1, Math.max(0, value));
 }

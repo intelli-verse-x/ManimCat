@@ -99,8 +99,8 @@ export const ImagePreview = memo(function ImagePreview({ imageUrls }: ImagePrevi
         activeIndex={safeActiveIndex}
         total={imageUrls.length}
         zoom={zoom}
-        onZoomOut={() => setZoom((z) => Math.max(0.5, Math.round((z - 0.1) * 10) / 10))}
-        onZoomIn={() => setZoom((z) => Math.min(3, Math.round((z + 0.1) * 10) / 10))}
+        maxZoom={3}
+        onZoomChange={setZoom}
         onClose={() => {
           setIsLightboxOpen(false);
           setZoom(1);

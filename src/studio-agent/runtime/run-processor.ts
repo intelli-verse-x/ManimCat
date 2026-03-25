@@ -179,6 +179,13 @@ export class StudioRunProcessor {
         case 'text-end': {
           const text = activeTextValue.trim()
           if (text) {
+            logger.info('Publishing assistant text event', {
+              sessionId: input.session.id,
+              runId: input.run.id,
+              assistantMessageId: currentAssistantMessage.id,
+              textLength: text.length,
+              textPreview: text.length > 120 ? `${text.slice(0, 117)}...` : text,
+            })
             input.eventBus?.publish({
               type: 'assistant_text',
               sessionId: input.session.id,
