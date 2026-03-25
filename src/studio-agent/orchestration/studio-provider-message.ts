@@ -21,18 +21,11 @@ export function toAssistantConversationMessage(
   assistantText: string,
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
 ): OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam {
+  const normalizedToolCalls = normalizeStoredToolCalls(toolCalls)
   return {
     role: 'assistant',
     content: message?.content ?? (assistantText || null),
-    tool_calls: toolCalls.length
-      ? toolCalls.map((toolCall) => ({
-          ...toolCall,
-          function: {
-            ...toolCall.function,
-            arguments: toolCall.function.arguments
-          }
-        }))
-      : undefined
+    tool_calls: normalizedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
   }
 }
 
@@ -59,16 +52,25 @@ export async function persistProviderMessageSnapshot(input: {
 export function buildStoredProviderMessagePayload(
   providerMessage: OpenAI.Chat.Completions.ChatCompletionMessage
 ): StudioStoredAssistantPayload {
+  const toolCalls = normalizeStoredToolCalls(providerMessage.tool_calls)
   return {
     content: providerMessage.content ?? null,
-    tool_calls: providerMessage.tool_calls?.map((toolCall) => ({
-      ...toolCall,
-      function: {
-        ...toolCall.function,
-        arguments: toolCall.function.arguments
-      }
-    })) ?? []
+    tool_calls: toolCalls
   }
+}
+function normalizeStoredToolCalls(
+  toolCalls: readonly OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
+): StudioStoredAssistantToolCall[] | undefined {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+    return undefined
+  }
+  return toolCalls.map((toolCall) => ({
+    ...toolCall,
+    function: {
+      ...toolCall.function,
+      arguments: toolCall.function.arguments
+    }
+  }))
 }
 
 export function summarizeConversationTailForDebug(
@@ -201,3 +203,7 @@ function readObjectKeys(value: unknown): string[] {
   }
   return Object.keys(value as Record<string, unknown>)
 }
+
+
+
+

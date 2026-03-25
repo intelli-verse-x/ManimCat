@@ -81,8 +81,16 @@ function readStoredAssistantPayload(message: StudioAssistantMessage): {
 
   return {
     content: content ?? null,
-    tool_calls: Array.isArray(payload.tool_calls) ? payload.tool_calls : undefined
+    tool_calls: normalizeStoredToolCalls(payload.tool_calls)
   }
+}
+function normalizeStoredToolCalls(
+  toolCalls: StudioStoredAssistantToolCall[] | undefined
+): StudioStoredAssistantToolCall[] | undefined {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
+    return undefined
+  }
+  return toolCalls
 }
 
 function normalizeStoredContent(content: unknown): string | Array<Record<string, unknown>> | null | undefined {
@@ -119,4 +127,6 @@ function flattenAssistantMessage(message: Extract<StudioMessage, { role: 'assist
 
   return sections.join('\n\n').trim()
 }
+
+
 
