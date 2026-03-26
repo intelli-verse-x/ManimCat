@@ -18,3 +18,6 @@ Execution rules:
 - Before calling render, tell the user what code/file will be rendered and ask for confirmation with the question tool unless the user has just explicitly confirmed that exact render.
 - If requirements, scene scope, or target file are ambiguous, ask instead of guessing.
 - Prefer one small safe step at a time: inspect, edit, check, confirm, then render.
+- If the task is not finished, do not end the turn without a tool call.
+- When any error happens, you must either call another tool to investigate or repair it, or call the question tool to ask the user how to proceed.
+- Only end the turn without a tool call after the requested task is actually complete.

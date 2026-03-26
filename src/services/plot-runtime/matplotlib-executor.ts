@@ -61,25 +61,30 @@ async function findPngOutputs(outputDir: string): Promise<string[]> {
 
 async function runPython(scriptPath: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
   const candidates = [
-    { command: 'python', args: [scriptPath, ...args] },
-    { command: 'py', args: ['-3', scriptPath, ...args] },
+    { command: 'python', args: [scriptPath, ...args], matplotlibConfigDirIndex: 2 },
+    { command: 'py', args: ['-3', scriptPath, ...args], matplotlibConfigDirIndex: 4 },
   ]
 
-  let lastError = ''
+  const failures: string[] = []
   for (const candidate of candidates) {
     try {
-      return await spawnProcess(candidate.command, candidate.args)
+      return await spawnProcess(candidate.command, candidate.args, candidate.matplotlibConfigDirIndex)
     } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error)
+      const message = error instanceof Error ? error.message : String(error)
+      failures.push(`${candidate.command} failed: ${message}`)
     }
   }
 
-  throw new Error(`Unable to execute Python for matplotlib render. ${lastError}`)
+  throw new Error(`Unable to execute Python for matplotlib render. ${failures.join(' | ')}`)
 }
 
-function spawnProcess(command: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
+function spawnProcess(
+  command: string,
+  args: string[],
+  matplotlibConfigDirIndex: number
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    const matplotlibConfigDir = command === 'py' ? args[3] : args[2]
+    const matplotlibConfigDir = args[matplotlibConfigDirIndex]
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {

@@ -29,6 +29,8 @@ export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPrompt
     'If the user asks for rendering but has not yet confirmed the exact code/file to render, summarize the planned render target and use the question tool to ask for confirmation first.',
     renderBlockerText,
     'When repairing an existing file after a render failure, prefer the smallest local edit or apply_patch change that fixes the issue. Do not rewrite the whole file unless the file is tiny or the change is genuinely broad.',
+    'If the task is not finished, do not end the turn without a tool call. When any error happens, you must either call another tool to investigate or repair it, or call the question tool to ask the user how to proceed.',
+    'Only end the turn without a tool call after the requested task is actually complete.',
     'When you have enough information and no tool is needed, answer normally in plain text.',
     'Keep replies compact and readable. Respond in plain text, not Markdown.',
     'Do not use markdown bold markers such as **text**, do not use backticks or inline code formatting, and do not use fenced code blocks.',
