@@ -34,9 +34,11 @@ export function mergeMessages(
         debugStudioMessages('merge-user-message', {
           optimisticMessageId: messageId,
           serverMessageId: matchedServerMessage.id,
+          keptRenderId: message.renderId ?? message.id,
         })
         merged[matchedServerMessage.id] = {
           ...matchedServerMessage,
+          renderId: message.renderId ?? message.id,
           createdAt: message.createdAt,
         }
         delete merged[messageId]
@@ -65,12 +67,14 @@ export function mergeMessages(
         debugStudioMessages('merge-assistant-message-primary', {
           optimisticMessageId: messageId,
           serverMessageId: matchedServerMessage.id,
+          keptRenderId: message.renderId ?? message.id,
           optimisticCreatedAt: message.createdAt,
           serverCreatedAt: matchedServerMessage.createdAt,
           optimisticEmpty: isEmptyAssistantPlaceholder(message),
         })
         merged[matchedServerMessage.id] = {
           ...matchedServerMessage,
+          renderId: message.renderId ?? message.id,
           createdAt: message.createdAt,
         }
         delete merged[messageId]
@@ -103,11 +107,13 @@ export function mergeMessages(
 
       merged[matchedServerMessage.id] = {
         ...matchedServerMessage,
+        renderId: message.renderId ?? message.id,
         createdAt: message.createdAt,
       }
       debugStudioMessages('merge-assistant-message-fallback', {
         optimisticMessageId: messageId,
         serverMessageId: matchedServerMessage.id,
+        keptRenderId: message.renderId ?? message.id,
         optimisticCreatedAt: message.createdAt,
         serverCreatedAt: matchedServerMessage.createdAt,
         optimisticEmpty: isEmptyAssistantPlaceholder(message),
@@ -156,7 +162,8 @@ function mergeRecord<T extends { id: string }>(current: Record<string, T>, items
 function mergeMessageRecord(current: Record<string, StudioMessage>, items: StudioMessage[]): Record<string, StudioMessage> {
   return items.reduce<Record<string, StudioMessage>>((next, item) => {
     const existing = next[item.id]
-    next[item.id] = shouldPreserveMessageReference(existing, item) ? existing : item
+    const normalizedIncoming = normalizeMessage(item, existing)
+    next[item.id] = shouldPreserveMessageReference(existing, normalizedIncoming) ? existing : normalizedIncoming
     return next
   }, { ...current })
 }
@@ -228,6 +235,7 @@ function shouldPreserveMessageReference(current: StudioMessage | undefined, inco
 
   if (
     current.id !== incoming.id
+    || (current.renderId ?? current.id) !== (incoming.renderId ?? incoming.id)
     || current.role !== incoming.role
     || current.createdAt !== incoming.createdAt
     || current.updatedAt !== incoming.updatedAt
@@ -244,6 +252,17 @@ function shouldPreserveMessageReference(current: StudioMessage | undefined, inco
   }
 
   return false
+}
+
+function normalizeMessage(message: StudioMessage, existing?: StudioMessage): StudioMessage {
+  const renderId = existing?.renderId ?? message.renderId ?? message.id
+  if (message.renderId === renderId) {
+    return message
+  }
+  return {
+    ...message,
+    renderId,
+  }
 }
 
 function isTerminalRunStatus(status: StudioRun['status']): boolean {

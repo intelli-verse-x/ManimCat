@@ -243,13 +243,13 @@ function applyStudioExternalEvent(state: StudioSessionState, event: StudioExtern
         },
       }
     case 'assistant.text':
-      return applyAssistantTextEvent(nextBase, event.properties.runId, event.properties.text)
+      return applyAssistantTextEvent(nextBase, event.properties.runId, event.properties.text, event.properties.messageId)
     case 'tool.input-start':
-      return applyToolInputStartEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties.raw)
+      return applyToolInputStartEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties.raw, event.properties.messageId)
     case 'tool.call':
-      return applyToolCallEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties.input)
+      return applyToolCallEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties.input, event.properties.messageId)
     case 'tool.result':
-      return applyToolResultEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties)
+      return applyToolResultEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties, event.properties.messageId)
     case 'permission.asked': {
       const requests = [
         ...nextBase.entities.pendingPermissionOrder
@@ -350,3 +350,4 @@ function uniqPermissions(requests: StudioPermissionRequest[]): StudioPermissionR
   }
   return [...byId.values()]
 }
+

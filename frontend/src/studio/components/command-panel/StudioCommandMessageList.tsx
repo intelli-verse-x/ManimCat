@@ -1,4 +1,5 @@
-import { memo, useCallback, type RefObject } from 'react'
+import { memo, useCallback, useEffect, useRef, type RefObject } from 'react'
+import { debugStudioMessages } from '../../agent-response/debug'
 import { useCommandStoreSelector } from './use-command-store-selector'
 import { selectVisibleMessageIds } from './selectors'
 import type { StudioCommandPanelStore } from './store'
@@ -18,6 +19,24 @@ export const StudioCommandMessageList = memo(function StudioCommandMessageList({
     [],
   )
   const visibleMessageIds = useCommandStoreSelector(store, selectIds, areIdListsEqual)
+  const prevIdsRef = useRef<string[]>([])
+
+  useEffect(() => {
+    const previousIds = prevIdsRef.current
+    const added = visibleMessageIds.filter((id) => !previousIds.includes(id))
+    const removed = previousIds.filter((id) => !visibleMessageIds.includes(id))
+
+    debugStudioMessages('command-list-update', {
+      total: visibleMessageIds.length,
+      ids: visibleMessageIds,
+      sameReference: previousIds === visibleMessageIds,
+      changed: !areIdListsEqual(previousIds, visibleMessageIds),
+      added,
+      removed,
+    })
+
+    prevIdsRef.current = visibleMessageIds
+  }, [visibleMessageIds])
 
   return (
     <div className="flex flex-col space-y-12">

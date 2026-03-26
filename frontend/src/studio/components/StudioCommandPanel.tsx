@@ -190,7 +190,7 @@ export function StudioCommandPanel({
   }, [animatedAssistantText, latestAssistantText])
 
   return (
-    <section className="studio-terminal flex h-full min-h-0 min-w-0 flex-1 flex-col bg-bg-primary/20 backdrop-blur-md">
+    <section className="studio-terminal flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <header className="shrink-0 flex items-center justify-between gap-4 px-8 py-5">
         <div className="flex items-center gap-3">
           <div className="h-2 w-2 rounded-full bg-accent-rgb/20 animate-pulse" />
@@ -218,7 +218,7 @@ export function StudioCommandPanel({
         <StudioCommandMessageList store={commandStore} endRef={endRef} />
       </div>
 
-      <footer className="shrink-0 bg-bg-primary/30 px-8 py-6 backdrop-blur-md">
+      <footer className="shrink-0 px-8 py-6">
         <div className="flex items-center gap-4">
           <span className="font-mono text-sm text-text-secondary/40 tracking-widest">{'>'}</span>
           <input

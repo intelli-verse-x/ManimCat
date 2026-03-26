@@ -64,7 +64,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
       >
         <div className="relative h-screen overflow-hidden">
           <div className="flex h-full min-h-0 flex-col xl:flex-row">
-            <div className="min-h-0 bg-white/72 shadow-[12px_0_36px_rgba(15,23,42,0.06)] backdrop-blur-xl xl:w-[36%] xl:min-w-[360px] xl:max-w-[500px]">
+            <div className="relative min-h-0 border-b border-border/4 xl:w-[36%] xl:min-w-[360px] xl:max-w-[500px] xl:border-b-0 xl:border-r xl:border-border/5">
               <StudioCommandPanel
                 session={studio.session}
                 messages={studio.messages}

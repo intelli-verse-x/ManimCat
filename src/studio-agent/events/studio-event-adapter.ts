@@ -53,6 +53,7 @@ export function adaptStudioEvent(event: StudioAgentEvent): StudioExternalEvent |
         properties: {
           sessionId: event.sessionId,
           runId: event.runId,
+          messageId: event.messageId,
           toolName: event.toolName,
           callId: event.callId,
           raw: event.raw
@@ -65,6 +66,7 @@ export function adaptStudioEvent(event: StudioAgentEvent): StudioExternalEvent |
         properties: {
           sessionId: event.sessionId,
           runId: event.runId,
+          messageId: event.messageId,
           toolName: event.toolName,
           callId: event.callId,
           input: event.input
@@ -77,6 +79,7 @@ export function adaptStudioEvent(event: StudioAgentEvent): StudioExternalEvent |
         properties: {
           sessionId: event.sessionId,
           runId: event.runId,
+          messageId: event.messageId,
           toolName: event.toolName,
           callId: event.callId,
           status: event.status,
@@ -137,6 +140,7 @@ export function adaptStudioEvent(event: StudioAgentEvent): StudioExternalEvent |
         properties: {
           sessionId: event.sessionId,
           runId: event.runId,
+          messageId: event.messageId,
           text: event.text
         }
       }
@@ -145,4 +149,5 @@ export function adaptStudioEvent(event: StudioAgentEvent): StudioExternalEvent |
       return null
   }
 }
+
 

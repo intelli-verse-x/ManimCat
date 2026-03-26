@@ -40,7 +40,7 @@ export function selectVisibleMessageIds(snapshot: StudioCommandPanelSnapshot): s
         isBusy: snapshot.isBusy,
       })
     })
-    .map((message) => message.id)
+    .map((message) => message.renderId ?? message.id)
 
   visibleMessageIdsCache = {
     messages: snapshot.messages,
@@ -55,7 +55,7 @@ export function selectRowView(
   snapshot: StudioCommandPanelSnapshot,
   messageId: string,
 ): StudioCommandRowView {
-  const message = snapshot.messages.find((entry) => entry.id === messageId) ?? null
+  const message = snapshot.messages.find((entry) => (entry.renderId ?? entry.id) === messageId) ?? null
   if (!message) {
     return {
       message: null,

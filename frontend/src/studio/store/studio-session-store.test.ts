@@ -43,6 +43,7 @@ describe('mergeStudioSnapshot', () => {
     expect(next.entities.messagesById['local-assistant-1']).toBeUndefined()
     expect(next.entities.messagesById['server-assistant-1']?.role).toBe('assistant')
     expect(next.entities.messageOrder).toEqual(['server-user-1', 'server-assistant-1'])
+    expect(next.runtime.pendingAssistantMessageId).toBeNull()
   })
 
   it('does not replace a new optimistic assistant placeholder with an older server assistant message', () => {
@@ -141,6 +142,55 @@ describe('mergeStudioSnapshot', () => {
     expect(next.entities.messagesById['local-assistant-1']).toBeUndefined()
     expect(next.entities.messagesById['server-assistant-1']?.role).toBe('assistant')
     expect(next.entities.messageOrder).toEqual(['server-assistant-1'])
+  })
+
+  it('remaps active optimistic assistant bindings to the adopted server message id', () => {
+    const session = createSession()
+    const current = {
+      ...createInitialStudioState(),
+      entities: {
+        ...createInitialStudioState().entities,
+        session,
+        messagesById: {
+          'local-assistant-1': createAssistantMessage('local-assistant-1', [], '2026-03-24T00:00:00.000Z'),
+        },
+        messageOrder: ['local-assistant-1'],
+      },
+      runtime: {
+        ...createInitialStudioState().runtime,
+        optimisticAssistantMessageIdByRunId: {
+          'run-1': 'local-assistant-1',
+        },
+        pendingAssistantMessageId: 'local-assistant-1',
+      },
+    }
+
+    const snapshot: StudioSessionSnapshot = {
+      session,
+      messages: [
+        createAssistantMessage('server-assistant-1', [
+          {
+            id: 'part-server-1',
+            messageId: 'server-assistant-1',
+            sessionId: session.id,
+            type: 'text',
+            text: '这是正式回复',
+          },
+        ], '2026-03-24T00:00:40.000Z'),
+      ],
+      runs: [
+        createRun(),
+      ],
+      tasks: [],
+      works: [],
+      workResults: [],
+    }
+
+    const next = mergeStudioSnapshot(current, snapshot, [])
+
+    expect(next.runtime.optimisticAssistantMessageIdByRunId['run-1']).toBe('server-assistant-1')
+    expect(next.runtime.pendingAssistantMessageId).toBe('server-assistant-1')
+    expect(next.entities.messagesById['server-assistant-1']?.renderId).toBe('local-assistant-1')
   })
 
   it('collapses duplicated server and optimistic assistant messages with identical tool and text payloads', () => {

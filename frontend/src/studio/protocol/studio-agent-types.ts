@@ -100,6 +100,7 @@ export interface StudioFileAttachment {
 
 export interface StudioMessageBase {
   id: string
+  renderId?: string
   sessionId: string
   role: 'user' | 'assistant' | 'system' | 'tool'
   createdAt: string

@@ -8,11 +8,13 @@ export function applyAssistantTextEvent(
   state: StudioSessionState,
   runId: string,
   text: string,
+  messageId?: string,
 ): StudioSessionState {
-  const assistantMessageId = state.runtime.optimisticAssistantMessageIdByRunId[runId]
+  const assistantMessageId = resolveAssistantMessageId(state, runId, messageId)
   debugStudioMessages('assistant-text-event', {
     runId,
     assistantMessageId,
+    requestedMessageId: messageId,
     textLength: text.length,
   })
   const entities = assistantMessageId
@@ -40,8 +42,9 @@ export function applyToolInputStartEvent(
   callId: string,
   toolName: string,
   raw: string,
+  messageId?: string,
 ): StudioSessionState {
-  const assistantMessageId = state.runtime.optimisticAssistantMessageIdByRunId[runId]
+  const assistantMessageId = resolveAssistantMessageId(state, runId, messageId)
   if (!assistantMessageId) {
     return state
   }
@@ -73,8 +76,9 @@ export function applyToolCallEvent(
   callId: string,
   toolName: string,
   input: Record<string, unknown>,
+  messageId?: string,
 ): StudioSessionState {
-  const assistantMessageId = state.runtime.optimisticAssistantMessageIdByRunId[runId]
+  const assistantMessageId = resolveAssistantMessageId(state, runId, messageId)
   if (!assistantMessageId) {
     return state
   }
@@ -109,8 +113,9 @@ export function applyToolResultEvent(
   callId: string,
   toolName: string,
   result: Extract<StudioExternalEvent, { type: 'tool.result' }>['properties'],
+  messageId?: string,
 ): StudioSessionState {
-  const assistantMessageId = state.runtime.optimisticAssistantMessageIdByRunId[runId]
+  const assistantMessageId = resolveAssistantMessageId(state, runId, messageId)
   if (!assistantMessageId) {
     return state
   }
@@ -233,4 +238,16 @@ function withUpdatedAssistantParts(message: StudioAssistantMessage, parts: Studi
     updatedAt: new Date().toISOString(),
     parts,
   }
+}
+
+function resolveAssistantMessageId(
+  state: StudioSessionState,
+  runId: string,
+  messageId?: string,
+): string | null {
+  if (messageId) {
+    return messageId
+  }
+
+  return state.runtime.optimisticAssistantMessageIdByRunId[runId] ?? null
 }

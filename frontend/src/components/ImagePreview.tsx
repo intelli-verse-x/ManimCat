@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { ImageLightbox } from './image-preview/lightbox';
 import { useImageDownload } from './image-preview/use-image-download';
 import { useI18n } from '../i18n';
@@ -57,14 +57,26 @@ export const ImagePreview = memo(function ImagePreview({ imageUrls }: ImagePrevi
 
       <div className="flex-1 bg-black/90 flex items-center justify-center">
         {activeImage ? (
-          <button
-            type="button"
-            onClick={() => setIsLightboxOpen(true)}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={(event: ReactMouseEvent<HTMLDivElement>) => {
+              if (event.button !== 0) {
+                return;
+              }
+              setIsLightboxOpen(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                setIsLightboxOpen(true);
+              }
+            }}
             className="w-full h-full cursor-zoom-in"
             title={t('image.openTitle')}
           >
             <img src={activeImage} alt={t('image.itemAlt', { index: safeActiveIndex + 1 })} className="w-full h-full object-contain" />
-          </button>
+          </div>
         ) : (
           <p className="text-xs text-text-secondary/60">{t('image.empty')}</p>
         )}

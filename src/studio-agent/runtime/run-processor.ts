@@ -71,6 +71,7 @@ export class StudioRunProcessor {
             type: 'tool_input_start',
             sessionId: input.session.id,
             runId: input.run.id,
+            messageId: currentAssistantMessage.id,
             toolName: event.toolName,
             callId: event.id,
             raw: event.raw
@@ -92,6 +93,7 @@ export class StudioRunProcessor {
             type: 'tool_call',
             sessionId: input.session.id,
             runId: input.run.id,
+            messageId: currentAssistantMessage.id,
             toolName: event.toolName,
             callId: event.toolCallId,
             input: event.input
@@ -142,6 +144,7 @@ export class StudioRunProcessor {
             type: 'tool_result',
             sessionId: input.session.id,
             runId: input.run.id,
+            messageId: currentAssistantMessage.id,
             toolName: toolCalls.get(event.toolCallId)?.tool ?? 'unknown',
             callId: event.toolCallId,
             status: 'completed',
@@ -162,6 +165,7 @@ export class StudioRunProcessor {
             type: 'tool_result',
             sessionId: input.session.id,
             runId: input.run.id,
+            messageId: currentAssistantMessage.id,
             toolName: toolCalls.get(event.toolCallId)?.tool ?? 'unknown',
             callId: event.toolCallId,
             status: 'failed',
@@ -201,6 +205,7 @@ export class StudioRunProcessor {
               type: 'assistant_text',
               sessionId: input.session.id,
               runId: input.run.id,
+              messageId: currentAssistantMessage.id,
               text
             })
           }

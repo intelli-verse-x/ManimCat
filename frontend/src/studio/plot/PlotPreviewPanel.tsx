@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { ImageLightbox } from '../../components/image-preview/lightbox'
+import { CLOSED_IMAGE_CONTEXT_MENU, ImageContextMenu } from '../../components/image-preview/context-menu'
 import { useI18n } from '../../i18n'
 import type {
   StudioFileAttachment,
@@ -50,6 +51,7 @@ export function PlotPreviewPanel({
   const [draggingWorkId, setDraggingWorkId] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [previewMotionKey, setPreviewMotionKey] = useState(0)
+  const [previewContextMenu, setPreviewContextMenu] = useState(CLOSED_IMAGE_CONTEXT_MENU)
 
   const stripItems = works.slice(0, 12)
   const historyImages = useMemo(() => {
@@ -82,6 +84,14 @@ export function PlotPreviewPanel({
       setZoom(1)
     }
   }, [lightboxOpen])
+
+  useEffect(() => {
+    console.debug('[plot-preview] lightbox-state', {
+      lightboxOpen,
+      zoom,
+      previewPath: previewAttachment?.path ?? null,
+    })
+  }, [lightboxOpen, previewAttachment?.path, zoom])
 
   useEffect(() => {
     setSelectedImageIndex(0)
@@ -205,6 +215,17 @@ export function PlotPreviewPanel({
               currentIndex={activeHistoryIndex >= 0 ? activeHistoryIndex : 0}
               total={historyImages.length}
               onOpen={() => setLightboxOpen(true)}
+              onContextMenu={(event) => {
+                event.preventDefault()
+                if (!previewAttachment?.path) {
+                  return
+                }
+                setPreviewContextMenu({
+                  open: true,
+                  x: event.clientX,
+                  y: event.clientY,
+                })
+              }}
               onPrev={handlePrev}
               onNext={handleNext}
             />
@@ -280,6 +301,29 @@ export function PlotPreviewPanel({
           setZoom(1)
         }}
       />
+      <ImageContextMenu
+        state={previewContextMenu}
+        variant="studio-light"
+        items={previewAttachment?.path ? [
+          {
+            key: 'export-png',
+            label: t('image.exportPng'),
+            onClick: () => {
+              void downloadPreviewAttachment(previewAttachment.path, clampedImageIndex)
+              setPreviewContextMenu(CLOSED_IMAGE_CONTEXT_MENU)
+            },
+          },
+          {
+            key: 'open-lightbox',
+            label: t('image.openLightbox'),
+            onClick: () => {
+              setPreviewContextMenu(CLOSED_IMAGE_CONTEXT_MENU)
+              setLightboxOpen(true)
+            },
+          },
+        ] : []}
+        onClose={() => setPreviewContextMenu(CLOSED_IMAGE_CONTEXT_MENU)}
+      />
     </section>
   )
 }
@@ -291,6 +335,7 @@ function PlotPreviewSurface(input: {
   currentIndex: number
   total: number
   onOpen: () => void
+  onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => void
   onPrev: () => void
   onNext: () => void
 }) {
@@ -319,9 +364,22 @@ function PlotPreviewSurface(input: {
             </div>
           </>
         )}
-        <button
-          type="button"
-          onClick={input.onOpen}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(event: ReactMouseEvent<HTMLDivElement>) => {
+            if (event.button !== 0) {
+              return
+            }
+            input.onOpen()
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              input.onOpen()
+            }
+          }}
+          onContextMenu={input.onContextMenu}
           className="flex h-full w-full cursor-zoom-in items-center justify-center animate-fade-in-soft"
           title={t('image.openTitle')}
         >
@@ -330,7 +388,7 @@ function PlotPreviewSurface(input: {
             alt={input.attachment?.name ?? t('studio.plot.previewAlt')}
             className="max-h-full max-w-full object-contain"
           />
-        </button>
+        </div>
       </div>
     )
   }
@@ -344,6 +402,29 @@ function PlotPreviewSurface(input: {
   }
 
   return null
+}
+
+async function downloadPreviewAttachment(path: string, index: number): Promise<void> {
+  const response = await fetch(getAbsoluteUrl(path))
+  if (!response.ok) {
+    throw new Error(`Failed to fetch preview image: ${response.status}`)
+  }
+
+  const blob = await response.blob()
+  const blobUrl = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = blobUrl
+  link.download = `plot-preview-${index + 1}.png`
+  link.click()
+  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
+}
+
+function getAbsoluteUrl(path: string): string {
+  if (/^(data:|https?:\/\/)/i.test(path)) {
+    return path
+  }
+
+  return new URL(path, window.location.origin).toString()
 }
 
 function isPreviewAttachment(attachment: { path: string; mimeType?: string } | undefined) {

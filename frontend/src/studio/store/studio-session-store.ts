@@ -69,6 +69,11 @@ export function mergeStudioSnapshot(
     runtime: {
       ...current.runtime,
       activeRunId: pickLatestRunId(snapshot.runs),
+      optimisticAssistantMessageIdByRunId: remapOptimisticAssistantMessageIds(
+        current.runtime.optimisticAssistantMessageIdByRunId,
+        messagesById,
+      ),
+      pendingAssistantMessageId: remapMessageId(current.runtime.pendingAssistantMessageId, messagesById),
     },
     error: null,
   }
@@ -229,4 +234,43 @@ function compareByUpdatedAt<T extends { updatedAt: string }>(left: T, right: T):
 function pickLatestRunId(runs: StudioRun[]): string | null {
   return [...runs]
     .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())[0]?.id ?? null
+}
+
+function remapOptimisticAssistantMessageIds(
+  mapping: Record<string, string>,
+  messagesById: Record<string, StudioMessage>,
+): Record<string, string> {
+  const nextEntries = Object.entries(mapping).map(([runId, messageId]) => [
+    runId,
+    remapMessageId(messageId, messagesById) ?? messageId,
+  ] as const)
+
+  let changed = false
+  for (const [runId, messageId] of nextEntries) {
+    if (mapping[runId] !== messageId) {
+      changed = true
+      break
+    }
+  }
+
+  return changed ? Object.fromEntries(nextEntries) : mapping
+}
+
+function remapMessageId(
+  messageId: string | null | undefined,
+  messagesById: Record<string, StudioMessage>,
+): string | null {
+  if (!messageId) {
+    return null
+  }
+
+  if (messagesById[messageId]) {
+    return messageId
+  }
+
+  const adoptedMessage = Object.values(messagesById).find((message) => (
+    message.role === 'assistant' && (message.renderId ?? message.id) === messageId
+  ))
+
+  return adoptedMessage?.id ?? null
 }

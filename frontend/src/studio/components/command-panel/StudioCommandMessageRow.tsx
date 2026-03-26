@@ -1,5 +1,6 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useEffect, useRef } from 'react'
 import { useI18n } from '../../../i18n'
+import { debugStudioMessages } from '../../agent-response/debug'
 import type { StudioMessage } from '../../protocol/studio-agent-types'
 import { StudioMarkdown } from '../StudioMarkdown'
 import { selectRowView } from './selectors'
@@ -11,6 +12,8 @@ interface StudioCommandMessageRowProps {
   store: StudioCommandPanelStore
 }
 
+const animatedMessageIds = new Set<string>()
+
 export const StudioCommandMessageRow = memo(function StudioCommandMessageRow({
   messageId,
   store,
@@ -20,18 +23,53 @@ export const StudioCommandMessageRow = memo(function StudioCommandMessageRow({
     [messageId],
   )
   const rowView = useCommandStoreSelector(store, selector, areRowViewsEqual)
+  const renderCountRef = useRef(0)
+  const prevRowViewRef = useRef(rowView)
+  const shouldAnimateEnter = !animatedMessageIds.has(messageId)
+
+  renderCountRef.current += 1
+
+  useEffect(() => {
+    animatedMessageIds.add(messageId)
+    debugStudioMessages('command-row-mounted', {
+      messageId,
+      role: rowView.message?.role ?? 'missing',
+      shouldAnimateEnter,
+    })
+
+    return () => {
+      debugStudioMessages('command-row-unmounted', {
+        messageId,
+      })
+    }
+  }, [messageId, rowView.message?.role, shouldAnimateEnter])
+
+  useEffect(() => {
+    const previous = prevRowViewRef.current
+    debugStudioMessages('command-row-rendered', {
+      messageId,
+      renderCount: renderCountRef.current,
+      role: rowView.message?.role ?? 'missing',
+      changed: describeRowViewChange(previous, rowView),
+      isStreamingTarget: rowView.isStreamingTarget,
+      showCaret: rowView.showCaret,
+      streamedLength: rowView.streamedText.length,
+    })
+    prevRowViewRef.current = rowView
+  }, [messageId, rowView])
 
   if (!rowView.message) {
     return null
   }
 
   if (rowView.message.role === 'user') {
-    return <UserMessageItem message={rowView.message} />
+    return <UserMessageItem message={rowView.message} shouldAnimateEnter={shouldAnimateEnter} />
   }
 
   return (
     <AssistantMessageItem
       message={rowView.message}
+      shouldAnimateEnter={shouldAnimateEnter}
       isStreamingTarget={rowView.isStreamingTarget}
       streamedText={rowView.streamedText}
       showCaret={rowView.showCaret}
@@ -41,12 +79,14 @@ export const StudioCommandMessageRow = memo(function StudioCommandMessageRow({
 
 const UserMessageItem = memo(function UserMessageItem({
   message,
+  shouldAnimateEnter,
 }: {
   message: Extract<StudioMessage, { role: 'user' }>
+  shouldAnimateEnter: boolean
 }) {
   const { t } = useI18n()
   return (
-    <div className="animate-message-enter group">
+    <div className={`${shouldAnimateEnter ? 'animate-message-enter ' : ''}group`}>
       <div className="rounded-2xl bg-bg-secondary/20 px-6 py-5 transition-colors group-hover:bg-bg-secondary/40">
         <div className="mb-4 flex items-center gap-3">
           <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-secondary/35">{t('studio.inputUser')}</span>
@@ -63,11 +103,13 @@ const UserMessageItem = memo(function UserMessageItem({
 
 const AssistantMessageItem = memo(function AssistantMessageItem({
   message,
+  shouldAnimateEnter,
   isStreamingTarget,
   streamedText,
   showCaret,
 }: {
   message: Extract<StudioMessage, { role: 'assistant' }>
+  shouldAnimateEnter: boolean
   isStreamingTarget: boolean
   streamedText: string
   showCaret: boolean
@@ -79,7 +121,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
   const hasRenderableText = textParts.some((part) => part.text.trim())
 
   return (
-    <div className={`${isStreamingTarget ? '' : 'animate-message-enter '}group`}>
+    <div className={`${!isStreamingTarget && shouldAnimateEnter ? 'animate-message-enter ' : ''}group`}>
       <div className="rounded-2xl bg-bg-tertiary/40 px-6 py-6 transition-colors group-hover:bg-bg-tertiary/60">
         <div className="mb-5 flex items-center gap-3">
           <span className="font-mono text-[9px] font-bold uppercase tracking-[0.3em] text-text-primary/45">{t('studio.outputAgent')}</span>
@@ -166,4 +208,26 @@ function areRowViewsEqual(
     && left.isStreamingTarget === right.isStreamingTarget
     && left.streamedText === right.streamedText
     && left.showCaret === right.showCaret
+}
+
+function describeRowViewChange(
+  previous: ReturnType<typeof selectRowView>,
+  next: ReturnType<typeof selectRowView>,
+) {
+  const reasons: string[] = []
+
+  if (previous.message !== next.message) {
+    reasons.push('message-ref')
+  }
+  if (previous.isStreamingTarget !== next.isStreamingTarget) {
+    reasons.push('stream-target')
+  }
+  if (previous.streamedText !== next.streamedText) {
+    reasons.push('stream-text')
+  }
+  if (previous.showCaret !== next.showCaret) {
+    reasons.push('caret')
+  }
+
+  return reasons.length > 0 ? reasons : ['no-diff']
 }

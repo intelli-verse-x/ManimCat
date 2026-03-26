@@ -6,6 +6,7 @@ export interface StudioAssistantTextEvent {
   type: 'assistant_text'
   sessionId: string
   runId: string
+  messageId: string
   text: string
 }
 
@@ -13,6 +14,7 @@ export interface StudioToolInputStartEvent {
   type: 'tool_input_start'
   sessionId: string
   runId: string
+  messageId: string
   toolName: string
   callId: string
   raw?: string
@@ -22,6 +24,7 @@ export interface StudioToolCallEvent {
   type: 'tool_call'
   sessionId: string
   runId: string
+  messageId: string
   toolName: string
   callId: string
   input: unknown
@@ -31,6 +34,7 @@ export interface StudioToolResultEvent {
   type: 'tool_result'
   sessionId: string
   runId: string
+  messageId: string
   toolName: string
   callId: string
   status: 'completed' | 'failed'

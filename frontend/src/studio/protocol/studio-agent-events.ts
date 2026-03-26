@@ -47,6 +47,7 @@ export interface StudioAssistantTextExternalEvent {
   properties: {
     sessionId: string
     runId: string
+    messageId: string
     text: string
   }
 }
@@ -56,6 +57,7 @@ export interface StudioToolInputStartExternalEvent {
   properties: {
     sessionId: string
     runId: string
+    messageId: string
     toolName: string
     callId: string
     raw: string
@@ -67,6 +69,7 @@ export interface StudioToolCallExternalEvent {
   properties: {
     sessionId: string
     runId: string
+    messageId: string
     toolName: string
     callId: string
     input: Record<string, unknown>
@@ -78,6 +81,7 @@ export interface StudioToolResultExternalEvent {
   properties: {
     sessionId: string
     runId: string
+    messageId: string
     toolName: string
     callId: string
     status: 'completed' | 'failed'
@@ -141,3 +145,4 @@ export type StudioExternalEvent =
   | StudioQuestionRequestedExternalEvent
   | StudioConnectedExternalEvent
   | StudioHeartbeatExternalEvent
+

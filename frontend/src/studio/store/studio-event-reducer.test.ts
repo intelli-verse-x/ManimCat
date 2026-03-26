@@ -91,6 +91,7 @@ describe('studioEventReducer', () => {
         properties: {
           sessionId: 'session-1',
           runId: 'run-1',
+          messageId: 'local-assistant-1',
           text: 'hello',
         },
       },
@@ -128,6 +129,7 @@ describe('studioEventReducer', () => {
         properties: {
           sessionId: 'session-1',
           runId: 'run-1',
+          messageId: 'local-assistant-1',
           toolName: 'write',
           callId: 'call-1',
           raw: '{"path":"heart.py"}',
@@ -142,6 +144,7 @@ describe('studioEventReducer', () => {
         properties: {
           sessionId: 'session-1',
           runId: 'run-1',
+          messageId: 'local-assistant-1',
           toolName: 'write',
           callId: 'call-1',
           input: { path: 'heart.py' },
@@ -156,6 +159,7 @@ describe('studioEventReducer', () => {
         properties: {
           sessionId: 'session-1',
           runId: 'run-1',
+          messageId: 'local-assistant-1',
           toolName: 'write',
           callId: 'call-1',
           status: 'completed',
@@ -216,6 +220,7 @@ describe('studioEventReducer', () => {
         properties: {
           sessionId: 'session-1',
           runId: 'run-1',
+          messageId: 'local-assistant-1',
           text: '正在处理文件',
         },
       },
@@ -253,6 +258,43 @@ describe('studioEventReducer', () => {
 
     expect(next.entities.runsById[completedRun.id]?.status).toBe('completed')
     expect(next.entities.runsById[completedRun.id]?.completedAt).toBe('2026-03-22T00:00:05.000Z')
+  })
+
+  it('creates a new assistant card when streaming events target a new server message before snapshot merge', () => {
+    const state = {
+      ...createInitialStudioState(),
+      entities: {
+        ...createInitialStudioState().entities,
+        session: createSession(),
+        messagesById: {
+          'local-assistant-1': createAssistantMessage(),
+        },
+        messageOrder: ['local-assistant-1'],
+      },
+      runtime: {
+        ...createInitialStudioState().runtime,
+        optimisticAssistantMessageIdByRunId: {
+          'run-1': 'local-assistant-1',
+        },
+      },
+    }
+
+    const next = studioEventReducer(state, {
+      type: 'event_received',
+      event: {
+        type: 'assistant.text',
+        properties: {
+          sessionId: 'session-1',
+          runId: 'run-1',
+          messageId: 'server-assistant-2',
+          text: '新的回复',
+        },
+      },
+    })
+
+    expect(readFirstAssistantText(next.entities.messagesById['server-assistant-2'])).toBe('新的回复')
+    expect(readFirstAssistantText(next.entities.messagesById['local-assistant-1'])).toBe('')
+    expect(next.runtime.assistantTextByRunId['run-1']).toBe('新的回复')
   })
 })
 
