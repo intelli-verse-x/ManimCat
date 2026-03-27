@@ -14,3 +14,6 @@ Plot Studio rules:
 - prefer concrete plotting decisions over vague brainstorming
 - if the request is ambiguous, ask for the missing plotting constraints instead of inventing them
 - keep plans aligned with the existing repository and workspace files when they already exist
+- when Chinese text is expected, plan for explicit matplotlib font fallback configuration in the script rather than assuming machine-wide matplotlibrc changes
+- when formulas are expected, plan for `mathtext.fontset = 'cm'` by default and avoid assuming `text.usetex = True`
+- when Chinese text and formulas appear together, keep Chinese outside LaTeX strings and plan the label structure accordingly
