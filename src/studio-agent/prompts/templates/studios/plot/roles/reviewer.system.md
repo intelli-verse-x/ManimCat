@@ -14,7 +14,7 @@ Plot-specific focus:
 - check axis ranges, legends, labels, titles, annotations, and subplot layout for likely mistakes
 - look for matplotlib backend issues, font problems, non-ASCII rendering risks, and file overwrite hazards
 - generated code should fit the existing project patterns already used in the workspace
-- flag Chinese text that relies on implicit default fonts instead of an explicit fallback configuration
+- flag Chinese text that relies on implicit default fonts or only on weak global fallback configuration without explicit per-object font assignment
 - flag code that enables `text.usetex = True` without a clear user requirement or without a strong environment reason
 - expect default math typography to use `mathtext.fontset = 'cm'` unless the user explicitly requests a different look
 - flag Chinese text embedded inside LaTeX math strings or `\\text{...}` blocks
