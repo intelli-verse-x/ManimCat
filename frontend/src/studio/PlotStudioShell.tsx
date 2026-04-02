@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { StudioPermissionModeModal } from './controls/StudioPermissionModeModal'
-import { StudioCommandPanel } from './components/StudioCommandPanel'
+import { StudioCommandPanel, type StudioCommandPanelHandle } from './components/StudioCommandPanel'
 import { useStudioSession } from './hooks/use-studio-session'
 import { PlotPreviewPanel } from './plot/PlotPreviewPanel'
 import { useI18n } from '../i18n'
@@ -21,6 +21,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
   const [selectedWorkId, setSelectedWorkId] = useState<string | null>(null)
   const [orderedWorkIds, setOrderedWorkIds] = useState<string[]>([])
   const [confirmExitOpen, setConfirmExitOpen] = useState(false)
+  const commandPanelRef = useRef<StudioCommandPanelHandle | null>(null)
   const incomingIds = studio.workSummaries.map((entry) => entry.work.id)
   const incomingIdsKey = incomingIds.join('|')
 
@@ -106,6 +107,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
               onSelectWork={setSelectedWorkId}
               onReorderWorks={handleReorderWorks}
               onReply={studio.replyPermission}
+              onSendPreviewToComposer={(attachment) => commandPanelRef.current?.appendPreviewAttachment(attachment)}
               variant="pure-minimal-top"
             />
           </div>
@@ -114,6 +116,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
         <section className="flex shrink-0 min-h-0 flex-col gap-5 md:h-72 md:flex-row md:gap-12 lg:gap-16">
           <div className="relative flex min-h-[15rem] min-w-0 flex-1 flex-col md:pl-5 md:pr-5 lg:pl-8 lg:pr-10">
             <StudioCommandPanel
+              ref={commandPanelRef}
               session={studio.session}
               messages={studio.messages}
               latestAssistantText={studio.latestAssistantText}

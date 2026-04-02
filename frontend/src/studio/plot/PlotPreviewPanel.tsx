@@ -3,6 +3,7 @@ import { ImageLightbox } from '../../components/image-preview/lightbox'
 import { CLOSED_IMAGE_CONTEXT_MENU, ImageContextMenu } from '../../components/image-preview/context-menu'
 import { copyImageAssetToClipboard, exportImageAsset } from '../../components/image-preview/image-asset'
 import { useI18n } from '../../i18n'
+import { uploadReferenceImage } from '../../lib/api'
 import type {
   StudioFileAttachment,
   StudioPermissionDecision,
@@ -36,6 +37,7 @@ interface PlotPreviewPanelProps {
   onSelectWork: (workId: string) => void
   onReorderWorks: (workIds: string[]) => void
   onReply: (requestId: string, reply: StudioPermissionDecision) => Promise<void> | void
+  onSendPreviewToComposer?: (attachment: { url: string; name: string; mimeType?: string }) => void
   variant?: 'default' | 't-layout-top' | 'pure-minimal-top'
 }
 
@@ -46,6 +48,7 @@ export function PlotPreviewPanel({
   result,
   onSelectWork,
   onReorderWorks,
+  onSendPreviewToComposer,
   variant = 'default',
 }: PlotPreviewPanelProps) {
   const { t } = useI18n()
@@ -270,6 +273,7 @@ export function PlotPreviewPanel({
               }}
               onPrev={handlePrev}
               onNext={handleNext}
+              onSendToComposer={onSendPreviewToComposer}
             />
           </div>
         </div>
@@ -336,10 +340,19 @@ export function PlotPreviewPanel({
         activeIndex={activeHistoryIndex >= 0 ? activeHistoryIndex : 0}
         total={historyImages.length}
         zoom={zoom}
+        editableFilename={previewAttachment?.name ?? t('studio.plot.inlinePreview')}
         variant="studio-light"
         onZoomChange={setZoom}
         onPrev={historyImages.length > 1 ? handlePrev : undefined}
         onNext={historyImages.length > 1 ? handleNext : undefined}
+        onCommitAnnotatedImage={onSendPreviewToComposer ? async ({ file, filename }) => {
+          const uploaded = await uploadReferenceImage(file)
+          onSendPreviewToComposer({
+            url: uploaded.url,
+            name: filename,
+            mimeType: uploaded.mimeType,
+          })
+        } : undefined}
         onClose={() => {
           setLightboxOpen(false)
           setZoom(1)
@@ -415,6 +428,7 @@ function PlotPreviewSurface(input: {
   onContextMenu: (event: ReactMouseEvent<HTMLDivElement>) => void
   onPrev: () => void
   onNext: () => void
+  onSendToComposer?: (attachment: { url: string; name: string; mimeType?: string }) => void
 }) {
   const { t } = useI18n()
   const isMinimal = input.variant === 'pure-minimal-top'

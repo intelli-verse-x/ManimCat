@@ -1,12 +1,18 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CanvasWorkspaceModal } from '../../components/canvas/CanvasWorkspaceModal'
 import { ImageInputModeModal } from '../../components/ImageInputModeModal'
-import { ReferenceImageList } from '../../components/input-form/reference-image-list'
-import { useReferenceImages } from '../../components/input-form/use-reference-images'
 import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
 import { useI18n } from '../../i18n'
 import type { ReferenceImage } from '../../types/api'
-import { appendStudioReferenceImages } from '../reference-images'
+import {
+  addAttachmentTokenToInput,
+  appendStudioReferenceImages,
+  createComposerImageAttachment,
+  filterAttachmentsPresentInInput,
+  removeAttachmentTokenFromInput,
+} from '../composer/attachments'
+import { useStudioComposerAttachments } from '../composer/use-studio-composer-attachments'
+import { StudioComposerAttachmentList } from './StudioComposerAttachmentList'
 import { StudioCommandMessageList } from './command-panel/StudioCommandMessageList'
 import {
   createStudioCommandPanelStore,
@@ -24,7 +30,12 @@ interface StudioCommandPanelProps {
   variant?: 'default' | 't-layout-bottom' | 'pure-minimal-bottom'
 }
 
-export function StudioCommandPanel({
+export interface StudioCommandPanelHandle {
+  appendPreviewAttachment: (attachment: { url: string; name: string; mimeType?: string }) => void
+  focusComposer: () => void
+}
+
+export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCommandPanelProps>(function StudioCommandPanel({
   session,
   messages,
   latestAssistantText,
@@ -33,7 +44,7 @@ export function StudioCommandPanel({
   onRun,
   onExit,
   variant = 'default',
-}: StudioCommandPanelProps) {
+}, ref) {
   const { t } = useI18n()
   const isTLayout = variant === 't-layout-bottom'
   const isMinimal = variant === 'pure-minimal-bottom'
@@ -57,14 +68,35 @@ export function StudioCommandPanel({
   const storeRef = useRef(createStudioCommandPanelStore(snapshot))
   const commandStore = storeRef.current
   const {
-    images,
-    imageError,
+    attachments,
+    attachmentError,
     fileInputRef,
-    addImages,
-    appendImages,
-    removeImage,
-    clearImages,
-  } = useReferenceImages({ enablePasteListener: false })
+    addImageFiles,
+    appendReferenceImages,
+    appendUploadedAttachment,
+    removeAttachment,
+    retainAttachments,
+    clearAttachments,
+  } = useStudioComposerAttachments()
+
+  const focusInput = () => {
+    if (disabled) {
+      return
+    }
+    inputRef.current?.focus()
+  }
+
+  const appendAttachmentTokens = (nextInput: string, nextAttachments: typeof attachments) => {
+    return nextAttachments.reduce((current, attachment) => addAttachmentTokenToInput(current, attachment), nextInput)
+  }
+
+  const addAttachmentsToComposer = (nextAttachments: typeof attachments) => {
+    if (nextAttachments.length === 0) {
+      return
+    }
+    setInput((current) => appendAttachmentTokens(current, nextAttachments))
+    focusInput()
+  }
 
   const handleSubmit = async () => {
     const next = input.trim()
@@ -77,19 +109,12 @@ export function StudioCommandPanel({
       return
     }
     setInput('')
-    const runInput = appendStudioReferenceImages(next, images)
+    const runInput = appendStudioReferenceImages(next, attachments)
     try {
       await onRun(runInput)
-      clearImages()
+      clearAttachments()
     } catch {
       setInput(next)
-    }
-    inputRef.current?.focus()
-  }
-
-  const focusInput = () => {
-    if (disabled) {
-      return
     }
     inputRef.current?.focus()
   }
@@ -100,10 +125,44 @@ export function StudioCommandPanel({
   }
 
   const handleCanvasComplete = (nextImages: ReferenceImage[]) => {
-    appendImages(nextImages)
+    const nextAttachments = appendReferenceImages(nextImages)
+    addAttachmentsToComposer(nextAttachments)
     setIsCanvasOpen(false)
     focusInput()
   }
+
+  const handleInputChange = (nextValue: string) => {
+    setInput(nextValue)
+    const retained = filterAttachmentsPresentInInput(nextValue, attachments)
+    if (retained.length !== attachments.length) {
+      retainAttachments(retained)
+    }
+  }
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    const target = attachments.find((attachment) => attachment.id === attachmentId)
+    if (!target) {
+      return
+    }
+
+    removeAttachment(attachmentId)
+    setInput((current) => removeAttachmentTokenFromInput(current, target))
+  }
+
+  useImperativeHandle(ref, () => ({
+    appendPreviewAttachment: (attachment) => {
+      const nextAttachment = createComposerImageAttachment({
+        url: attachment.url,
+        name: attachment.name,
+        mimeType: attachment.mimeType,
+        detail: 'low',
+      })
+      appendUploadedAttachment(nextAttachment)
+      setInput((current) => addAttachmentTokenToInput(current, nextAttachment))
+      focusInput()
+    },
+    focusComposer: focusInput,
+  }), [appendUploadedAttachment, disabled])
 
   const lastMessage = messages.at(-1) ?? null
 
@@ -286,19 +345,21 @@ export function StudioCommandPanel({
           onChange={(event) => {
             const files = event.target.files
             if (files && files.length > 0) {
-              void addImages(files)
+              void addImageFiles(files).then((nextAttachments) => {
+                addAttachmentsToComposer(nextAttachments)
+              })
             }
             event.currentTarget.value = ''
           }}
         />
-        <ReferenceImageList
-          images={images}
-          loading={isBusy}
-          onRemove={removeImage}
+        <StudioComposerAttachmentList
+          attachments={attachments}
+          disabled={isBusy}
+          onRemove={handleRemoveAttachment}
           variant={isMinimal ? 'minimal' : 'default'}
         />
-        {imageError ? (
-          <p className="mb-3 mt-3 text-xs text-rose-500/80">{imageError}</p>
+        {attachmentError ? (
+          <p className="mb-3 mt-3 text-xs text-rose-500/80">{attachmentError}</p>
         ) : null}
         <div className={`${isMinimal ? 'flex items-baseline gap-4' : 'group flex items-center gap-3'}`}>
           <span
@@ -311,7 +372,7 @@ export function StudioCommandPanel({
               ref={inputRef}
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -361,7 +422,7 @@ export function StudioCommandPanel({
       />
     </section>
   )
-}
+})
 
 function nextTypeDelay(target: string, currentLength: number, streamRate: number) {
   const nextChar = target[currentLength] ?? ''
