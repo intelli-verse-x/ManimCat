@@ -3,6 +3,7 @@ import { StudioPermissionModeModal } from './controls/StudioPermissionModeModal'
 import { StudioAssetsPanel } from './components/StudioAssetsPanel'
 import { StudioCommandPanel } from './components/StudioCommandPanel'
 import { StudioPipelinePanel } from './components/StudioPipelinePanel'
+import { StudioSessionHistoryModal } from './components/StudioSessionHistoryModal'
 import { useStudioReview } from './hooks/use-studio-review'
 import { useStudioSession } from './hooks/use-studio-session'
 import type { StudioKind } from './protocol/studio-agent-types'
@@ -79,6 +80,7 @@ export function StudioShell({ onExit, isExiting, studioKind = 'manim' }: StudioS
       </div>
 
       <StudioPermissionModeModal {...studio.permissionModeModal} />
+      <StudioSessionHistoryModal {...studio.historyModal} />
     </>
   )
 }

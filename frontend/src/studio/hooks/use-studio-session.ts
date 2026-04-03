@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import {
   createStudioSession,
   getPendingStudioPermissions,
   getStudioSessionSnapshot,
 } from '../api/studio-agent-api'
 import { useStudioControls } from '../controls/use-studio-controls'
-import type { StudioKind, StudioPermissionRequest, StudioTask } from '../protocol/studio-agent-types'
+import type { StudioKind, StudioMessage, StudioPermissionRequest, StudioTask } from '../protocol/studio-agent-types'
 import type { StudioSessionState } from '../store/studio-types'
 import { useStudioEvents } from './use-studio-events'
 import { useStudioPermissions } from './use-studio-permissions'
@@ -20,23 +20,39 @@ import {
   selectLatestTaskForWork,
   selectSelectedWork,
   selectIsBusy,
-  selectStudioMessages,
   selectStudioPendingPermissions,
-  selectStudioRuns,
-  selectStudioWorks,
   selectTasksForWork,
   selectWorkSummary,
   selectWorkResult,
 } from '../store/studio-selectors'
+import {
+  clearLastStudioSessionId,
+  readLastStudioSessionId,
+  readRecentStudioSessionIds,
+  rememberStudioSessionId,
+} from '../session-history/session-storage'
 
 interface UseStudioSessionOptions {
   studioKind?: StudioKind
   title?: string
 }
 
+export interface StudioSessionHistoryEntry {
+  id: string
+  title: string
+  studioKind: StudioKind
+  updatedAt: string
+  previewText: string
+}
+
 export function useStudioSession(options: UseStudioSessionOptions = {}) {
   const { t } = useI18n()
+  const studioKind = options.studioKind ?? 'manim'
+  const studioTitle = options.title ?? getDefaultStudioTitle(studioKind, t)
   const [state, dispatch] = useReducer(studioEventReducer, undefined, createInitialStudioState)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [historyEntries, setHistoryEntries] = useState<StudioSessionHistoryEntry[]>([])
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false)
   const bootstrappedRef = useRef(false)
   const refreshInFlightRef = useRef(false)
   const viewSelectorsRef = useRef(createStudioViewSelectors())
@@ -62,6 +78,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
         snapshot,
         pendingPermissions: filterPermissionsForSession(pendingPermissions, sessionId),
       })
+      rememberStudioSessionId(studioKind, snapshot.session.id)
       return snapshot.session
     } catch (error) {
       if (options?.ignoreErrors) {
@@ -74,7 +91,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
       })
       throw error
     }
-  }, [])
+  }, [studioKind])
 
   const createFreshSession = useCallback(async (mode: 'bootstrap' | 'replace' = 'bootstrap') => {
     if (mode === 'replace') {
@@ -85,15 +102,65 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
 
     const session = await createStudioSession({
       projectId: 'manimcat-studio',
-      title: options.title ?? getDefaultStudioTitle(options.studioKind ?? 'manim', t),
-      studioKind: options.studioKind ?? 'manim',
+      title: studioTitle,
+      studioKind,
       agentType: 'builder',
       permissionLevel: 'L2',
     })
 
     await loadSnapshot(session.id, mode === 'replace' ? 'replace' : 'merge')
     return session
-  }, [loadSnapshot, options.studioKind, options.title, t])
+  }, [loadSnapshot, studioKind, studioTitle])
+
+  const restoreSession = useCallback(async (
+    targetSessionId: string,
+    mode: 'bootstrap' | 'replace' = 'replace',
+  ) => {
+    const session = await loadSnapshot(targetSessionId, mode === 'replace' ? 'replace' : 'merge')
+    if (!session) {
+      throw new Error('Failed to restore studio session')
+    }
+    return session
+  }, [loadSnapshot])
+
+  const refreshHistory = useCallback(async () => {
+    const recentSessionIds = readRecentStudioSessionIds(studioKind)
+    if (recentSessionIds.length === 0) {
+      setHistoryEntries([])
+      return
+    }
+
+    setIsHistoryLoading(true)
+    try {
+      const snapshots = await Promise.all(
+        recentSessionIds.map(async (sessionId) => {
+          try {
+            return await getStudioSessionSnapshot(sessionId)
+          } catch {
+            return null
+          }
+        }),
+      )
+
+      const entries = snapshots
+        .filter((snapshot): snapshot is NonNullable<typeof snapshot> => Boolean(snapshot))
+        .map((snapshot) => buildHistoryEntry(snapshot))
+        .filter((entry) => entry.studioKind === studioKind)
+
+      setHistoryEntries(entries)
+    } finally {
+      setIsHistoryLoading(false)
+    }
+  }, [studioKind])
+
+  const openHistory = useCallback(() => {
+    setIsHistoryOpen(true)
+    void refreshHistory()
+  }, [refreshHistory])
+
+  const closeHistory = useCallback(() => {
+    setIsHistoryOpen(false)
+  }, [])
 
   useEffect(() => {
     if (bootstrappedRef.current) {
@@ -103,6 +170,19 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
 
     void (async () => {
       try {
+        const lastSessionId = readLastStudioSessionId(studioKind)
+        if (lastSessionId) {
+          const restored = await loadSnapshot(lastSessionId, 'replace', {
+            ignoreErrors: true,
+          })
+
+          if (restored) {
+            return
+          }
+
+          clearLastStudioSessionId(studioKind)
+        }
+
         await createFreshSession('bootstrap')
       } catch (error) {
         dispatch({
@@ -111,7 +191,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
         })
       }
     })()
-  }, [createFreshSession])
+  }, [createFreshSession, loadSnapshot, studioKind])
 
   const refresh = useCallback(async () => {
     const sessionId = state.entities.session?.id
@@ -212,6 +292,11 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
     onSessionUpdated: async (session) => {
       await loadSnapshot(session.id, 'merge', { silent: true })
     },
+    onOpenHistory: openHistory,
+    onCreateSession: async () => {
+      await createFreshSession('replace')
+      void refreshHistory()
+    },
   })
 
   const { replyPermission } = useStudioPermissions({
@@ -253,14 +338,30 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
     replyingPermissionIds: state.runtime.replyingPermissionIds,
     latestQuestion: state.runtime.latestQuestion,
     permissionModeModal: controls.permissionModeModal,
+    historyModal: {
+      isOpen: isHistoryOpen,
+      isLoading: isHistoryLoading,
+      entries: historyEntries,
+      currentSessionId: state.entities.session?.id ?? null,
+      onClose: closeHistory,
+      onSelectSession: async (targetSessionId: string) => {
+        await restoreSession(targetSessionId, 'replace')
+        setIsHistoryOpen(false)
+      },
+    },
     workSummaries: works.map((work) => ({
       work,
       latestTask: selectLatestTaskForWork(state, work.id),
       result: selectWorkSummary(state, work).result,
     })),
+    openHistory,
     refresh,
     runCommand: async (inputText: string) => {
       await controls.submitInput(inputText)
+    },
+    createNewSession: async () => {
+      await createFreshSession('replace')
+      void refreshHistory()
     },
     replyPermission,
     selectWork(workId: string | null) {
@@ -299,4 +400,39 @@ function hasActiveRenderTask(state: StudioSessionState): boolean {
       && task.type === 'render'
       && (task.status === 'queued' || task.status === 'running' || task.status === 'pending_confirmation')
     ))
+}
+
+function buildHistoryEntry(snapshot: Awaited<ReturnType<typeof getStudioSessionSnapshot>>): StudioSessionHistoryEntry {
+  const latestAssistantMessage = [...snapshot.messages].reverse().find((message) => message.role === 'assistant')
+  const latestUserMessage = [...snapshot.messages].reverse().find((message) => message.role === 'user')
+
+  return {
+    id: snapshot.session.id,
+    title: snapshot.session.title,
+    studioKind: snapshot.session.studioKind ?? 'manim',
+    updatedAt: snapshot.session.updatedAt,
+    previewText: readHistoryPreviewText(latestAssistantMessage, latestUserMessage),
+  }
+}
+
+function readHistoryPreviewText(
+  latestAssistantMessage: StudioMessage | undefined,
+  latestUserMessage: StudioMessage | undefined,
+) {
+  if (latestAssistantMessage?.role === 'assistant') {
+    const textPart = latestAssistantMessage.parts.find((part) => part.type === 'text' || part.type === 'reasoning')
+    if (textPart?.text.trim()) {
+      return textPart.text.trim()
+    }
+
+    if (latestAssistantMessage.summary?.trim()) {
+      return latestAssistantMessage.summary.trim()
+    }
+  }
+
+  if (latestUserMessage?.role === 'user' && latestUserMessage.text.trim()) {
+    return latestUserMessage.text.trim()
+  }
+
+  return 'No messages yet'
 }

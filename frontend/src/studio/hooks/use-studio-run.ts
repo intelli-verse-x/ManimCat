@@ -59,16 +59,19 @@ export function useStudioRun({ session, onOptimisticMessagesCreated, onRunSubmit
         }))
 
         const pendingPermissions = filterPermissionsForSession(response.pendingPermissions, activeSession.id)
+        const snapshotRuns = response.runs.some((run) => run.id === response.run.id)
+          ? response.runs
+          : [...response.runs, response.run]
 
         onRunStarted(response.run, pendingPermissions)
-      onSnapshotLoaded({
-        session: activeSession,
-        messages: response.messages,
-        runs: response.runs,
-        tasks: response.tasks,
-        works: response.works,
-        workResults: response.workResults,
-      }, pendingPermissions)
+        onSnapshotLoaded({
+          session: activeSession,
+          messages: response.messages,
+          runs: snapshotRuns,
+          tasks: response.tasks,
+          works: response.works,
+          workResults: response.workResults,
+        }, pendingPermissions)
       } catch (error) {
         if (
           allowRecovery

@@ -6,6 +6,7 @@ import { PlotPreviewPanel } from './plot/PlotPreviewPanel'
 import { useI18n } from '../i18n'
 import ManimCatLogo from '../components/ManimCatLogo'
 import { useModalTransition } from '../hooks/useModalTransition'
+import { StudioSessionHistoryModal } from './components/StudioSessionHistoryModal'
 
 interface PlotStudioShellProps {
   onExit: () => void
@@ -164,6 +165,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
       </div>
 
       <StudioPermissionModeModal {...studio.permissionModeModal} />
+      <StudioSessionHistoryModal {...studio.historyModal} />
       <StudioExitConfirmModal
         isOpen={confirmExitOpen}
         onClose={() => setConfirmExitOpen(false)}

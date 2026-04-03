@@ -7,9 +7,17 @@ interface UseStudioControlsInput {
   session: StudioSession | null
   onRun: (inputText: string) => Promise<void>
   onSessionUpdated: (session: StudioSession) => Promise<void>
+  onOpenHistory: () => void
+  onCreateSession: () => Promise<void>
 }
 
-export function useStudioControls({ session, onRun, onSessionUpdated }: UseStudioControlsInput) {
+export function useStudioControls({
+  session,
+  onRun,
+  onSessionUpdated,
+  onOpenHistory,
+  onCreateSession,
+}: UseStudioControlsInput) {
   const [pendingMode, setPendingMode] = useState<StudioPermissionMode | null>(null)
   const [isApplyingMode, setIsApplyingMode] = useState(false)
 
@@ -25,9 +33,19 @@ export function useStudioControls({ session, onRun, onSessionUpdated }: UseStudi
       return { kind: 'control' as const }
     }
 
+    if (command.type === 'history') {
+      onOpenHistory()
+      return { kind: 'control' as const }
+    }
+
+    if (command.type === 'new-session') {
+      await onCreateSession()
+      return { kind: 'control' as const }
+    }
+
     await onRun(inputText)
     return { kind: 'run' as const }
-  }, [onRun])
+  }, [onCreateSession, onOpenHistory, onRun])
 
   const closePermissionModeModal = useCallback(() => {
     if (isApplyingMode) {
