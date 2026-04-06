@@ -49,11 +49,6 @@ export function authMiddleware(
     throw new AuthenticationError('无效的 API 密钥')
   }
 
-  logger.info('认证中间令：认证成功', {
-    path: req.path,
-    keyPrefix: token.slice(0, 4) + '...'
-  })
-
   res.locals.manimcatApiKey = token
   next()
 }
