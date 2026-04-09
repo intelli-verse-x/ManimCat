@@ -1,13 +1,22 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { StudioCommandPanel } from './StudioCommandPanel'
 import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
 
 vi.mock('../../i18n', () => ({
   useI18n: () => ({
-    t: (_key: string) => '输入指令...',
+    t: (key: string) => {
+      if (key === 'studio.commandPlaceholder' || key === 'studio.initializing') {
+        return '输入指令...'
+      }
+      return key
+    },
   }),
 }))
+
+afterEach(() => {
+  cleanup()
+})
 
 function createSession(): StudioSession {
   const now = '2026-03-22T00:00:00.000Z'
@@ -61,6 +70,59 @@ describe('StudioCommandPanel', () => {
 
     await waitFor(() => expect(onRun).toHaveBeenCalledWith('render current file'))
     await waitFor(() => expect(input.value).toBe('render current file'))
+  })
+
+  it('shows command suggestions when typing slash and filters them by prefix', async () => {
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '/' } })
+
+    expect(screen.getByText('studio.commandMenu.title')).toBeInTheDocument()
+    expect(screen.getByText('/history')).toBeInTheDocument()
+    expect(screen.getByText('/new')).toBeInTheDocument()
+
+    fireEvent.change(input, { target: { value: '/n' } })
+
+    expect(screen.getByText('/new')).toBeInTheDocument()
+    expect(screen.queryByText('/history')).not.toBeInTheDocument()
+  })
+
+  it('completes a command from the suggestion list before submitting', async () => {
+    const onRun = vi.fn()
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={onRun}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '/n' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(input.value).toBe('/new')
+    expect(onRun).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(onRun).toHaveBeenCalledWith('/new'))
   })
 
   it('does not flash the full assistant text before typing starts', async () => {

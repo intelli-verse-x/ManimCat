@@ -18,6 +18,8 @@ import {
   createStudioCommandPanelStore,
   type StudioCommandPanelSnapshot,
 } from './command-panel/store'
+import { getStudioCommandSuggestions, type StudioCommandSuggestion } from '../commands/autocomplete/command-suggestions'
+import { StudioCommandAutocomplete } from '../commands/ui/autocomplete/StudioCommandAutocomplete'
 
 interface StudioCommandPanelProps {
   session: StudioSession | null
@@ -57,6 +59,7 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
   const [isImageModeOpen, setIsImageModeOpen] = useState(false)
   const [isCanvasOpen, setIsCanvasOpen] = useState(false)
   const [animatedAssistantText, setAnimatedAssistantText] = useState('')
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const endRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -171,6 +174,9 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
   }), [appendUploadedAttachment, disabled])
 
   const lastMessage = messages.at(-1) ?? null
+  const commandSuggestions = useMemo(() => getStudioCommandSuggestions(input), [input])
+  const activeSuggestion = commandSuggestions[activeSuggestionIndex] ?? commandSuggestions[0] ?? null
+  const commandAutocompleteOpen = commandSuggestions.length > 0
 
   useLayoutEffect(() => {
     commandStore.setSnapshot(snapshot)
@@ -198,6 +204,10 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
       focusInput()
     }
   }, [disabled, session?.id])
+
+  useEffect(() => {
+    setActiveSuggestionIndex(0)
+  }, [input])
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
@@ -306,6 +316,12 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
 
   const effectivePlaceholder = inputPlaceholderOverride ?? (disabled ? t('studio.initializing') : t('studio.commandPlaceholder'))
 
+  const applySuggestion = (suggestion: StudioCommandSuggestion) => {
+    setInput(suggestion.trigger)
+    setActiveSuggestionIndex(0)
+    inputRef.current?.focus()
+  }
+
   return (
     <section
       data-variant={variant}
@@ -386,12 +402,42 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
             {'>'}
           </span>
           <div className={`${isMinimal ? 'relative flex-1' : 'flex-1'}`}>
+            <StudioCommandAutocomplete
+              suggestions={commandSuggestions}
+              activeIndex={Math.min(activeSuggestionIndex, Math.max(commandSuggestions.length - 1, 0))}
+              onSelect={applySuggestion}
+            />
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={(e) => {
+                if (commandAutocompleteOpen && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                  e.preventDefault()
+                  const delta = e.key === 'ArrowDown' ? 1 : -1
+                  setActiveSuggestionIndex((current) => {
+                    const length = commandSuggestions.length
+                    if (length === 0) {
+                      return 0
+                    }
+                    return (current + delta + length) % length
+                  })
+                  return
+                }
+                if (commandAutocompleteOpen && (e.key === 'Tab' || (e.key === 'Enter' && activeSuggestion && input.trim() !== activeSuggestion.trigger))) {
+                  e.preventDefault()
+                  if (activeSuggestion) {
+                    applySuggestion(activeSuggestion)
+                  }
+                  return
+                }
+                if (commandAutocompleteOpen && e.key === 'Escape') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setInput('')
+                  return
+                }
                 if (e.key === 'Escape' && onEscapePress) {
                   e.preventDefault()
                   e.stopPropagation()
