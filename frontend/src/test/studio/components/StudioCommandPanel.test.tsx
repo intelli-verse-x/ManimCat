@@ -1,9 +1,9 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { StudioCommandPanel } from './StudioCommandPanel'
-import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
+import { StudioCommandPanel } from '../../../studio/components/StudioCommandPanel'
+import type { StudioMessage, StudioSession } from '../../../studio/protocol/studio-agent-types'
 
-vi.mock('../../i18n', () => ({
+vi.mock('../../../i18n', () => ({
   useI18n: () => ({
     t: (key: string) => {
       if (key === 'studio.commandPlaceholder' || key === 'studio.initializing') {
@@ -123,6 +123,30 @@ describe('StudioCommandPanel', () => {
     fireEvent.keyDown(input, { key: 'Enter' })
 
     await waitFor(() => expect(onRun).toHaveBeenCalledWith('/new'))
+  })
+
+  it('executes the registered local image command without sending text to onRun', async () => {
+    const onRun = vi.fn()
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={onRun}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '/p' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(screen.getByText('canvasMode.title')).toBeInTheDocument())
+    expect(onRun).not.toHaveBeenCalled()
+    expect(input.value).toBe('')
   })
 
   it('does not flash the full assistant text before typing starts', async () => {

@@ -6,48 +6,11 @@ export interface StudioCommandSuggestion extends StudioCommandPresentation {
   group: StudioCommandGroup
 }
 
-const localComposerSuggestions: StudioCommandSuggestion[] = [
-  {
-    id: 'image-input',
-    group: 'feature',
-    trigger: '/p',
-    titleKey: 'studio.command.imageTitle',
-    descriptionKey: 'studio.command.imageDescription',
-    aliases: ['/paint'],
-    keywords: ['image', 'upload', 'canvas', 'reference'],
-  },
-]
-
-const permissionModeVariants: StudioCommandSuggestion[] = [
-  {
-    id: 'permission-mode-auto',
-    group: 'feature',
-    trigger: '/auto',
-    titleKey: 'studio.command.autoTitle',
-    descriptionKey: 'studio.command.autoDescription',
-    keywords: ['permission', 'mode', 'approval'],
-  },
-  {
-    id: 'permission-mode-full',
-    group: 'feature',
-    trigger: '/full',
-    titleKey: 'studio.command.fullTitle',
-    descriptionKey: 'studio.command.fullDescription',
-    keywords: ['permission', 'mode', 'approval'],
-  },
-]
-
-const registeredSuggestions: StudioCommandSuggestion[] = allStudioCommands.map((command) => ({
-  id: command.id,
+export const allStudioCommandSuggestions: StudioCommandSuggestion[] = allStudioCommands.map((command, index) => ({
+  id: `${command.id}-${index}`,
   group: command.group,
   ...command.presentation,
 }))
-
-export const allStudioCommandSuggestions: StudioCommandSuggestion[] = [
-  ...registeredSuggestions,
-  ...permissionModeVariants,
-  ...localComposerSuggestions,
-]
 
 export function getStudioCommandSuggestions(input: string, maxItems = 6): StudioCommandSuggestion[] {
   const normalized = normalizeCommandInput(input)

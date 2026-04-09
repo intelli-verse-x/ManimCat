@@ -1,6 +1,7 @@
 import type { StudioPermissionMode, StudioSession } from '../protocol/studio-agent-types'
 
 export type StudioCommandGroup = 'basic' | 'feature' | 'advanced'
+export type StudioCommandScope = 'global' | 'local'
 
 export interface StudioCommandPresentation {
   trigger: string
@@ -15,6 +16,7 @@ export interface StudioCommandContext {
   openHistory: () => void
   createSession: () => Promise<void>
   setPendingMode: (mode: StudioPermissionMode) => void
+  openImageInputMode?: () => void
 }
 
 export interface StudioParsedCommandBase {
@@ -39,14 +41,21 @@ export interface StudioNewSessionCommand extends StudioParsedCommandBase {
   group: 'basic'
 }
 
+export interface StudioImageInputCommand extends StudioParsedCommandBase {
+  id: 'image-input'
+  group: 'feature'
+}
+
 export type StudioParsedCommand =
   | StudioPermissionModeCommand
   | StudioHistoryCommand
   | StudioNewSessionCommand
+  | StudioImageInputCommand
 
 export interface StudioCommandDefinition<TCommand extends StudioParsedCommand = StudioParsedCommand> {
   id: TCommand['id']
   group: StudioCommandGroup
+  scope: StudioCommandScope
   presentation: StudioCommandPresentation
   matches: (input: string) => TCommand | null
   execute: (command: TCommand, context: StudioCommandContext) => Promise<void> | void

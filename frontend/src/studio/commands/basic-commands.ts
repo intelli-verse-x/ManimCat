@@ -14,6 +14,7 @@ export const basicStudioCommands: StudioCommandDefinition[] = [
   {
     id: 'history',
     group: 'basic',
+    scope: 'global',
     presentation: {
       trigger: '/history',
       titleKey: 'studio.command.historyTitle',
@@ -38,6 +39,7 @@ export const basicStudioCommands: StudioCommandDefinition[] = [
   {
     id: 'new-session',
     group: 'basic',
+    scope: 'global',
     presentation: {
       trigger: '/new',
       titleKey: 'studio.command.newTitle',
