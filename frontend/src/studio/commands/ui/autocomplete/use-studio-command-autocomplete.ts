@@ -39,6 +39,11 @@ export function useStudioCommandAutocomplete(input: string) {
       return { handled: true as const }
     }
 
+    if (isOpen && event.key === 'Enter') {
+      event.preventDefault()
+      return { handled: true as const }
+    }
+
     if (isOpen && event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()

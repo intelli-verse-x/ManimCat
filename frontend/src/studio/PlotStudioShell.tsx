@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { StudioPermissionModeModal } from './commands/ui/StudioPermissionModeModal'
 import { StudioCommandPanel, type StudioCommandPanelHandle } from './components/StudioCommandPanel'
 import { useStudioSession } from './hooks/use-studio-session'
@@ -23,6 +23,8 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
   const [orderedWorkIds, setOrderedWorkIds] = useState<string[]>([])
   const [confirmExitOpen, setConfirmExitOpen] = useState(false)
   const [interruptArmedUntil, setInterruptArmedUntil] = useState<number | null>(null)
+  const [isDraggingImages, setIsDraggingImages] = useState(false)
+  const dragDepthRef = useRef(0)
   const commandPanelRef = useRef<StudioCommandPanelHandle | null>(null)
   const incomingIds = useMemo(() => studio.workSummaries.map((entry) => entry.work.id), [studio.workSummaries])
 
@@ -71,13 +73,121 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
     }, 3100)
   }
 
+  const handleShellDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    const imageTypeCount = countImageItems(event.dataTransfer)
+    if (imageTypeCount === 0) {
+      return
+    }
+
+    event.preventDefault()
+    dragDepthRef.current += 1
+    setIsDraggingImages(true)
+  }
+
+  const handleShellDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    const imageTypeCount = countImageItems(event.dataTransfer)
+    if (imageTypeCount === 0) {
+      return
+    }
+
+    event.preventDefault()
+    if (!isDraggingImages) {
+      setIsDraggingImages(true)
+    }
+  }
+
+  const handleShellDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return
+    }
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0) {
+      setIsDraggingImages(false)
+    }
+  }
+
+  const handleShellDrop = async (event: React.DragEvent<HTMLDivElement>) => {
+    const imageFiles = extractImageFilesFromDataTransfer(event.dataTransfer)
+    dragDepthRef.current = 0
+    if (imageFiles.length === 0) {
+      setIsDraggingImages(false)
+      return
+    }
+
+    event.preventDefault()
+    setIsDraggingImages(false)
+    await commandPanelRef.current?.ingestImageFiles(imageFiles)
+  }
+
+  useEffect(() => {
+    const syncWindowDragState = (event: DragEvent) => {
+      const imageCount = countImageItems(event.dataTransfer)
+      if (imageCount === 0) {
+        return
+      }
+
+      if (event.type === 'dragenter' || event.type === 'dragover') {
+        if (event.type === 'dragenter') {
+          dragDepthRef.current += 1
+        }
+        setIsDraggingImages(true)
+        return
+      }
+
+      if (event.type === 'dragleave') {
+        dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+        if (dragDepthRef.current === 0) {
+          setIsDraggingImages(false)
+        }
+        return
+      }
+
+      if (event.type === 'drop') {
+        dragDepthRef.current = 0
+        setIsDraggingImages(false)
+      }
+    }
+
+    window.addEventListener('dragenter', syncWindowDragState)
+    window.addEventListener('dragover', syncWindowDragState)
+    window.addEventListener('dragleave', syncWindowDragState)
+    window.addEventListener('drop', syncWindowDragState)
+
+    return () => {
+      window.removeEventListener('dragenter', syncWindowDragState)
+      window.removeEventListener('dragover', syncWindowDragState)
+      window.removeEventListener('dragleave', syncWindowDragState)
+      window.removeEventListener('drop', syncWindowDragState)
+    }
+  }, [])
+
   return (
     <>
       <div
+        onDragEnter={handleShellDragEnter}
+        onDragOver={handleShellDragOver}
+        onDragLeave={handleShellDragLeave}
+        onDrop={(event) => { void handleShellDrop(event) }}
         className={`studio-shell-root relative isolate flex min-h-screen flex-col overflow-y-auto bg-[#fafaf8] px-6 pb-2 pt-7 text-accent antialiased dark:bg-bg-primary dark:text-text-primary sm:px-8 sm:pb-3 sm:pt-8 md:h-screen md:overflow-hidden md:px-10 md:pb-4 md:pt-10 lg:px-12 lg:pb-5 lg:pt-12 ${
           isExiting ? 'animate-studio-exit' : 'animate-studio-entrance'
         }`}
       >
+        {isDraggingImages && (
+          <div className="pointer-events-none fixed inset-0 z-[160] border border-dashed border-black/15 bg-[#fafaf8]/86 backdrop-blur-[2px] dark:border-white/15 dark:bg-bg-primary/84">
+            <div className="flex h-full items-center justify-center p-6">
+              <div className="rounded-[2rem] border border-black/8 bg-white/72 px-6 py-4 text-center shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-bg-secondary/78">
+                <div className="font-mono text-[10px] uppercase tracking-[0.36em] text-text-secondary/60">
+                  DROP IMAGES
+                </div>
+                <div className="mt-2 text-sm text-text-primary/86">
+                  拖拽图片到此以上传为参考图
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,_rgba(66,66,66,0.045),_transparent_52%),radial-gradient(circle_at_bottom_right,_rgba(66,66,66,0.04),_transparent_36%)] dark:bg-[radial-gradient(circle_at_top,_rgba(138,138,138,0.08),_transparent_42%),radial-gradient(circle_at_bottom_right,_rgba(138,138,138,0.05),_transparent_32%)]"
@@ -214,6 +324,41 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
       />
     </>
   )
+}
+
+function extractImageFilesFromDataTransfer(dataTransfer: DataTransfer | null | undefined): File[] {
+  if (!dataTransfer) {
+    return []
+  }
+
+  const items = Array.from(dataTransfer.items ?? [])
+  const imageFilesFromItems = items
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file))
+
+  if (imageFilesFromItems.length > 0) {
+    return imageFilesFromItems
+  }
+
+  return Array.from(dataTransfer.files ?? []).filter((file) => file.type.startsWith('image/'))
+}
+
+function countImageItems(dataTransfer: DataTransfer | null | undefined) {
+  if (!dataTransfer) {
+    return 0
+  }
+
+  const items = Array.from(dataTransfer.items ?? [])
+  const imageItemCount = items.filter((item) => (
+    item.kind === 'file' && item.type.startsWith('image/')
+  )).length
+
+  if (imageItemCount > 0) {
+    return imageItemCount
+  }
+
+  return Array.from(dataTransfer.files ?? []).filter((file) => file.type.startsWith('image/')).length
 }
 
 function StudioExitConfirmModal({

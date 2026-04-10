@@ -57,6 +57,7 @@ export function StudioCommandComposer({
               type="text"
               value={composer.input}
               onChange={(e) => composer.handleInputChange(e.target.value)}
+              onPaste={(e) => { void composer.handlePaste(e) }}
               onKeyDown={(e) => {
                 const autocompleteResult = composer.commandAutocomplete.handleKeyDown(e, composer.effectiveApplySuggestion)
                 if (autocompleteResult.handled) {

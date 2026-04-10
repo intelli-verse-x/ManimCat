@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useI18n } from '../../i18n'
+import { debugStudioMessages } from '../agent-response/debug'
 import type { StudioMessage, StudioSession } from '../protocol/studio-agent-types'
 import { StudioCommandComposer } from './command-panel/StudioCommandComposer'
 import { StudioCommandViewport } from './command-panel/StudioCommandViewport'
@@ -23,6 +24,7 @@ interface StudioCommandPanelProps {
 }
 
 export interface StudioCommandPanelHandle {
+  ingestImageFiles: (files: FileList | File[]) => Promise<void>
   appendPreviewAttachment: (attachment: { url: string; name: string; mimeType?: string }) => void
   focusComposer: () => void
 }
@@ -137,6 +139,43 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
     window.addEventListener('keydown', handleWindowKeyDown)
     return () => window.removeEventListener('keydown', handleWindowKeyDown)
   }, [composer, disabled, onEscapePress])
+
+  useEffect(() => {
+    const handleDocumentPaste = (event: ClipboardEvent) => {
+      if (disabled) {
+        return
+      }
+
+      const target = event.target as HTMLElement | null
+      const isInputTarget =
+        target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target?.isContentEditable
+
+      if (isInputTarget) {
+        return
+      }
+
+      const imageCount = Array.from(event.clipboardData?.items ?? []).filter((item) => (
+        item.kind === 'file' && item.type.startsWith('image/')
+      )).length
+
+      debugStudioMessages('command-panel-document-paste', {
+        imageCount,
+        targetTag: target?.tagName ?? null,
+      })
+
+      if (imageCount === 0) {
+        return
+      }
+
+      event.preventDefault()
+      void composer.handleDocumentPaste(event)
+    }
+
+    document.addEventListener('paste', handleDocumentPaste)
+    return () => document.removeEventListener('paste', handleDocumentPaste)
+  }, [composer, disabled])
 
   useEffect(() => {
     if (!latestAssistantText) {

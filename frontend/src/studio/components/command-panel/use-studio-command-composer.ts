@@ -1,5 +1,5 @@
 import { useImperativeHandle, useRef, useState } from 'react'
-import type { Ref } from 'react'
+import type { ClipboardEvent as ReactClipboardEvent, Ref } from 'react'
 import {
   addAttachmentTokenToInput,
   appendStudioReferenceImages,
@@ -11,6 +11,7 @@ import { useStudioComposerAttachments } from '../../composer/use-studio-composer
 import { resolveStudioCommand } from '../../commands/resolve-studio-command'
 import { useStudioCommandAutocomplete } from '../../commands/ui/autocomplete/use-studio-command-autocomplete'
 import { useStudioImageInputCommand } from '../../commands/ui/image-input/use-studio-image-input-command'
+import { debugStudioMessages } from '../../agent-response/debug'
 import type { StudioMessage, StudioSession } from '../../protocol/studio-agent-types'
 import type { StudioCommandPanelHandle } from '../StudioCommandPanel'
 
@@ -57,6 +58,25 @@ export function useStudioCommandComposer({
     onAttachmentsAdded: addAttachmentsToComposer,
     onFocusComposer: focusInput,
   })
+
+  const addImageFilesToComposer = async (files: FileList | File[]) => {
+    if (disabled) {
+      debugStudioMessages('composer-image-ingest-skipped', {
+        reason: 'disabled',
+      })
+      return
+    }
+
+    debugStudioMessages('composer-image-ingest-start', {
+      count: Array.from(files).length,
+    })
+    const nextAttachments = await attachmentsState.addImageFiles(files)
+    addAttachmentsToComposer(nextAttachments)
+    debugStudioMessages('composer-image-ingest-finish', {
+      attachmentCount: nextAttachments.length,
+      names: nextAttachments.map((attachment) => attachment.name),
+    })
+  }
 
   const handleSubmit = async () => {
     const next = input.trim()
@@ -114,7 +134,37 @@ export function useStudioCommandComposer({
     inputRef.current?.focus()
   }
 
+  const handlePaste = async (event: ReactClipboardEvent<HTMLInputElement>) => {
+    const imageFiles = extractImageFilesFromDataTransfer(event.clipboardData)
+    debugStudioMessages('composer-paste-detected', {
+      imageCount: imageFiles.length,
+      target: 'input',
+    })
+    if (imageFiles.length === 0) {
+      return
+    }
+
+    event.preventDefault()
+    await addImageFilesToComposer(imageFiles)
+  }
+
+  const handleDocumentPaste = async (event: ClipboardEvent) => {
+    const imageFiles = extractImageFilesFromDataTransfer(event.clipboardData)
+    debugStudioMessages('composer-paste-detected', {
+      imageCount: imageFiles.length,
+      target: 'document',
+    })
+    if (imageFiles.length === 0) {
+      return
+    }
+
+    await addImageFilesToComposer(imageFiles)
+  }
+
   useImperativeHandle(composerRef, () => ({
+    ingestImageFiles: async (files) => {
+      await addImageFilesToComposer(files)
+    },
     appendPreviewAttachment: (attachment) => {
       const nextAttachment = createComposerImageAttachment({
         url: attachment.url,
@@ -138,8 +188,28 @@ export function useStudioCommandComposer({
     imageInputCommand,
     effectiveApplySuggestion: applySuggestion,
     focusInput,
+    handlePaste,
+    handleDocumentPaste,
     handleInputChange,
     handleRemoveAttachment,
     handleSubmit,
   }
+}
+
+function extractImageFilesFromDataTransfer(dataTransfer: DataTransfer | null | undefined): File[] {
+  if (!dataTransfer) {
+    return []
+  }
+
+  const items = Array.from(dataTransfer.items ?? [])
+  const imageFilesFromItems = items
+    .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+    .map((item) => item.getAsFile())
+    .filter((file): file is File => Boolean(file))
+
+  if (imageFilesFromItems.length > 0) {
+    return imageFilesFromItems
+  }
+
+  return Array.from(dataTransfer.files ?? []).filter((file) => file.type.startsWith('image/'))
 }
