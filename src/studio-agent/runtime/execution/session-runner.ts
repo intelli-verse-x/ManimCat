@@ -376,13 +376,11 @@ export class StudioSessionRunner {
         messageStore: this.messageStore,
         registry: this.registry,
         eventBus: input.prepared.eventBus,
-        permissionService: this.permissionService,
         sessionStore: this.sessionStore,
         taskStore: this.taskStore,
         workStore: this.workStore,
         workResultStore: this.workResultStore,
         workContext: input.prepared.workContext,
-        askForConfirmation: this.askForConfirmation,
         runSubagent: (request) => this.runSubagent({
           ...request,
           customApiConfig: input.customApiConfig,
