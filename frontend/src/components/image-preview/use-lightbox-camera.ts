@@ -124,6 +124,45 @@ export function useLightboxCamera({
   }
 
   useEffect(() => {
+    let cancelled = false
+
+    if (!activeImage || !looksLikeSvg(activeImage)) {
+      return undefined
+    }
+
+    void readSvgIntrinsicSize(activeImage).then((svgSize) => {
+      if (!svgSize || cancelled) {
+        return
+      }
+
+      setNaturalSize((current) => {
+        if (
+          current.width === svgSize.width
+          && current.height === svgSize.height
+        ) {
+          return current
+        }
+
+        debugImageLightbox('camera.svg-size-resolved', {
+          activeImage,
+          width: svgSize.width,
+          height: svgSize.height,
+        })
+        return svgSize
+      })
+    }).catch((error) => {
+      debugImageLightbox('camera.svg-size-failed', {
+        activeImage,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeImage])
+
+  useEffect(() => {
     if (!shouldRender) {
       return undefined
     }
@@ -271,7 +310,7 @@ export function useLightboxCamera({
 
   const imageStyle: CSSProperties = {
     width: '100%',
-    height: '100%',
+    height: 'auto',
     display: 'block',
   }
 
@@ -294,4 +333,90 @@ function clampZoom(value: number, minZoom: number, maxZoom: number) {
 
 function roundZoom(value: number) {
   return Math.round(value * 100) / 100
+}
+
+function looksLikeSvg(source: string) {
+  return source.startsWith('data:image/svg+xml') || /\.svg(?:[?#]|$)/i.test(source)
+}
+
+async function readSvgIntrinsicSize(source: string) {
+  try {
+    const markup = source.startsWith('data:image/svg+xml')
+      ? decodeSvgDataUrl(source)
+      : await fetch(source).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SVG: ${response.status}`)
+        }
+        return response.text()
+      })
+    return parseSvgIntrinsicSize(markup)
+  } catch {
+    return undefined
+  }
+}
+
+function decodeSvgDataUrl(source: string) {
+  const commaIndex = source.indexOf(',')
+  if (commaIndex < 0) {
+    throw new Error('Invalid SVG data URL')
+  }
+
+  const metadata = source.slice(0, commaIndex)
+  const payload = source.slice(commaIndex + 1)
+  return metadata.includes(';base64')
+    ? atob(payload)
+    : decodeURIComponent(payload)
+}
+
+function parseSvgIntrinsicSize(markup: string) {
+  if (typeof DOMParser === 'undefined') {
+    return undefined
+  }
+
+  const document = new DOMParser().parseFromString(markup, 'image/svg+xml')
+  const root = document.documentElement
+  if (!root || root.nodeName.toLowerCase() !== 'svg') {
+    return undefined
+  }
+
+  const width = parseSvgLength(root.getAttribute('width'))
+  const height = parseSvgLength(root.getAttribute('height'))
+  if (width && height) {
+    return { width, height }
+  }
+
+  const viewBox = root.getAttribute('viewBox')?.trim()
+  if (!viewBox) {
+    return undefined
+  }
+
+  const parts = viewBox.split(/[\s,]+/).map(Number)
+  if (parts.length !== 4 || parts.some((value) => !Number.isFinite(value))) {
+    return undefined
+  }
+
+  const viewBoxWidth = Math.abs(parts[2])
+  const viewBoxHeight = Math.abs(parts[3])
+  if (!viewBoxWidth || !viewBoxHeight) {
+    return undefined
+  }
+
+  return {
+    width: viewBoxWidth,
+    height: viewBoxHeight,
+  }
+}
+
+function parseSvgLength(value: string | null) {
+  if (!value) {
+    return undefined
+  }
+
+  const match = value.trim().match(/^([0-9]*\.?[0-9]+)/)
+  if (!match) {
+    return undefined
+  }
+
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
