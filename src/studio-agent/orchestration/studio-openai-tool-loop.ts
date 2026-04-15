@@ -50,6 +50,9 @@ type StudioChatCompletion = Awaited<ReturnType<typeof requestStudioChatCompletio
 type StudioChatCompletionMessage = NonNullable<StudioChatCompletion['choices'][number]['message']>
 type StudioChatToolCall = NonNullable<StudioChatCompletionMessage['tool_calls']>[number]
 
+/**
+ * Studio OpenAI 工具循环执行器输入接口
+ */
 interface StudioOpenAIToolLoopInput {
   projectId: string
   session: StudioSession
@@ -80,6 +83,9 @@ interface StudioOpenAIToolLoopInput {
   abortSignal?: AbortSignal
 }
 
+/**
+ * Studio 循环运行时接口，包含执行所需的所有配置和状态
+ */
 interface StudioLoopRuntime {
   client: OpenAI
   model: string
@@ -108,6 +114,10 @@ interface StudioToolExecutionResult {
   failureMessage: string | null
 }
 
+/**
+ * Studio 循环检查点管理器
+ * 用于跟踪执行进度、成功/失败状态
+ */
 class StudioLoopCheckpointManager {
   private autonomy: StudioLoopAutonomy
 
@@ -157,6 +167,12 @@ class StudioLoopCheckpointManager {
   }
 }
 
+/**
+ * 创建 Studio OpenAI 工具循环生成器
+ * 这是核心执行函数，负责循环调用 LLM 并执行工具
+ * @param input - 循环执行所需的输入配置
+ * @returns 异步生成器，产出处理事件
+ */
 export async function* createStudioOpenAIToolLoop(
   input: StudioOpenAIToolLoopInput
 ): AsyncGenerator<StudioProcessorStreamEvent> {
@@ -240,6 +256,11 @@ export async function* createStudioOpenAIToolLoop(
   }
 }
 
+/**
+ * 创建循环运行时，初始化 OpenAI 客户端、工具、消息和系统提示
+ * @param input - 输入配置
+ * @returns 运行时对象
+ */
 async function createLoopRuntime(input: StudioOpenAIToolLoopInput): Promise<StudioLoopRuntime> {
   const client = createCustomOpenAIClient(input.customApiConfig)
   const model = (input.customApiConfig.model || '').trim()
@@ -271,6 +292,11 @@ async function createLoopRuntime(input: StudioOpenAIToolLoopInput): Promise<Stud
   }
 }
 
+/**
+ * 构建单步请求，包含系统提示和对话历史
+ * @param runtime - 运行时对象
+ * @returns 单步请求对象，包含消息和字符计数统计
+ */
 function buildStepRequest(runtime: StudioLoopRuntime): StudioLoopStepRequest {
   const messages = [
     { role: 'system' as const, content: runtime.systemPrompt },
@@ -284,6 +310,15 @@ function buildStepRequest(runtime: StudioLoopRuntime): StudioLoopStepRequest {
   }
 }
 
+/**
+ * 请求 LLM 完成单步对话
+ * @param input - 输入配置
+ * @param runtime - 运行时对象
+ * @param request - 构建好的请求
+ * @param step - 当前步骤数
+ * @param stepStartedAt - 步骤开始时间戳
+ * @returns 单步执行结果
+ */
 async function requestLoopStep(
   input: StudioOpenAIToolLoopInput,
   runtime: StudioLoopRuntime,
@@ -344,6 +379,12 @@ async function requestLoopStep(
   }
 }
 
+/**
+ * 持久化提供者消息快照到存储
+ * @param input - 输入配置
+ * @param assistantMessage - 助手消息对象
+ * @param message - OpenAI 聊天完成消息
+ */
 async function persistProviderSnapshot(
   input: StudioOpenAIToolLoopInput,
   assistantMessage: StudioAssistantMessage,
@@ -356,6 +397,10 @@ async function persistProviderSnapshot(
   })
 }
 
+/**
+ * 发射助手文本事件到流
+ * @param text - 要发射的文本
+ */
 async function* emitAssistantText(text: string): AsyncGenerator<StudioProcessorStreamEvent> {
   if (!text) {
     return
@@ -366,6 +411,14 @@ async function* emitAssistantText(text: string): AsyncGenerator<StudioProcessorS
   yield { type: 'text-end' }
 }
 
+/**
+ * 执行单步中的所有工具调用
+ * @param input - 输入配置
+ * @param runtime - 运行时对象
+ * @param result - LLM 响应结果
+ * @param autonomy - 自治配置
+ * @returns 异步生成器，产出事件，返回执行结果
+ */
 async function* executeToolCallsForStep(
   input: StudioOpenAIToolLoopInput,
   runtime: StudioLoopRuntime,
@@ -400,6 +453,15 @@ async function* executeToolCallsForStep(
   return { failureMessage: null }
 }
 
+/**
+ * 执行单个工具调用
+ * @param input - 输入配置
+ * @param runtime - 运行时对象
+ * @param toolCall - 工具调用对象
+ * @param autonomy - 自治配置
+ * @param hasAssistantText - 是否有助手文本
+ * @returns 异步生成器，产出事件，返回工具执行结果
+ */
 async function* executeSingleToolCall(
   input: StudioOpenAIToolLoopInput,
   runtime: StudioLoopRuntime,
@@ -500,6 +562,11 @@ async function* executeSingleToolCall(
   }
 }
 
+/**
+ * 创建步骤完成事件
+ * @param completion - LLM 完成对象
+ * @returns 步骤完成事件
+ */
 function finishStepEvent(completion: StudioChatCompletion): StudioProcessorStreamEvent {
   return {
     type: 'finish-step',
@@ -509,6 +576,11 @@ function finishStepEvent(completion: StudioChatCompletion): StudioProcessorStrea
   }
 }
 
+/**
+ * 规范化助手消息文本
+ * @param content - 消息内容
+ * @returns 规范化后的文本
+ */
 function normalizeAssistantText(content: unknown): string {
   if (typeof content === 'string') {
     return content.trim()
@@ -530,6 +602,12 @@ function normalizeAssistantText(content: unknown): string {
     .trim()
 }
 
+/**
+ * 解析工具调用的 JSON 参数
+ * @param toolName - 工具名称
+ * @param rawArguments - 原始参数字符串
+ * @returns 解析结果，成功返回值对象，失败返回错误信息
+ */
 function parseToolArguments(
   toolName: string,
   rawArguments: string
@@ -552,6 +630,12 @@ function parseToolArguments(
   }
 }
 
+/**
+ * 将事件转换为工具执行的文本记录
+ * @param event - 处理事件
+ * @param current - 当前记录文本
+ * @returns 更新后的记录文本
+ */
 function eventToTranscript(event: StudioProcessorStreamEvent, current: string): string {
   if (event.type === 'tool-result') {
     return event.output || '(empty tool result)'

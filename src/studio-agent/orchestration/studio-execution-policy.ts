@@ -1,5 +1,9 @@
 import type { StudioAgentType, StudioKind } from '../domain/types'
 
+/**
+ * Studio 执行策略接口
+ * 定义不同 Studio 类型（Manim/Plot）的执行规则和行为
+ */
 export interface StudioExecutionPolicy {
   studioLabel: string
   runtimeSummary: string
@@ -17,6 +21,10 @@ export interface StudioExecutionPolicy {
   subagentLeadText: Record<Extract<StudioAgentType, 'reviewer' | 'designer'>, string>
 }
 
+/**
+ * Manim Studio 执行策略
+ * 用于基于场景的动画和渲染工作流
+ */
 const MANIM_POLICY: StudioExecutionPolicy = {
   studioLabel: 'Manim Studio',
   runtimeSummary: 'The render tool executes Manim and produces animation or image renders.',
@@ -49,6 +57,10 @@ const MANIM_POLICY: StudioExecutionPolicy = {
   }
 }
 
+/**
+ * Plot Studio 执行策略
+ * 用于静态绘图和图形生成工作流
+ */
 const PLOT_POLICY: StudioExecutionPolicy = {
   studioLabel: 'Plot Studio',
   runtimeSummary: 'The render tool executes matplotlib Python and produces static plots.',
@@ -81,6 +93,11 @@ const PLOT_POLICY: StudioExecutionPolicy = {
   }
 }
 
+/**
+ * 获取指定 Studio 类型的执行策略
+ * @param studioKind - Studio 类型（'manim' 或 'plot'）
+ * @returns 对应的执行策略对象
+ */
 export function getStudioExecutionPolicy(studioKind: StudioKind = 'manim'): StudioExecutionPolicy {
   return studioKind === 'plot' ? PLOT_POLICY : MANIM_POLICY
 }

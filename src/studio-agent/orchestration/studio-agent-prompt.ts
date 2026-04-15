@@ -13,6 +13,11 @@ interface BuildStudioAgentSystemPromptInput {
   skillSummaries?: StudioSkillUsageSummary[]
 }
 
+/**
+ * 构建 Studio Agent 的系统提示词
+ * @param input - 包含会话、工作上下文、可用技能和技能摘要的输入对象
+ * @returns 完整的系统提示词字符串
+ */
 export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPromptInput): string {
   const studioKind = input.session.studioKind ?? 'manim'
   const policy = getStudioExecutionPolicy(studioKind)
@@ -66,6 +71,11 @@ export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPrompt
   return sections.join('\n').trim()
 }
 
+/**
+ * 格式化工作上下文信息
+ * @param workContext - 工作上下文对象
+ * @returns 格式化的上下文文本
+ */
 function formatWorkContext(workContext?: StudioWorkContext): string {
   if (!workContext) {
     return ''
@@ -108,6 +118,11 @@ function formatWorkContext(workContext?: StudioWorkContext): string {
   return lines.join('\n')
 }
 
+/**
+ * 格式化可用技能目录
+ * @param skills - 技能发现条目数组
+ * @returns 格式化的技能目录文本
+ */
 function formatSkillCatalog(skills?: StudioSkillDiscoveryEntry[]): string {
   if (!skills?.length) {
     return ''
@@ -131,6 +146,11 @@ function formatSkillCatalog(skills?: StudioSkillDiscoveryEntry[]): string {
   return lines.join('\n')
 }
 
+/**
+ * 格式化技能使用摘要
+ * @param summaries - 技能使用摘要数组
+ * @returns 格式化的技能使用摘要文本
+ */
 function formatSkillSummaries(summaries?: StudioSkillUsageSummary[]): string {
   if (!summaries?.length) {
     return ''

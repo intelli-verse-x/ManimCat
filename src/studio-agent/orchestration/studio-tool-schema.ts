@@ -2,6 +2,10 @@ import type OpenAI from 'openai'
 import type { StudioAgentType, StudioKind } from '../domain/types'
 import type { StudioToolRegistry } from '../tools/registry'
 
+/**
+ * 工具参数 schema 定义
+ * 用于 OpenAI 函数调用的参数验证
+ */
 const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
   read: {
     type: 'object',
@@ -160,6 +164,9 @@ const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
   }
 }
 
+/**
+ * Plot Studio 的渲染参数 schema（简化版）
+ */
 const PLOT_RENDER_PARAMETER_SCHEMA: Record<string, Record<string, unknown>> = {
   render: {
     type: 'object',
@@ -172,6 +179,13 @@ const PLOT_RENDER_PARAMETER_SCHEMA: Record<string, Record<string, unknown>> = {
   }
 }
 
+/**
+ * 构建 Studio 聊天工具 schema，用于 OpenAI 函数调用
+ * @param registry - 工具注册表
+ * @param agentType - 代理类型
+ * @param studioKind - Studio 类型
+ * @returns OpenAI 聊天完成工具数组
+ */
 export function buildStudioChatTools(
   registry: StudioToolRegistry,
   agentType: StudioAgentType,
@@ -190,6 +204,12 @@ export function buildStudioChatTools(
   }))
 }
 
+/**
+ * 解析工具参数 schema，根据 Studio 类型选择不同的 schema
+ * @param toolName - 工具名称
+ * @param studioKind - Studio 类型
+ * @returns 工具参数 schema
+ */
 function resolveToolParameterSchema(toolName: string, studioKind?: StudioKind) {
   if (studioKind === 'plot') {
     return PLOT_RENDER_PARAMETER_SCHEMA[toolName] ?? TOOL_PARAMETER_SCHEMAS[toolName]
