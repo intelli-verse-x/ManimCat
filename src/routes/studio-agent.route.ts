@@ -20,6 +20,7 @@ import { logPlotStudioTiming, readElapsedMs } from '../studio-agent/observabilit
 
 const router = express.Router()
 const logger = createLogger('StudioAgentRoute')
+const EMPTY_PENDING_PERMISSIONS: [] = []
 
 router.post('/studio-agent/sessions', authMiddleware, asyncHandler(async (req, res) => {
   const parsed = parseStudioCreateSessionRequest(req.body)
@@ -34,6 +35,7 @@ router.post('/studio-agent/sessions', authMiddleware, asyncHandler(async (req, r
     studioKind: parsed.studioKind,
     agentType: parsed.agentType,
     permissionLevel: parsed.permissionLevel,
+    permissionMode: parsed.permissionMode,
     workspaceId: parsed.workspaceId,
     toolChoice: parsed.toolChoice
   })
@@ -76,6 +78,14 @@ router.get('/studio-agent/sessions/:sessionId/skills', authMiddleware, asyncHand
   }
 
   sendStudioSuccess(res, { skills })
+}))
+
+router.get('/studio-agent/permissions/pending', authMiddleware, asyncHandler(async (_req, res) => {
+  sendStudioSuccess(res, { requests: EMPTY_PENDING_PERMISSIONS })
+}))
+
+router.post('/studio-agent/permissions/reply', authMiddleware, asyncHandler(async (_req, res) => {
+  sendStudioSuccess(res, { requests: EMPTY_PENDING_PERMISSIONS })
 }))
 
 router.patch('/studio-agent/sessions/:sessionId', authMiddleware, asyncHandler(async (req, res) => {
@@ -240,6 +250,7 @@ router.post('/studio-agent/runs', authMiddleware, asyncHandler(async (req, res) 
     run: started.run,
     assistantMessage: started.assistantMessage,
     text: '',
+    pendingPermissions: EMPTY_PENDING_PERMISSIONS,
     messages,
     runs,
     sessionEvents,
@@ -310,6 +321,7 @@ router.post('/studio-agent/runs/:runId/continue', authMiddleware, asyncHandler(a
     run: continued.run,
     assistantMessage: continuedAssistantMessage,
     text: '',
+    pendingPermissions: EMPTY_PENDING_PERMISSIONS,
     messages,
     runs,
     sessionEvents,
