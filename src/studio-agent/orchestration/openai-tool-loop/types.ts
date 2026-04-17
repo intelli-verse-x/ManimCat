@@ -40,6 +40,7 @@ export interface StudioOpenAIToolLoopInput {
   messageStore: StudioMessageStore
   registry: StudioToolRegistry
   eventBus: StudioRuntimeBackedToolContext['eventBus']
+  partStore?: StudioRuntimeBackedToolContext['partStore']
   sessionStore?: StudioSessionStore
   taskStore?: StudioTaskStore
   workStore?: StudioWorkStore

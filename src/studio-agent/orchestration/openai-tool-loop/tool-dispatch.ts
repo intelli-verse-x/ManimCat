@@ -2,6 +2,7 @@ import type { StudioProcessorStreamEvent } from '../../domain/types'
 import { throwIfStudioRunCancelled } from '../../runtime/execution/run-cancellation'
 import { buildStudioPreToolCommentary } from '../../runtime/tools/pre-tool-commentary'
 import { createStudioToolCallExecutionEvents } from '../../runtime/tools/tool-call-adapter'
+import { logPlotStudioTiming, readRunElapsedMs } from '../../observability/plot-studio-timing'
 import type {
   StudioChatToolCall,
   StudioLoopAutonomy,
@@ -58,6 +59,18 @@ async function* executeStudioSingleToolCall(
 
   if (!parsedInput.ok) {
     const fatal = autonomy.consecutiveFailures + 1 >= autonomy.maxConsecutiveFailures
+    logPlotStudioTiming(input.session.studioKind, 'tool.failure.detected', {
+      sessionId: input.session.id,
+      runId: input.run.id,
+      assistantMessageId: runtime.currentAssistantMessage.id,
+      toolName,
+      callId: toolCallId,
+      failureStage: 'argument_parse',
+      failureKind: 'invalid_arguments',
+      error: parsedInput.error,
+      rawArgumentsPreview: summarizeRawArguments(toolCall.function.arguments),
+      runElapsedMs: readRunElapsedMs(input.run),
+    }, 'warn')
     yield {
       type: 'tool-input-start',
       id: toolCallId,
@@ -75,6 +88,9 @@ async function* executeStudioSingleToolCall(
       toolCallId,
       error: parsedInput.error,
       metadata: {
+        failureStage: 'argument_parse',
+        failureKind: 'invalid_arguments',
+        rawArgumentsPreview: summarizeRawArguments(toolCall.function.arguments),
         recoverable: !fatal,
         failureCount: autonomy.consecutiveFailures + 1,
       }
@@ -97,6 +113,7 @@ async function* executeStudioSingleToolCall(
     toolInput: parsedInput.value,
     registry: input.registry,
     eventBus: input.eventBus,
+    partStore: input.partStore,
     sessionStore: input.sessionStore,
     taskStore: input.taskStore,
     workStore: input.workStore,
@@ -140,6 +157,13 @@ async function* executeStudioSingleToolCall(
     transcript,
     failureMessage: null
   }
+}
+
+function summarizeRawArguments(rawArguments: string): string {
+  if (rawArguments.length <= 300) {
+    return rawArguments
+  }
+  return `${rawArguments.slice(0, 297)}...`
 }
 
 function parseStudioToolArguments(

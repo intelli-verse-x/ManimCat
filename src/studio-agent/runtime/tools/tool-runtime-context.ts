@@ -1,5 +1,6 @@
 import type {
   StudioSession,
+  StudioPartStore,
   StudioSessionStore,
   StudioToolChoice,
   StudioToolContext
@@ -42,6 +43,7 @@ export interface StudioToolPermissionRequest {
 }
 
 export interface StudioRuntimeBackedToolContext extends StudioToolContext {
+  partStore?: StudioPartStore
   sessionStore?: StudioSessionStore
   runSubagent?: (input: StudioSubagentRunRequest) => Promise<StudioSubagentRunResult>
   resolveSkill?: (name: string, session: StudioSession) => Promise<StudioResolvedSkill>

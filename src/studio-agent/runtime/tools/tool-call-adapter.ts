@@ -21,6 +21,7 @@ import type {
 } from './tool-runtime-context'
 import type { CustomApiConfig } from '../../../types'
 import { buildStudioPreToolCommentary } from './pre-tool-commentary'
+import { logPlotStudioTiming, readRunElapsedMs } from '../../observability/plot-studio-timing'
 
 export interface StudioToolCallExecutionOptions {
   projectId: string
@@ -32,6 +33,7 @@ export interface StudioToolCallExecutionOptions {
   toolInput: Record<string, unknown>
   registry: StudioToolRegistry
   eventBus: StudioRuntimeBackedToolContext['eventBus']
+  partStore?: StudioRuntimeBackedToolContext['partStore']
   sessionStore?: StudioSessionStore
   taskStore?: StudioTaskStore
   workStore?: StudioWorkStore
@@ -79,7 +81,15 @@ export async function* createStudioToolCallExecutionEvents(
   }
 
   if (!tool) {
-    yield createToolErrorEvent(input.toolCallId, `Tool not found: ${input.toolName}`)
+    logDetectedToolFailure(input, {
+      error: `Tool not found: ${input.toolName}`,
+      failureStage: 'registry',
+      failureKind: 'tool_not_found',
+    })
+    yield createToolErrorEvent(input.toolCallId, `Tool not found: ${input.toolName}`, {
+      failureStage: 'registry',
+      failureKind: 'tool_not_found',
+    })
     return
   }
 
@@ -90,8 +100,16 @@ export async function* createStudioToolCallExecutionEvents(
   )
 
   if (permissionAction === 'deny') {
+    logDetectedToolFailure(input, {
+      error: `Permission denied for tool "${input.toolName}"`,
+      failureStage: 'permission',
+      failureKind: 'permission_denied',
+      permission: tool.permission,
+    })
     yield createToolErrorEvent(input.toolCallId, `Permission denied for tool "${input.toolName}"`, {
-      permission: tool.permission
+      permission: tool.permission,
+      failureStage: 'permission',
+      failureKind: 'permission_denied',
     })
     return
   }
@@ -111,9 +129,22 @@ export async function* createStudioToolCallExecutionEvents(
       attachments: result.attachments
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    logDetectedToolFailure(input, {
+      error: message,
+      failureStage: 'execution',
+      failureKind: 'exception',
+      errorName: error instanceof Error ? error.name : undefined,
+      stackPreview: error instanceof Error ? summarizeStack(error.stack) : undefined,
+    })
     yield createToolErrorEvent(
       input.toolCallId,
-      error instanceof Error ? error.message : String(error)
+      message,
+      {
+        failureStage: 'execution',
+        failureKind: 'exception',
+        errorName: error instanceof Error ? error.name : undefined,
+      }
     )
   }
 }
@@ -129,6 +160,7 @@ async function executeTool(input: {
     abortSignal: input.options.abortSignal,
     assistantMessage: input.options.assistantMessage,
     eventBus: input.options.eventBus,
+    partStore: input.options.partStore,
     taskStore: input.options.taskStore,
     workStore: input.options.workStore,
     workResultStore: input.options.workResultStore,
@@ -178,6 +210,54 @@ function createToolErrorEvent(
     error,
     metadata
   }
+}
+
+function logDetectedToolFailure(
+  input: StudioToolCallExecutionOptions,
+  details: {
+    error: string
+    failureStage: string
+    failureKind: string
+    permission?: string
+    errorName?: string
+    stackPreview?: string
+  }
+): void {
+  logPlotStudioTiming(input.session.studioKind, 'tool.failure.detected', {
+    sessionId: input.session.id,
+    runId: input.run.id,
+    assistantMessageId: input.assistantMessage.id,
+    toolName: input.toolName,
+    callId: input.toolCallId,
+    failureStage: details.failureStage,
+    failureKind: details.failureKind,
+    permission: details.permission,
+    errorName: details.errorName,
+    error: details.error,
+    stackPreview: details.stackPreview,
+    inputSummary: summarizeToolInput(input.toolInput),
+    runElapsedMs: readRunElapsedMs(input.run),
+  }, 'warn')
+}
+
+function summarizeToolInput(input: Record<string, unknown>): string {
+  try {
+    const serialized = JSON.stringify(input)
+    if (serialized.length <= 300) {
+      return serialized
+    }
+    return `${serialized.slice(0, 297)}...`
+  } catch {
+    return '[unserializable tool input]'
+  }
+}
+
+function summarizeStack(stack?: string): string | undefined {
+  if (!stack?.trim()) {
+    return undefined
+  }
+  const normalized = stack.trim()
+  return normalized.length <= 600 ? normalized : `${normalized.slice(0, 597)}...`
 }
 
 function resolvePermissionPattern(input: Record<string, unknown>): string {

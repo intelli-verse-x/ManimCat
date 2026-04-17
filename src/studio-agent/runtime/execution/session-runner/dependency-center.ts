@@ -87,6 +87,7 @@ export interface StudioSessionRunnerDependencies {
   registry: StudioToolRegistry
   processor: StudioRunProcessor
   messageStore: StudioMessageStore
+  partStore: StudioPartStore
   runStore?: StudioRunStore
   sessionStore?: StudioSessionStore
   sessionEventStore?: StudioSessionEventStore
@@ -119,6 +120,7 @@ export function createDependencyCenter(
     registry: options.registry,
     processor: input.processor,
     messageStore: options.messageStore,
+    partStore: options.partStore,
     runStore: options.runStore,
     sessionStore: options.sessionStore,
     sessionEventStore: options.sessionEventStore,

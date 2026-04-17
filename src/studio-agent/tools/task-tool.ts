@@ -4,6 +4,7 @@ import type {
   StudioToolResult,
   StudioWorkType
 } from '../domain/types'
+import { logPlotStudioSkillTrace } from '../observability/plot-studio-skill-trace'
 import { buildChildSessionRules } from '../permissions/policy'
 import { inheritStudioSessionMetadata } from '../runtime/session/session-agent-config'
 import type { StudioRuntimeBackedToolContext } from '../runtime/tools/tool-runtime-context'
@@ -64,6 +65,17 @@ async function executeTaskTool(
     subagentType: input.subagent_type,
     skill: input.skill,
     files: input.files
+  }
+
+  if (input.skill) {
+    logPlotStudioSkillTrace(context.session.studioKind, 'skill.task.requested', {
+      sessionId: context.session.id,
+      runId: context.run.id,
+      childSessionId: childSession.id,
+      subagentType: input.subagent_type,
+      requestedSkillName: input.skill,
+      files: input.files ?? [],
+    })
   }
 
   const { work, task } = await createWorkAndTask({

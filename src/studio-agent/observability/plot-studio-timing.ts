@@ -2,8 +2,20 @@ import { createLogger } from '../../utils/logger'
 
 const logger = createLogger('PlotStudioTiming')
 const IMPORTANT_PLOT_STUDIO_EVENTS = new Set([
+  'run.started',
+  'run.completed',
+  'run.failed',
+  'loop.started',
+  'provider.completed',
+  'provider.failed',
+  'step.started',
+  'step.response',
+  'step.finished',
+  'assistant.text',
+  'tool.started',
   'tool.completed',
   'tool.failed',
+  'tool.failure.detected',
 ])
 
 const PLOT_STUDIO_EVENT_LABELS: Record<string, string> = {
@@ -22,6 +34,7 @@ const PLOT_STUDIO_EVENT_LABELS: Record<string, string> = {
   'tool.started': '绘图工作室：工具开始执行',
   'tool.completed': '绘图工作室：工具执行成功',
   'tool.failed': '绘图工作室：工具执行失败',
+  'tool.failure.detected': '绘图工作室：检测到工具失败',
   'events.client.connected': '绘图工作室：前端事件流已连接',
   'events.client.disconnected': '绘图工作室：前端事件流已断开',
 }

@@ -1,4 +1,5 @@
 import { resolveStudioToolChoice } from '../../session/session-agent-config'
+import { logPlotStudioSkillTrace } from '../../../observability/plot-studio-skill-trace'
 import { buildSubagentPrompt } from '../session-runner-helpers'
 import type { StudioSubagentRunRequest, StudioSubagentRunResult } from '../../tools/tool-runtime-context'
 import type { StudioSessionRunnerDependencies } from './dependency-center'
@@ -14,9 +15,30 @@ export async function runSubagent(
     toolChoice?: StudioSubagentRunRequest['toolChoice']
   }) => Promise<{ text: string }>,
 ): Promise<StudioSubagentRunResult> {
+  if (input.skillName) {
+    logPlotStudioSkillTrace(input.childSession.studioKind, 'skill.subagent.requested', {
+      parentSessionId: input.parentSession.id,
+      childSessionId: input.childSession.id,
+      subagentType: input.subagentType,
+      requestedSkillName: input.skillName,
+      files: input.files ?? [],
+    })
+  }
+
   const skill = input.skillName && deps.resolveSkill
     ? await deps.resolveSkill(input.skillName, input.childSession)
     : undefined
+
+  if (input.skillName) {
+    logPlotStudioSkillTrace(input.childSession.studioKind, 'skill.subagent.resolved', {
+      parentSessionId: input.parentSession.id,
+      childSessionId: input.childSession.id,
+      subagentType: input.subagentType,
+      requestedSkillName: input.skillName,
+      resolvedSkillName: skill?.name ?? null,
+      resolvedEntryFile: skill?.entryFile ?? null,
+    }, skill ? 'info' : 'warn')
+  }
 
   const result = await run({
     projectId: input.projectId,

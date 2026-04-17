@@ -112,12 +112,32 @@ export class StudioRunProcessor {
 
           if (!allowed) {
             blocked = true
+            const startedAt = Date.now()
             await this.updateToolState(match.id, {
               status: 'error',
               input: event.input,
               error: `Doom loop rejected for tool "${event.toolName}"`,
+              metadata: {
+                failureStage: 'guard',
+                failureKind: 'doom_loop_rejected',
+              },
               time: { start: Date.now(), end: Date.now() }
             })
+            logPlotStudioTiming(input.session.studioKind, 'tool.failed', {
+              sessionId: input.session.id,
+              runId: input.run.id,
+              assistantMessageId: currentAssistantMessage.id,
+              toolName: event.toolName,
+              callId: event.toolCallId,
+              durationMs: 0,
+              error: `Doom loop rejected for tool "${event.toolName}"`,
+              failureStage: 'guard',
+              failureKind: 'doom_loop_rejected',
+              inputSummary: summarizeToolInput(event.input),
+              runWillStop: true,
+              runElapsedMs: readRunElapsedMs(input.run),
+              processedAt: startedAt,
+            }, 'warn')
             toolCalls.delete(event.toolCallId)
             break
           }
@@ -132,8 +152,10 @@ export class StudioRunProcessor {
           logPlotStudioTiming(input.session.studioKind, 'tool.started', {
             sessionId: input.session.id,
             runId: input.run.id,
+            assistantMessageId: currentAssistantMessage.id,
             toolName: event.toolName,
             callId: event.toolCallId,
+            inputSummary: summarizeToolInput(event.input),
             runElapsedMs: readRunElapsedMs(input.run),
           })
           break
@@ -346,9 +368,14 @@ export class StudioRunProcessor {
     logPlotStudioTiming(input.session.studioKind, 'tool.completed', {
       sessionId: input.session.id,
       runId: input.run.id,
+      assistantMessageId: match.messageId,
       toolName: match.tool,
       callId: event.toolCallId,
       durationMs: Math.max(0, Date.now() - getToolTimeStart(runningState)),
+      title: event.title ?? `Completed ${match.tool}`,
+      outputLength: event.output.length,
+      attachmentCount: event.attachments?.length ?? 0,
+      inputSummary: summarizeToolInput(getToolInput(runningState)),
       runElapsedMs: readRunElapsedMs(input.run),
     })
     toolCalls.delete(event.toolCallId)
@@ -381,10 +408,20 @@ export class StudioRunProcessor {
     logPlotStudioTiming(input.session.studioKind, 'tool.failed', {
       sessionId: input.session.id,
       runId: input.run.id,
+      assistantMessageId: match.messageId,
       toolName: match.tool,
       callId: event.toolCallId,
       durationMs: Math.max(0, Date.now() - getToolTimeStart(runningState)),
       error: event.error,
+      failureStage: event.metadata?.failureStage,
+      failureKind: event.metadata?.failureKind,
+      recoverable: event.metadata?.recoverable,
+      failureCount: event.metadata?.failureCount,
+      permission: event.metadata?.permission,
+      errorName: event.metadata?.errorName,
+      rawArgumentsPreview: event.metadata?.rawArgumentsPreview,
+      inputSummary: summarizeToolInput(getToolInput(runningState)),
+      runWillStop: event.metadata?.recoverable !== true,
       runElapsedMs: readRunElapsedMs(input.run),
     }, 'warn')
     toolCalls.delete(event.toolCallId)
@@ -414,5 +451,17 @@ export class StudioRunProcessor {
       state,
       metadata: mergeToolMetadata(current, 'metadata' in state ? state.metadata : undefined)
     })
+  }
+}
+
+function summarizeToolInput(input: Record<string, unknown>): string {
+  try {
+    const serialized = JSON.stringify(input)
+    if (serialized.length <= 300) {
+      return serialized
+    }
+    return `${serialized.slice(0, 297)}...`
+  } catch {
+    return '[unserializable tool input]'
   }
 }

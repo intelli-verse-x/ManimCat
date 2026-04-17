@@ -1,4 +1,5 @@
 import type { StudioToolDefinition, StudioToolResult } from '../domain/types'
+import { logPlotStudioSkillTrace } from '../observability/plot-studio-skill-trace'
 import type { StudioRuntimeBackedToolContext } from '../runtime/tools/tool-runtime-context'
 
 interface SkillToolInput {
@@ -25,6 +26,13 @@ async function executeSkillTool(
     throw new Error('Skill tool requires a skill resolver')
   }
 
+  logPlotStudioSkillTrace(context.session.studioKind, 'skill.tool.called', {
+    sessionId: context.session.id,
+    runId: context.run.id,
+    requestedSkillName: input.name,
+    agentType: context.session.agentType,
+  })
+
   const skill = await context.resolveSkill(input.name, context.session)
   const title = `Loaded skill: ${skill.name}`
 
@@ -45,6 +53,15 @@ async function executeSkillTool(
       scope: skill.scope,
       tags: skill.tags
     }
+  })
+
+  logPlotStudioSkillTrace(context.session.studioKind, 'skill.tool.completed', {
+    sessionId: context.session.id,
+    runId: context.run.id,
+    requestedSkillName: input.name,
+    resolvedSkillName: skill.name,
+    entryFile: skill.entryFile,
+    scope: skill.scope,
   })
 
   return {

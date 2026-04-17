@@ -49,6 +49,7 @@ export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPrompt
     'If user clarification is truly required, call the question tool instead of guessing.',
     'For subagent work, use the task tool. For local skills, use the skill tool. For code review, prefer ai-review or reviewer subagent when appropriate.',
     'Skills are temporary guidance modules. Load them step by step when they are relevant. Do not keep full skill guidance around longer than needed.',
+    'If a loaded skill points to secondary files such as references, scripts, or examples, and you judge that they are needed for the current step, read them before proceeding.',
     'If a manual skill was injected earlier, treat it as temporary guidance for the current task step. After that, decide for yourself whether another skill should be loaded.',
     'The render tool already inherits the current provider chain from Studio. Do not ask the user to pass provider config inside tool arguments.'
   ]

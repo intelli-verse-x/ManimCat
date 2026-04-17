@@ -1,6 +1,7 @@
 import { access, readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { StudioSession } from '../../domain/types'
+import { logPlotStudioSkillTrace } from '../../observability/plot-studio-skill-trace'
 import { buildDiscoveryEntry } from '../schema/parse-skill-manifest'
 import type { StudioSkillDiscoveryEntry, StudioSkillSource } from '../schema/skill-types'
 
@@ -26,6 +27,14 @@ export function createFileSystemSkillSource(input: {
           })
         })
       )
+
+      logPlotStudioSkillTrace(session.studioKind, 'skill.source.scan', {
+        sessionId: session.id,
+        source: input.source,
+        rootDirectory,
+        discoveredDirectoryCount: directories.length,
+        discoveredSkillNames: entries.map((entry) => entry.name),
+      })
 
       return entries.sort((left, right) => left.name.localeCompare(right.name))
     }
