@@ -261,11 +261,11 @@ export function ImageLightbox({
                 →
               </button>
             ) : null}
-            <button type="button" onClick={() => handleStepZoom(-0.1)} className="rounded border border-black/10 bg-white/70 px-2 py-1 text-xs hover:bg-white/90 dark:border-white/10 dark:bg-bg-secondary/78 dark:hover:bg-bg-secondary">
+            <button type="button" onClick={() => handleStepZoom(-0.05)} className="rounded border border-black/10 bg-white/70 px-2 py-1 text-xs hover:bg-white/90 dark:border-white/10 dark:bg-bg-secondary/78 dark:hover:bg-bg-secondary">
               -
             </button>
             <span className="text-xs tabular-nums text-text-secondary dark:text-text-secondary">{Math.round(zoom * 100)}%</span>
-            <button type="button" onClick={() => handleStepZoom(0.1)} className="rounded border border-black/10 bg-white/70 px-2 py-1 text-xs hover:bg-white/90 dark:border-white/10 dark:bg-bg-secondary/78 dark:hover:bg-bg-secondary">
+            <button type="button" onClick={() => handleStepZoom(0.05)} className="rounded border border-black/10 bg-white/70 px-2 py-1 text-xs hover:bg-white/90 dark:border-white/10 dark:bg-bg-secondary/78 dark:hover:bg-bg-secondary">
               +
             </button>
             <button type="button" onClick={onClose} className={`rounded px-2 py-1 text-xs ${

@@ -42,20 +42,32 @@ export function useLightboxCamera({
     onZoomChange(nextZoom)
   }
 
+  const rafZoomRef = useRef<number | null>(null)
+
   const handleViewportWheel = useCallback((event: WheelEvent) => {
     event.preventDefault()
 
-    const nextZoom = roundZoom(clampZoom(zoom + (event.deltaY < 0 ? 0.12 : -0.12), minZoom, maxZoom))
-    if (nextZoom === zoom) {
-      return
+    const rawDelta = event.deltaY < 0 ? 0.06 : -0.06
+
+    if (rafZoomRef.current !== null) {
+      window.cancelAnimationFrame(rafZoomRef.current)
     }
 
-    debugImageLightbox('camera.wheel-zoom', {
-      zoom,
-      nextZoom,
-      deltaY: event.deltaY,
+    rafZoomRef.current = window.requestAnimationFrame(() => {
+      rafZoomRef.current = null
+
+      const nextZoom = roundZoom(clampZoom(zoom + rawDelta, minZoom, maxZoom))
+      if (nextZoom === zoom) {
+        return
+      }
+
+      debugImageLightbox('camera.wheel-zoom', {
+        zoom,
+        nextZoom,
+        deltaY: event.deltaY,
+      })
+      onZoomChange(nextZoom)
     })
-    onZoomChange(nextZoom)
   }, [maxZoom, minZoom, onZoomChange, zoom])
 
   const handlePanStart = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -263,24 +275,26 @@ export function useLightboxCamera({
       return undefined
     }
 
-    const width = naturalSize.width
-    const height = naturalSize.height
+    const imgWidth = naturalSize.width
+    const imgHeight = naturalSize.height
     const availableWidth = Math.max(0, viewportSize.width - 48)
     const availableHeight = Math.max(0, viewportSize.height - 48)
 
-    if (!width || !height || !availableWidth || !availableHeight) {
+    if (!imgWidth || !imgHeight || !availableWidth || !availableHeight) {
       return undefined
     }
 
-    const fitScale = Math.min(availableWidth / width, availableHeight / height)
-    const baseScale = Math.max(0.01, fitScale)
-    const appliedScale = baseScale * Math.max(zoom, 0.01)
+    const stageRatio = 0.85
+    const stageWidth = availableWidth * stageRatio
+    const stageHeight = availableHeight * stageRatio
+
     return {
-      width,
-      height,
-      appliedScale,
+      width: stageWidth,
+      height: stageHeight,
+      imgWidth,
+      imgHeight,
     }
-  }, [activeImage, naturalSize.height, naturalSize.width, viewportSize.height, viewportSize.width, zoom])
+  }, [activeImage, naturalSize.height, naturalSize.width, viewportSize.height, viewportSize.width])
 
   const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
     const target = event.currentTarget
@@ -303,7 +317,7 @@ export function useLightboxCamera({
   const stageStyle: CSSProperties = {
     width: stageMetrics ? `${stageMetrics.width}px` : undefined,
     height: stageMetrics ? `${stageMetrics.height}px` : undefined,
-    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${stageMetrics?.appliedScale ?? Math.max(zoom, 0.01)})`,
+    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${Math.max(zoom, 0.01)})`,
     transformOrigin: 'center center',
     touchAction: 'none',
   }
