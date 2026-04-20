@@ -1,7 +1,3 @@
-import { getDefaultStudioWorkspacePath } from '../workspace/default-studio-workspace'
-import path from 'node:path'
-import os from 'node:os'
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import assert from 'node:assert/strict'
 import {
   buildStudioAgentSystemPrompt,
@@ -16,9 +12,6 @@ import {
   createStudioTask,
   createStudioToolPart,
   createStudioWork,
-  createLocalStudioSkillResolver,
-  createPlaceholderStudioTools,
-  createStudioDefaultTurnPlanResolver,
   enqueueSessionEvent,
   extractStudioWorkflowInput,
   flushTerminalSessionEventsToAssistant,
@@ -45,79 +38,14 @@ import {
   type StudioRuntimeBackedToolContext,
   type StudioTurnPlanResolver
 } from '../index'
+import { getDefaultStudioWorkspacePath } from '../workspace/default-studio-workspace'
+import { createStudioDefaultTurnPlanResolver } from '../runtime/planning/default-turn-plan-resolver'
 import { createStudioError, createStudioSuccess } from '../../routes/helpers/studio-agent-responses'
 import { parseStudioTurnIntent } from '../runtime/planning/turn-plan-intent'
 
-function createTestRuntime(options?: {
-  resolveTurnPlan?: StudioTurnPlanResolver
-  eventBus?: InMemoryStudioEventBus
-}) {
-  const registry = new StudioToolRegistry()
-  for (const tool of createPlaceholderStudioTools()) {
-    registry.register(tool)
-  }
-
-  const messageStore = new InMemoryStudioMessageStore()
-  const partStore = new InMemoryStudioPartStore()
-  const runStore = new InMemoryStudioRunStore()
-  const sessionStore = new InMemoryStudioSessionStore()
-  const taskStore = new InMemoryStudioTaskStore()
-  const sessionEventStore = new InMemoryStudioSessionEventStore()
-  const workStore = new InMemoryStudioWorkStore()
-  const workResultStore = new InMemoryStudioWorkResultStore()
-  const resolveSkill = createLocalStudioSkillResolver()
-  const resolveTurnPlan = options?.resolveTurnPlan ?? createStudioDefaultTurnPlanResolver({ registry })
-
-  const runtime = new StudioBuilderRuntime({
-    registry,
-    messageStore,
-    partStore,
-    runStore,
-    sessionStore,
-    sessionEventStore,
-    taskStore,
-    workStore,
-    workResultStore,
-    resolveSkill,
-    resolveTurnPlan,
-    eventBus: options?.eventBus
-  })
-
-  return {
-    registry,
-    runtime,
-    messageStore,
-    partStore,
-    runStore,
-    sessionStore,
-    sessionEventStore,
-    taskStore,
-    workStore,
-    workResultStore,
-    resolveTurnPlan
-  }
-}
-
-async function createWorkspace(): Promise<string> {
-  return mkdtemp(path.join(os.tmpdir(), 'manimcat-studio-agent-'))
-}
-
-async function run(name: string, fn: () => Promise<void>) {
-  try {
-    await fn()
-    console.log(`PASS ${name}`)
-  } catch (error) {
-    console.error(`FAIL ${name}`)
-    throw error
-  }
-}
-
-async function findLastAssistantMessageWithTool(messageStore: InMemoryStudioMessageStore, sessionId: string): Promise<StudioAssistantMessage | undefined> {
-  const messages = await messageStore.listBySessionId(sessionId)
-  return [...messages]
-    .reverse()
-    .find((message): message is StudioAssistantMessage => message.role === 'assistant' && message.parts.some((part) => part.type === 'tool'))
-}
+import { createTestRuntime, createWorkspace, run, findLastAssistantMessageWithTool } from './run-tests.factories'
+import path from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
 
 async function main() {
   await run('studio route helpers build stable envelopes', async () => {
@@ -133,16 +61,16 @@ async function main() {
       }
     })
   })
-    await run('default studio workspace uses dedicated hidden directory', async () => {
-      assert.equal(getDefaultStudioWorkspacePath(), path.join(process.cwd(), '.studio-workspace'))
-    })
+  await run('default studio workspace uses dedicated hidden directory', async () => {
+    assert.equal(getDefaultStudioWorkspacePath(), path.join(process.cwd(), '.studio-workspace'))
+  })
 
-    await run('default L2 permission rules allow skill loading', async () => {
-      assert.equal(evaluatePermission(defaultRulesForLevel('L2'), 'skill', 'math-education-visualization'), 'allow')
-      assert.equal(evaluatePermission(defaultRulesForLevel('L3'), 'skill', 'math-education-visualization'), 'allow')
-    })
+  await run('default L2 permission rules allow skill loading', async () => {
+    assert.equal(evaluatePermission(defaultRulesForLevel('L2'), 'skill', 'math-education-visualization'), 'allow')
+    assert.equal(evaluatePermission(defaultRulesForLevel('L3'), 'skill', 'math-education-visualization'), 'allow')
+  })
 
-    await run('builder prompt requires code, checks, and confirmation before render', async () => {
+  await run('builder prompt requires code, checks, and confirmation before render', async () => {
     const session = createStudioSession({
       projectId: 'project-1',
       agentType: 'builder',
@@ -1161,18 +1089,3 @@ main()
     console.error(error)
     process.exit(1)
   })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
