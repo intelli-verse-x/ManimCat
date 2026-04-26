@@ -5,6 +5,7 @@ import type { PlotPreviewVariant } from '../types'
 
 interface PlotPreviewSurfaceProps {
   attachment: StudioFileAttachment | null | undefined
+  previewSrc?: string
   result: StudioWorkResult | null
   canNavigate: boolean
   currentIndex: number
@@ -18,6 +19,7 @@ interface PlotPreviewSurfaceProps {
 
 export function PlotPreviewSurface({
   attachment,
+  previewSrc,
   result,
   canNavigate,
   currentIndex,
@@ -92,7 +94,7 @@ export function PlotPreviewSurface({
               : 'bg-transparent'
           }`}>
             <img
-              src={attachment?.path}
+              src={previewSrc ?? attachment?.path}
               alt={attachment?.name ?? t('studio.plot.previewAlt')}
               className="relative z-[1] max-h-full max-w-full object-contain"
             />

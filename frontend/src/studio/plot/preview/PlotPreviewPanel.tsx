@@ -17,6 +17,7 @@ import type { PlotPreviewVariant, PlotWorkListItem } from '../types'
 import { PlotHistoryStrip } from './PlotHistoryStrip'
 import { PlotPreviewContextMenu } from './PlotPreviewContextMenu'
 import { PlotPreviewSurface } from './PlotPreviewSurface'
+import { usePlotPreviewImage } from './use-plot-preview-image'
 
 interface PlotPreviewPanelProps {
   session: StudioSession | null
@@ -51,7 +52,6 @@ export function PlotPreviewPanel({
   const isTLayout = variant === 't-layout-top'
   const isMinimal = variant === 'pure-minimal-top'
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  const [zoom, setZoom] = useState(1)
   const [draggingWorkId, setDraggingWorkId] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [previewMotionKey, setPreviewMotionKey] = useState(0)
@@ -83,6 +83,7 @@ export function PlotPreviewPanel({
     : historyImages.findIndex((entry) => entry.workId === selectedWorkId)
   const activeHistoryEntry = historyImages[activeHistoryIndex] ?? null
   const previewAttachment = currentWorkImages[clampedImageIndex] ?? activeHistoryEntry?.attachment ?? null
+  const { previewSrc: previewDisplaySrc } = usePlotPreviewImage(previewAttachment?.path)
   const outputPath = formatOutputPath(previewAttachment, session, t('studio.plot.inlinePreview'), t('studio.plot.waitingOutputFile'))
 
   const handlePreviewExport = useCallback(async (format: 'png' | 'svg' | 'pdf') => {
@@ -124,12 +125,6 @@ export function PlotPreviewPanel({
       setCopyingFormat(null)
     }
   }, [copyingFormat, previewAttachment])
-
-  useEffect(() => {
-    if (!lightboxOpen) {
-      setZoom(1)
-    }
-  }, [lightboxOpen])
 
   useEffect(() => {
     setSelectedImageIndex(0)
@@ -262,6 +257,7 @@ export function PlotPreviewPanel({
             <PlotPreviewSurface
               key={`${previewMotionKey}:${previewAttachment?.path ?? 'empty'}`}
               attachment={previewAttachment}
+              previewSrc={previewDisplaySrc}
               result={result}
               canNavigate={historyImages.length > 1}
               currentIndex={activeHistoryIndex >= 0 ? activeHistoryIndex : 0}
@@ -297,19 +293,16 @@ export function PlotPreviewPanel({
 
       <PlotPreviewLightbox
         isOpen={lightboxOpen}
-        activeImage={previewAttachment?.path}
+        activeImage={previewDisplaySrc ?? previewAttachment?.path}
         activeIndex={activeHistoryIndex >= 0 ? activeHistoryIndex : 0}
         total={historyImages.length}
-        zoom={zoom}
         editableFilename={previewAttachment?.name}
         canNavigate={historyImages.length > 1}
-        onZoomChange={setZoom}
         onPrev={handlePrev}
         onNext={handleNext}
         onSendPreviewToComposer={onSendPreviewToComposer}
         onClose={() => {
           setLightboxOpen(false)
-          setZoom(1)
         }}
       />
       <PlotPreviewContextMenu

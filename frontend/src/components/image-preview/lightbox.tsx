@@ -14,12 +14,13 @@ interface ImageLightboxProps {
   activeImage?: string;
   activeIndex: number;
   total: number;
-  zoom: number;
+  initialZoom?: number;
   editableFilename?: string;
   appearance?: 'default' | 'studio';
+  baseScaleMode?: 'fit' | 'cover';
+  baseScaleBias?: number;
   minZoom?: number;
   maxZoom?: number;
-  onZoomChange: (nextZoom: number) => void;
   onPrev?: () => void;
   onNext?: () => void;
   onClose: () => void;
@@ -31,12 +32,13 @@ export function ImageLightbox({
   activeImage,
   activeIndex,
   total,
-  zoom,
+  initialZoom = 1,
   editableFilename,
   appearance = 'default',
+  baseScaleMode = 'fit',
+  baseScaleBias = 1,
   minZoom = 0.5,
   maxZoom = 4,
-  onZoomChange,
   onPrev,
   onNext,
   onClose,
@@ -47,6 +49,15 @@ export function ImageLightbox({
   const shellRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const openStartedAtRef = useRef<number | null>(null);
+  const pendingZoomTimingRef = useRef<{
+    opId: string;
+    source: 'wheel' | 'button';
+    startedAt: number;
+    wallTime: string;
+    fromZoom: number;
+    toZoom: number;
+  } | null>(null);
   const [contextMenu, setContextMenu] = useState(CLOSED_IMAGE_CONTEXT_MENU);
   const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
   const [copyingFormat, setCopyingFormat] = useState<'png' | 'svg' | null>(null);
@@ -55,6 +66,7 @@ export function ImageLightbox({
   const [annotationColor, setAnnotationColor] = useState(DEFAULT_COLOR);
   const [annotationStrokeWidth, setAnnotationStrokeWidth] = useState(DEFAULT_WIDTH);
   const [isBrushSettingsOpen, setIsBrushSettingsOpen] = useState(false);
+  const [zoom, setZoom] = useState(initialZoom);
   const isStudioAppearance = appearance === 'studio';
   const {
     handleImageLoad,
@@ -70,12 +82,100 @@ export function ImageLightbox({
     zoom,
     minZoom,
     maxZoom,
+    baseScaleMode,
+    baseScaleBias,
     shouldRender,
     isAnnotating,
     annotationTool,
     viewportRef,
-    onZoomChange,
+    onZoomTiming: (payload) => {
+      pendingZoomTimingRef.current = payload
+      console.info('[image-lightbox] zoom-start', {
+        opId: payload.opId,
+        at: payload.wallTime,
+        activeIndex,
+        imageSource: activeImage ? summarizeImageSource(activeImage) : null,
+        source: payload.source,
+        fromZoom: payload.fromZoom,
+        toZoom: payload.toZoom,
+        startTimeMs: Math.round(payload.startedAt),
+      })
+    },
+    onZoomChange: setZoom,
   })
+
+  useEffect(() => {
+    if (!shouldRender) {
+      return
+    }
+
+    setZoom(initialZoom)
+  }, [activeImage, initialZoom, shouldRender])
+
+  useEffect(() => {
+    if (!shouldRender || !activeImage) {
+      return
+    }
+
+    openStartedAtRef.current = performance.now()
+    console.info('[image-lightbox] open-start', {
+      activeIndex,
+      imageSource: summarizeImageSource(activeImage),
+      appearance,
+      startedAt: openStartedAtRef.current,
+    })
+  }, [activeImage, activeIndex, appearance, shouldRender])
+
+  useEffect(() => {
+    const pendingZoomTiming = pendingZoomTimingRef.current
+    if (!pendingZoomTiming || pendingZoomTiming.toZoom !== zoom) {
+      return
+    }
+
+    let paintFrame: number | null = null
+    const commitFrame = window.requestAnimationFrame(() => {
+      const commitDurationMs = Math.round(performance.now() - pendingZoomTiming.startedAt)
+      console.info('[image-lightbox] zoom-commit', {
+        opId: pendingZoomTiming.opId,
+        at: new Date().toISOString(),
+        activeIndex,
+        imageSource: activeImage ? summarizeImageSource(activeImage) : null,
+        source: pendingZoomTiming.source,
+        fromZoom: pendingZoomTiming.fromZoom,
+        toZoom: pendingZoomTiming.toZoom,
+        startTimeMs: Math.round(pendingZoomTiming.startedAt),
+        commitTimeMs: Math.round(performance.now()),
+        durationMs: commitDurationMs,
+      })
+
+      paintFrame = window.requestAnimationFrame(() => {
+        const paintDurationMs = Math.round(performance.now() - pendingZoomTiming.startedAt)
+        console.info('[image-lightbox] zoom-visible', {
+          opId: pendingZoomTiming.opId,
+          at: new Date().toISOString(),
+          activeIndex,
+          imageSource: activeImage ? summarizeImageSource(activeImage) : null,
+          source: pendingZoomTiming.source,
+          fromZoom: pendingZoomTiming.fromZoom,
+          toZoom: pendingZoomTiming.toZoom,
+          startTimeMs: Math.round(pendingZoomTiming.startedAt),
+          visibleTimeMs: Math.round(performance.now()),
+          durationMs: paintDurationMs,
+        })
+
+        if (pendingZoomTimingRef.current === pendingZoomTiming) {
+          pendingZoomTimingRef.current = null
+        }
+      })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(commitFrame)
+      if (paintFrame !== null) {
+        window.cancelAnimationFrame(paintFrame)
+      }
+    }
+  }, [activeImage, activeIndex, zoom])
 
   useEffect(() => {
     if (!shouldRender) {
@@ -176,6 +276,19 @@ export function ImageLightbox({
       y: event.clientY,
     });
   };
+
+  const handleTrackedImageLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    handleImageLoad(event)
+    const startedAt = openStartedAtRef.current
+    const loadedAt = performance.now()
+    console.info('[image-lightbox] image-loaded', {
+      activeIndex,
+      imageSource: summarizeImageSource(activeImage),
+      durationMs: startedAt === null ? null : Math.round(loadedAt - startedAt),
+      naturalWidth: event.currentTarget.naturalWidth,
+      naturalHeight: event.currentTarget.naturalHeight,
+    })
+  }
 
   const handleExport = async (format: ExportFormat) => {
     if (!activeImage || exportingFormat) {
@@ -387,7 +500,7 @@ export function ImageLightbox({
             isExiting={isExiting}
             imageStyle={imageStyle}
             stageStyle={stageStyle}
-            onImageLoad={handleImageLoad}
+            onImageLoad={handleTrackedImageLoad}
             onPanStart={handlePanStart}
             onPanMove={handlePanMove}
             onPanEnd={handlePanEnd}
@@ -447,6 +560,19 @@ function buildAnnotatedFilename(filename?: string) {
   const basename = filename?.trim().split(/[\\/]/).pop() || 'plot-preview.png';
   const normalized = basename.replace(/\.[a-z0-9]+$/i, '');
   return `${normalized}-annotated.png`;
+}
+
+function summarizeImageSource(source: string) {
+  if (source.startsWith('data:')) {
+    const commaIndex = source.indexOf(',')
+    return {
+      kind: 'data-url',
+      mediaType: commaIndex > 0 ? source.slice(5, commaIndex).split(';')[0] : 'unknown',
+      length: source.length,
+    }
+  }
+
+  return source.length > 180 ? `${source.slice(0, 177)}...` : source
 }
 
 function ToolButton({

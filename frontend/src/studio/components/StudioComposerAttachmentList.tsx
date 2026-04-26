@@ -20,7 +20,6 @@ export function StudioComposerAttachmentList({
   const isMinimal = variant === 'minimal'
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
-  const [zoom, setZoom] = useState(1)
 
   if (attachments.length === 0) {
     return null
@@ -38,7 +37,6 @@ export function StudioComposerAttachmentList({
               type="button"
               onClick={() => {
                 setActiveIndex(index)
-                setZoom(1)
                 setLightboxOpen(true)
               }}
               className={`${isMinimal ? 'block' : 'block'}`}
@@ -88,20 +86,16 @@ export function StudioComposerAttachmentList({
         activeImage={attachments[activeIndex]?.previewUrl}
         activeIndex={activeIndex}
         total={attachments.length}
-        zoom={zoom}
+        initialZoom={1}
         variant="studio-light"
-        onZoomChange={setZoom}
         onPrev={attachments.length > 1 ? () => {
           setActiveIndex((current) => (current <= 0 ? attachments.length - 1 : current - 1))
-          setZoom(1)
         } : undefined}
         onNext={attachments.length > 1 ? () => {
           setActiveIndex((current) => (current >= attachments.length - 1 ? 0 : current + 1))
-          setZoom(1)
         } : undefined}
         onClose={() => {
           setLightboxOpen(false)
-          setZoom(1)
         }}
       />
     </>

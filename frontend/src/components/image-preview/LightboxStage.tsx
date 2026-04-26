@@ -53,7 +53,7 @@ export function LightboxStage({
 }: LightboxStageProps) {
   return (
     <div
-      className={`relative select-none ${
+      className={`relative shrink-0 select-none ${
         !isAnnotating || annotationTool === 'pan'
           ? (isPanning ? 'cursor-grabbing' : 'cursor-grab')
           : ''
@@ -70,7 +70,7 @@ export function LightboxStage({
         ref={imageRef}
         src={activeImage}
         alt={alt}
-        className={`block max-w-none select-none ${
+        className={`block h-full w-full max-w-none select-none ${
           isStudioAppearance ? 'drop-shadow-[0_30px_80px_rgba(148,163,184,0.28)] dark:drop-shadow-[0_32px_86px_rgba(0,0,0,0.42)]' : ''
         } ${isExiting ? 'animate-fade-out-soft' : 'animate-fade-in-soft'}`}
         crossOrigin={isStudioAppearance ? 'anonymous' : undefined}
