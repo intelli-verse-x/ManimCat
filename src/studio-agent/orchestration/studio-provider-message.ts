@@ -1,6 +1,10 @@
 import type OpenAI from 'openai'
 import type { StudioAssistantMessage, StudioMessageStore } from '../domain/types'
 
+type ChatCompletionMessageWithReasoning = OpenAI.Chat.Completions.ChatCompletionMessage & {
+  reasoning_content?: unknown
+}
+
 /**
  * 存储的助手工具调用接口
  */
@@ -19,6 +23,7 @@ export interface StudioStoredAssistantToolCall {
  */
 export interface StudioStoredAssistantPayload {
   content?: string | Array<Record<string, unknown>> | null
+  reasoning_content?: Array<Record<string, unknown>>
   tool_calls?: StudioStoredAssistantToolCall[]
 }
 
@@ -35,11 +40,14 @@ export function toAssistantConversationMessage(
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
 ): OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam {
   const normalizedToolCalls = normalizeStoredToolCalls(toolCalls)
-  return {
+  const providerMessage = message as ChatCompletionMessageWithReasoning | undefined
+  const assistantMessage = {
     role: 'assistant',
     content: message?.content ?? (assistantText || null),
+    reasoning_content: normalizeStoredReasoningContent(providerMessage?.reasoning_content),
     tool_calls: normalizedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
   }
+  return assistantMessage as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
 }
 
 /**
@@ -74,11 +82,23 @@ export async function persistProviderMessageSnapshot(input: {
 export function buildStoredProviderMessagePayload(
   providerMessage: OpenAI.Chat.Completions.ChatCompletionMessage
 ): StudioStoredAssistantPayload {
+  const providerMessageWithReasoning = providerMessage as ChatCompletionMessageWithReasoning
   const toolCalls = normalizeStoredToolCalls(providerMessage.tool_calls)
   return {
     content: providerMessage.content ?? null,
+    reasoning_content: normalizeStoredReasoningContent(providerMessageWithReasoning.reasoning_content),
     tool_calls: toolCalls
   }
+}
+
+function normalizeStoredReasoningContent(
+  reasoningContent: unknown
+): Array<Record<string, unknown>> | undefined {
+  if (!Array.isArray(reasoningContent) || reasoningContent.length === 0) {
+    return undefined
+  }
+
+  return reasoningContent.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
 }
 
 /**
@@ -157,6 +177,7 @@ export function summarizeAssistantMessageForDebug(
   return {
     role: message.role,
     content: summarizeContentForDebug(message.content),
+    reasoningContent: summarizeContentForDebug((message as { reasoning_content?: unknown }).reasoning_content),
     toolCalls: Array.isArray(message.tool_calls)
       ? message.tool_calls.map(summarizeToolCallForDebug)
       : undefined,

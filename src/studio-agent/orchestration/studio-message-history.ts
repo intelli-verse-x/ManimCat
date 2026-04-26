@@ -37,14 +37,15 @@ function toConversationMessages(message: StudioMessage): OpenAI.Chat.Completions
   const raw = readStoredAssistantPayload(message)
   const toolMessages = buildToolMessages(message)
   if (raw) {
-    const assistantMessage: OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam = {
+    const assistantMessage = {
       role: 'assistant',
       content: raw.content as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam['content'],
+      reasoning_content: normalizeStoredReasoningContent(raw.reasoning_content),
       tool_calls: raw.tool_calls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
     }
 
     const conversationMessages = [
-      assistantMessage,
+      assistantMessage as OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam,
       ...toolMessages
     ]
 
@@ -90,6 +91,7 @@ function buildToolMessages(message: StudioAssistantMessage): OpenAI.Chat.Complet
  */
 function readStoredAssistantPayload(message: StudioAssistantMessage): {
   content: string | Array<Record<string, unknown>> | null
+  reasoning_content?: Array<Record<string, unknown>>
   tool_calls?: StudioStoredAssistantToolCall[]
 } | null {
   const candidate = message.metadata?.providerMessage
@@ -105,6 +107,7 @@ function readStoredAssistantPayload(message: StudioAssistantMessage): {
 
   return {
     content: content ?? null,
+    reasoning_content: normalizeStoredReasoningContent(payload.reasoning_content),
     tool_calls: normalizeStoredToolCalls(payload.tool_calls)
   }
 }
@@ -139,6 +142,16 @@ function normalizeStoredContent(content: unknown): string | Array<Record<string,
     return content.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
   }
   return undefined
+}
+
+function normalizeStoredReasoningContent(
+  reasoningContent: unknown
+): Array<Record<string, unknown>> | undefined {
+  if (!Array.isArray(reasoningContent) || reasoningContent.length === 0) {
+    return undefined
+  }
+
+  return reasoningContent.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
 }
 
 /**
