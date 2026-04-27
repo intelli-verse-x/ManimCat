@@ -1,7 +1,3 @@
-import { getDefaultStudioWorkspacePath } from '../workspace/default-studio-workspace'
-import path from 'node:path'
-import os from 'node:os'
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import assert from 'node:assert/strict'
 import {
   buildStudioAgentSystemPrompt,
@@ -9,13 +5,13 @@ import {
   buildReviewerStructuredReport,
   createRenderStatusSessionEvent,
   createStudioAssistantMessage,
+  createStudioLsTool,
+  createStudioRun,
   createStudioSession,
   createStudioSkillRuntime,
   createStudioTask,
+  createStudioToolPart,
   createStudioWork,
-  createLocalStudioSkillResolver,
-  createPlaceholderStudioTools,
-  createStudioDefaultTurnPlanResolver,
   enqueueSessionEvent,
   extractStudioWorkflowInput,
   flushTerminalSessionEventsToAssistant,
@@ -31,96 +27,27 @@ import {
   InMemoryStudioWorkStore,
   publishRenderFailureFeedback,
   StudioBuilderRuntime,
-  StudioPermissionService,
   StudioRunProcessor,
   StudioToolRegistry,
   defaultRulesForLevel,
+  evaluatePermission,
   determineStudioAgentLoopAction,
   parseSkillDocument,
+  resolveWorkspacePath,
   syncRenderWorkFromTask,
   type StudioAssistantMessage,
-  type StudioPermissionDecision,
-  type StudioPermissionRequest,
   type StudioRuntimeBackedToolContext,
-  type StudioTurnPlanResolver
+  type StudioTurnPlanResolver,
+  WorkspacePathError
 } from '../index'
-import { createStudioError, createStudioSuccess, isStudioPermissionDecision } from '../../routes/helpers/studio-agent-responses'
-import { parseStudioTurnIntent } from '../runtime/turn-plan-intent'
+import { getDefaultStudioWorkspacePath } from '../workspace/default-studio-workspace'
+import { createStudioDefaultTurnPlanResolver } from '../runtime/planning/default-turn-plan-resolver'
+import { createStudioError, createStudioSuccess } from '../../routes/helpers/studio-agent-responses'
+import { parseStudioTurnIntent } from '../runtime/planning/turn-plan-intent'
 
-function createTestRuntime(options?: {
-  permissionService?: StudioPermissionService
-  askForConfirmation?: (request: StudioPermissionRequest) => Promise<StudioPermissionDecision>
-  resolveTurnPlan?: StudioTurnPlanResolver
-  eventBus?: InMemoryStudioEventBus
-}) {
-  const registry = new StudioToolRegistry()
-  for (const tool of createPlaceholderStudioTools()) {
-    registry.register(tool)
-  }
-
-  const messageStore = new InMemoryStudioMessageStore()
-  const partStore = new InMemoryStudioPartStore()
-  const runStore = new InMemoryStudioRunStore()
-  const sessionStore = new InMemoryStudioSessionStore()
-  const taskStore = new InMemoryStudioTaskStore()
-  const sessionEventStore = new InMemoryStudioSessionEventStore()
-  const workStore = new InMemoryStudioWorkStore()
-  const workResultStore = new InMemoryStudioWorkResultStore()
-  const resolveSkill = createLocalStudioSkillResolver()
-  const resolveTurnPlan = options?.resolveTurnPlan ?? createStudioDefaultTurnPlanResolver({ registry })
-
-  const runtime = new StudioBuilderRuntime({
-    registry,
-    messageStore,
-    partStore,
-    runStore,
-    sessionStore,
-    sessionEventStore,
-    taskStore,
-    workStore,
-    workResultStore,
-    resolveSkill,
-    resolveTurnPlan,
-    permissionService: options?.permissionService,
-    askForConfirmation: options?.askForConfirmation,
-    eventBus: options?.eventBus
-  })
-
-  return {
-    registry,
-    runtime,
-    messageStore,
-    partStore,
-    runStore,
-    sessionStore,
-    sessionEventStore,
-    taskStore,
-    workStore,
-    workResultStore,
-    resolveTurnPlan
-  }
-}
-
-async function createWorkspace(): Promise<string> {
-  return mkdtemp(path.join(os.tmpdir(), 'manimcat-studio-agent-'))
-}
-
-async function run(name: string, fn: () => Promise<void>) {
-  try {
-    await fn()
-    console.log(`PASS ${name}`)
-  } catch (error) {
-    console.error(`FAIL ${name}`)
-    throw error
-  }
-}
-
-async function findLastAssistantMessageWithTool(messageStore: InMemoryStudioMessageStore, sessionId: string): Promise<StudioAssistantMessage | undefined> {
-  const messages = await messageStore.listBySessionId(sessionId)
-  return [...messages]
-    .reverse()
-    .find((message): message is StudioAssistantMessage => message.role === 'assistant' && message.parts.some((part) => part.type === 'tool'))
-}
+import { createTestRuntime, createWorkspace, run, findLastAssistantMessageWithTool } from './run-tests.factories'
+import path from 'node:path'
+import { mkdir, writeFile } from 'node:fs/promises'
 
 async function main() {
   await run('studio route helpers build stable envelopes', async () => {
@@ -135,13 +62,34 @@ async function main() {
         message: 'bad request'
       }
     })
-    assert.equal(isStudioPermissionDecision('once'), true)
-    assert.equal(isStudioPermissionDecision('always'), true)
-    assert.equal(isStudioPermissionDecision('reject'), true)
-    assert.equal(isStudioPermissionDecision('maybe'), false)
   })
   await run('default studio workspace uses dedicated hidden directory', async () => {
     assert.equal(getDefaultStudioWorkspacePath(), path.join(process.cwd(), '.studio-workspace'))
+  })
+
+  await run('default L2 permission rules allow skill loading', async () => {
+    assert.equal(evaluatePermission(defaultRulesForLevel('L2'), 'skill', 'math-education-visualization'), 'allow')
+    assert.equal(evaluatePermission(defaultRulesForLevel('L3'), 'skill', 'math-education-visualization'), 'allow')
+  })
+
+  await run('workspace path errors expose allowed roots for debugging', async () => {
+    let error: unknown
+    try {
+      resolveWorkspacePath('D:\\workspace', 'D:\\outside\\file.md', {
+        allowedRoots: ['D:\\skills\\demo']
+      })
+    } catch (caught) {
+      error = caught
+    }
+
+    assert.ok(error instanceof WorkspacePathError)
+    assert.equal(error.targetPath, 'D:\\outside\\file.md')
+    assert.equal(error.resolvedPath, path.resolve('D:\\outside\\file.md'))
+    assert.equal(error.workspaceRoot, path.resolve('D:\\workspace'))
+    assert.deepEqual(error.allowedRoots, [
+      path.resolve('D:\\workspace'),
+      path.resolve('D:\\skills\\demo')
+    ])
   })
 
   await run('builder prompt requires code, checks, and confirmation before render', async () => {
@@ -737,9 +685,7 @@ async function main() {
   await run('ai-review tool accepts change-set input and persists diff context', async () => {
     const workspace = await createWorkspace()
 
-    const { runtime, registry, sessionStore, taskStore, workStore, workResultStore } = createTestRuntime({
-      askForConfirmation: async () => 'once'
-    })
+    const { runtime, registry, sessionStore, taskStore, workStore, workResultStore } = createTestRuntime()
 
     const session = await sessionStore.create(createStudioSession({
       projectId: 'project-1',
@@ -765,8 +711,6 @@ async function main() {
       workStore,
       workResultStore,
       sessionStore,
-      askForConfirmation: async () => 'once',
-      ask: async () => 'once',
       runSubagent: (input: Parameters<typeof runtime.runSubagent>[0]) => runtime.runSubagent(input)
     }
 
@@ -792,9 +736,7 @@ async function main() {
     const workspace = await createWorkspace()
     await writeFile(path.join(workspace, 'sample.py'), 'from manim import *\nprint("debug")\n', 'utf8')
 
-    const { runtime, registry, sessionStore, taskStore, workStore, workResultStore } = createTestRuntime({
-      askForConfirmation: async () => 'once'
-    })
+    const { runtime, registry, sessionStore, taskStore, workStore, workResultStore } = createTestRuntime()
 
     const session = await sessionStore.create(createStudioSession({
       projectId: 'project-1',
@@ -820,8 +762,6 @@ async function main() {
       workStore,
       workResultStore,
       sessionStore,
-      askForConfirmation: async () => 'once',
-      ask: async () => 'once',
       runSubagent: (input: Parameters<typeof runtime.runSubagent>[0]) => runtime.runSubagent(input)
     }
 
@@ -856,9 +796,7 @@ async function main() {
 
   await run('task tool spawns child session and creates linked work', async () => {
     const workspace = await createWorkspace()
-    const { runtime, sessionStore, taskStore, messageStore, workStore } = createTestRuntime({
-      askForConfirmation: async () => 'once'
-    })
+    const { runtime, sessionStore, taskStore, messageStore, workStore } = createTestRuntime()
 
     const session = await sessionStore.create(createStudioSession({
       projectId: 'project-1',
@@ -1039,9 +977,7 @@ async function main() {
     await mkdir(skillDir, { recursive: true })
     await writeFile(path.join(skillDir, 'SKILL.md'), '# Demo Skill\n\nYou are a local test skill.', 'utf8')
 
-    const { runtime, sessionStore, messageStore } = createTestRuntime({
-      askForConfirmation: async () => 'once'
-    })
+    const { runtime, sessionStore, messageStore } = createTestRuntime()
 
     const session = await sessionStore.create(createStudioSession({
       projectId: 'project-1',
@@ -1066,16 +1002,158 @@ async function main() {
     assert.match(output, /<skill_files>/)
   })
 
-  await run('permission gating blocks until reply and reject stops run', async () => {
+  await run('ls tool can access a previously loaded skill directory', async () => {
+    const workspace = await createWorkspace()
+    const skillDir = path.join(workspace, '.manimcat', 'skills', 'demo-skill')
+    const referenceDir = path.join(skillDir, 'references')
+    await mkdir(referenceDir, { recursive: true })
+    await writeFile(path.join(skillDir, 'SKILL.md'), '# Demo Skill\n\nUse the references folder when needed.', 'utf8')
+    await writeFile(path.join(referenceDir, 'guide.md'), 'reference text', 'utf8')
+
+    const session = createStudioSession({
+      projectId: 'project-1',
+      agentType: 'builder',
+      title: 'Skill Ls Session',
+      directory: workspace,
+      permissionLevel: 'L4',
+      permissionRules: defaultRulesForLevel('L4')
+    })
+    const assistantMessage = createStudioAssistantMessage({
+      sessionId: session.id,
+      agent: 'builder'
+    })
+    const partStore = new InMemoryStudioPartStore()
+    const skillPart = createStudioToolPart({
+      messageId: assistantMessage.id,
+      sessionId: session.id,
+      tool: 'skill',
+      callId: 'call_skill_loaded'
+    })
+    await partStore.create({
+      ...skillPart,
+      metadata: {
+        directory: skillDir
+      },
+      state: {
+        status: 'completed',
+        input: { name: 'demo-skill' },
+        output: '<skill_content name="demo-skill" />',
+        title: 'Loaded skill: demo-skill',
+        time: {
+          start: Date.now(),
+          end: Date.now()
+        }
+      }
+    })
+
+    const tool = createStudioLsTool()
+    const result = await tool.execute(
+      { path: skillDir },
+      {
+        projectId: 'project-1',
+        session,
+        run: createStudioRun({
+          sessionId: session.id,
+          inputText: '/ls',
+          activeAgent: 'builder'
+        }),
+        assistantMessage,
+        eventBus: new InMemoryStudioEventBus(),
+        partStore
+      } as unknown as StudioRuntimeBackedToolContext
+    )
+
+    assert.match(result.output, /dir references/)
+    assert.match(result.output, /file SKILL\.md/)
+    assert.equal(result.metadata?.path, '.manimcat/skills/demo-skill')
+  })
+
+  await run('ls tool can access a skill loaded by an earlier assistant message in the same run', async () => {
+    const workspace = await createWorkspace()
+    const skillDir = path.join(workspace, '.manimcat', 'skills', 'demo-skill')
+    const referenceDir = path.join(skillDir, 'references')
+    await mkdir(referenceDir, { recursive: true })
+    await writeFile(path.join(skillDir, 'SKILL.md'), '# Demo Skill\n\nUse the references folder when needed.', 'utf8')
+    await writeFile(path.join(referenceDir, 'guide.md'), 'reference text', 'utf8')
+
+    const session = createStudioSession({
+      projectId: 'project-1',
+      agentType: 'builder',
+      title: 'Skill Ls Cross Message Session',
+      directory: workspace,
+      permissionLevel: 'L4',
+      permissionRules: defaultRulesForLevel('L4')
+    })
+    const runState = createStudioRun({
+      sessionId: session.id,
+      inputText: '/ls',
+      activeAgent: 'builder'
+    })
+    const messageStore = new InMemoryStudioMessageStore()
+    const priorAssistantMessage = await messageStore.createAssistantMessage(createStudioAssistantMessage({
+      sessionId: session.id,
+      agent: 'builder',
+      metadata: {
+        runId: runState.id
+      }
+    }))
+    const currentAssistantMessage = await messageStore.createAssistantMessage(createStudioAssistantMessage({
+      sessionId: session.id,
+      agent: 'builder',
+      metadata: {
+        runId: runState.id
+      }
+    }))
+    const partStore = new InMemoryStudioPartStore()
+    const skillPart = createStudioToolPart({
+      messageId: priorAssistantMessage.id,
+      sessionId: session.id,
+      tool: 'skill',
+      callId: 'call_skill_loaded_prior_message'
+    })
+    await partStore.create({
+      ...skillPart,
+      metadata: {
+        directory: skillDir
+      },
+      state: {
+        status: 'completed',
+        input: { name: 'demo-skill' },
+        output: '<skill_content name="demo-skill" />',
+        title: 'Loaded skill: demo-skill',
+        time: {
+          start: Date.now(),
+          end: Date.now()
+        }
+      }
+    })
+
+    const tool = createStudioLsTool()
+    const result = await tool.execute(
+      { path: skillDir },
+      {
+        projectId: 'project-1',
+        session,
+        run: runState,
+        assistantMessage: currentAssistantMessage,
+        eventBus: new InMemoryStudioEventBus(),
+        messageStore,
+        partStore
+      } as unknown as StudioRuntimeBackedToolContext
+    )
+
+    assert.match(result.output, /dir references/)
+    assert.match(result.output, /file SKILL\.md/)
+    assert.equal(result.metadata?.path, '.manimcat/skills/demo-skill')
+  })
+
+  await run('permission rules deny blocked skill runs without approval flow', async () => {
     const workspace = await createWorkspace()
     const skillDir = path.join(workspace, '.manimcat', 'skills', 'blocked-skill')
     await mkdir(skillDir, { recursive: true })
     await writeFile(path.join(skillDir, 'SKILL.md'), '# Blocked Skill\n\nShould require permission.', 'utf8')
 
-    const permissionService = new StudioPermissionService()
-    const { runtime, sessionStore } = createTestRuntime({
-      permissionService
-    })
+    const { runtime, sessionStore, messageStore } = createTestRuntime()
 
     const session = await sessionStore.create(createStudioSession({
       projectId: 'project-1',
@@ -1086,28 +1164,21 @@ async function main() {
       permissionRules: defaultRulesForLevel('L1')
     }))
 
-    const runPromise = runtime.run({
+    const result = await runtime.run({
       projectId: 'project-1',
       session,
       inputText: '/skill blocked-skill'
     })
 
-    await new Promise((resolve) => setTimeout(resolve, 10))
+    const assistantMessage = await findLastAssistantMessageWithTool(messageStore, session.id)
+    const toolPart = assistantMessage?.parts.find((part) => part.type === 'tool')
 
-    const pending = permissionService.listPending()
-    assert.equal(pending.length, 1)
-    assert.equal(pending[0].permission, 'skill')
-
-    const replied = permissionService.reply({
-      requestID: pending[0].id,
-      reply: 'reject'
-    })
-
-    assert.equal(replied, true)
-
-    const result = await runPromise
     assert.equal(result.run.status, 'failed')
-    assert.equal(permissionService.listPending().length, 0)
+    assert.ok(toolPart && toolPart.type === 'tool' && toolPart.state.status === 'error')
+    assert.match(
+      toolPart && toolPart.type === 'tool' && toolPart.state.status === 'error' ? toolPart.state.error : '',
+      /interactive approval is no longer supported|Permission denied/
+    )
   })
 
   console.log('All studio-agent tests passed')
@@ -1119,18 +1190,3 @@ main()
     console.error(error)
     process.exit(1)
   })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

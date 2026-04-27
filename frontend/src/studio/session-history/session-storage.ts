@@ -72,3 +72,17 @@ export function rememberStudioSessionId(studioKind: string, sessionId: string) {
   writeLastStudioSessionId(studioKind, sessionId)
   writeRecentStudioSessionIds(studioKind, next)
 }
+
+export function forgetStudioSessionId(studioKind: string, sessionId: string) {
+  const current = readRecentStudioSessionIds(studioKind)
+  const next = current.filter((id) => id !== sessionId)
+  writeRecentStudioSessionIds(studioKind, next)
+
+  if (readLastStudioSessionId(studioKind) === sessionId) {
+    if (next[0]) {
+      writeLastStudioSessionId(studioKind, next[0])
+    } else {
+      clearLastStudioSessionId(studioKind)
+    }
+  }
+}

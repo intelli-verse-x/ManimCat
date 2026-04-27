@@ -6,6 +6,11 @@ const DEFAULT_PROVIDER_TIMEOUT_MS = parsePositiveInteger(
   120000,
 )
 
+/**
+ * 请求 OpenAI 聊天完成
+ * @param input - 包含客户端、模型、消息、工具等配置对象
+ * @returns 聊天完成响应
+ */
 export async function requestStudioChatCompletion(input: {
   client: OpenAI
   model: string
@@ -73,6 +78,12 @@ export async function requestStudioChatCompletion(input: {
   }
 }
 
+/**
+ * 解析正整数，如果无效则返回回退值
+ * @param raw - 原始字符串
+ * @param fallback - 回退值
+ * @returns 解析后的正整数
+ */
 function parsePositiveInteger(raw: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(raw ?? '', 10)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback

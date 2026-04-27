@@ -4,8 +4,6 @@ import type {
   StudioEventBus,
   StudioKind,
   StudioPermissionLevel,
-  StudioPermissionReply,
-  StudioPermissionRequest,
   StudioSession,
   StudioTask,
   StudioToolChoice,
@@ -17,8 +15,6 @@ import { adaptStudioEvent, type StudioExternalEvent } from '../events/studio-eve
 import { registerManimStudioTools } from '../manim/register-manim-tools'
 import type { StudioPersistence } from '../persistence/studio-persistence'
 import { registerPlotStudioTools } from '../plot/register-plot-tools'
-import type { StudioPermissionService } from '../permissions/permission-service'
-import { defaultRulesForLevel } from '../permissions/policy'
 import { resolveStudioPermissionMode, type StudioPermissionMode } from '../session-control/permission-modes'
 import { registerSharedStudioTools } from '../shared/register-shared-tools'
 import {
@@ -28,6 +24,7 @@ import {
   readStudioRunAutonomyMetadata,
 } from '../runs/autonomy-policy'
 import { createStudioSkillRuntime } from '../skills/runtime/skill-runtime'
+import type { StudioSkillDiscoveryEntry } from '../skills/schema/skill-types'
 import type { StudioBlobStore } from '../storage/studio-blob-store'
 import { StudioToolRegistry } from '../tools/registry'
 import { StudioBuilderRuntime } from './builder-runtime'
@@ -44,7 +41,6 @@ interface SubscribableStudioEventBus extends StudioEventBus {
 
 interface CreateStudioRuntimeServiceInput {
   persistence: StudioPersistence
-  permissionService: StudioPermissionService
   workspaceProvider: StudioWorkspaceProvider
   blobStore: StudioBlobStore
   registry?: StudioToolRegistry
@@ -54,7 +50,6 @@ interface CreateStudioRuntimeServiceInput {
 export interface StudioRuntimeService {
   registry: StudioToolRegistry
   runtime: StudioBuilderRuntime
-  permissionService: StudioPermissionService
   workspaceProvider: StudioWorkspaceProvider
   blobStore: StudioBlobStore
   sessionStore: StudioPersistence['sessionStore']
@@ -74,6 +69,7 @@ export interface StudioRuntimeService {
     studioKind?: StudioKind
     agentType?: StudioSession['agentType']
     permissionLevel?: StudioPermissionLevel
+    permissionMode?: StudioPermissionMode
     workspaceId?: string
     toolChoice?: StudioToolChoice
   }) => Promise<StudioSession>
@@ -81,6 +77,7 @@ export interface StudioRuntimeService {
   updateSession: (sessionId: string, patch: {
     permissionMode?: StudioPermissionMode
   }) => Promise<StudioSession | null>
+  listSessionSkills: (sessionId: string) => Promise<StudioSkillDiscoveryEntry[] | null>
   startRun: (input: {
     projectId: string
     session: StudioSession
@@ -108,8 +105,6 @@ export interface StudioRuntimeService {
   listWorkResultsBySessionId: (sessionId: string) => Promise<StudioWorkResult[]>
   listExternalEvents: () => StudioExternalEvent[]
   subscribeExternalEvents: (listener: (event: StudioExternalEvent) => void) => () => void
-  listPendingPermissions: () => StudioPermissionRequest[]
-  replyPermission: (replyInput: StudioPermissionReply) => boolean
   cancelRun: (input: { runId: string; reason?: string }) => Promise<{
     status: 'cancelled' | 'already_finished' | 'not_found'
     run?: import('../domain/types').StudioRun
@@ -143,7 +138,6 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
     workStore: input.persistence.workStore,
     workResultStore: input.persistence.workResultStore,
     sessionEventStore: input.persistence.sessionEventStore,
-    permissionService: input.permissionService,
     resolveTurnPlan,
     resolveSkill: skillRuntime.resolve,
     listSkills: skillRuntime.listDiscovery,
@@ -198,7 +192,6 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
   return {
     registry,
     runtime,
-    permissionService: input.permissionService,
     workspaceProvider: input.workspaceProvider,
     blobStore: input.blobStore,
     sessionStore: input.persistence.sessionStore,
@@ -211,9 +204,22 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
     sessionEventStore: input.persistence.sessionEventStore,
     eventBus,
     async createSession(sessionInput) {
-      const permissionLevel = sessionInput.permissionLevel ?? 'L2'
       const studioKind = sessionInput.studioKind ?? 'manim'
       const normalizedDirectory = input.workspaceProvider.normalizeDirectory(sessionInput.directory)
+      const permissionMode = sessionInput.permissionMode ?? mapPermissionLevelToMode(sessionInput.permissionLevel) ?? 'auto'
+      const resolvedPermissionMode = resolveStudioPermissionMode(
+        permissionMode,
+        createStudioSession({
+          projectId: sessionInput.projectId,
+          workspaceId: sessionInput.workspaceId,
+          studioKind,
+          agentType: sessionInput.agentType ?? 'builder',
+          title: sessionInput.title ?? getDefaultSessionTitle(studioKind),
+          directory: normalizedDirectory,
+          permissionLevel: 'L3',
+          permissionRules: [],
+        }),
+      )
       const session = createStudioSession({
         projectId: sessionInput.projectId,
         workspaceId: sessionInput.workspaceId,
@@ -221,13 +227,14 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
         agentType: sessionInput.agentType ?? 'builder',
         title: sessionInput.title ?? getDefaultSessionTitle(studioKind),
         directory: normalizedDirectory,
-        permissionLevel,
-        permissionRules: defaultRulesForLevel(permissionLevel),
+        permissionLevel: resolvedPermissionMode.permissionLevel,
+        permissionRules: resolvedPermissionMode.permissionRules,
         metadata: createStudioSessionMetadata({
           existing: { studioKind },
           agentConfig: {
             toolChoice: sessionInput.toolChoice,
           },
+          permissionMode: resolvedPermissionMode.mode,
         }),
       })
 
@@ -261,6 +268,14 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
       }
 
       return session
+    },
+    async listSessionSkills(sessionId) {
+      const session = await input.persistence.sessionStore.getById(sessionId)
+      if (!session) {
+        return null
+      }
+
+      return skillRuntime.listDiscovery(session)
     },
     async startRun(runInput) {
       return startBackgroundRunLocked(runInput)
@@ -340,12 +355,6 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
           listener(adapted)
         }
       })
-    },
-    listPendingPermissions(): StudioPermissionRequest[] {
-      return input.permissionService.listPending()
-    },
-    replyPermission(replyInput: StudioPermissionReply): boolean {
-      return input.permissionService.reply(replyInput)
     },
     async cancelRun(cancelInput) {
       const run = await input.persistence.runStore.getById(cancelInput.runId)
@@ -463,4 +472,19 @@ async function collectWorkResults(works: StudioWork[], persistence: StudioPersis
 
 function getDefaultSessionTitle(studioKind: StudioKind): string {
   return studioKind === 'plot' ? 'Plot Studio Session' : 'Manim Studio Session'
+}
+
+function mapPermissionLevelToMode(level?: StudioPermissionLevel): StudioPermissionMode | undefined {
+  switch (level) {
+    case 'L0':
+    case 'L1':
+    case 'L2':
+      return 'safe'
+    case 'L3':
+      return 'auto'
+    case 'L4':
+      return 'full'
+    default:
+      return undefined
+  }
 }

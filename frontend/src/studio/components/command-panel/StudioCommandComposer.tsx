@@ -1,7 +1,7 @@
 import { StudioComposerAttachmentList } from '../StudioComposerAttachmentList'
 import { StudioCommandAutocomplete } from '../../commands/ui/autocomplete/StudioCommandAutocomplete'
 import { StudioImageInputCommandUI } from '../../commands/ui/image-input/StudioImageInputCommandUI'
-import type { useStudioCommandComposer } from './use-studio-command-composer'
+import type { useStudioCommandComposerController } from './use-studio-command-composer-controller'
 
 interface StudioCommandComposerProps {
   variant: 'default' | 't-layout-bottom' | 'pure-minimal-bottom'
@@ -13,7 +13,7 @@ interface StudioCommandComposerProps {
   effectivePlaceholder: string
   enterToSendLabel: string
   onEscapePress?: () => void
-  composer: ReturnType<typeof useStudioCommandComposer>
+  composer: ReturnType<typeof useStudioCommandComposerController>
 }
 
 export function StudioCommandComposer({
@@ -57,6 +57,7 @@ export function StudioCommandComposer({
               type="text"
               value={composer.input}
               onChange={(e) => composer.handleInputChange(e.target.value)}
+              onPaste={(e) => { void composer.handlePaste(e) }}
               onKeyDown={(e) => {
                 const autocompleteResult = composer.commandAutocomplete.handleKeyDown(e, composer.effectiveApplySuggestion)
                 if (autocompleteResult.handled) {

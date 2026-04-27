@@ -1,6 +1,9 @@
 import type OpenAI from 'openai'
 import type { StudioAssistantMessage, StudioMessageStore } from '../domain/types'
 
+/**
+ * 存储的助手工具调用接口
+ */
 export interface StudioStoredAssistantToolCall {
   id?: string
   type?: 'function'
@@ -11,11 +14,21 @@ export interface StudioStoredAssistantToolCall {
   [key: string]: unknown
 }
 
+/**
+ * 存储的助手消息载荷接口
+ */
 export interface StudioStoredAssistantPayload {
   content?: string | Array<Record<string, unknown>> | null
   tool_calls?: StudioStoredAssistantToolCall[]
 }
 
+/**
+ * 将 OpenAI 响应消息转换为对话格式的助手消息
+ * @param message - OpenAI 聊天完成消息
+ * @param assistantText - 助手文本
+ * @param toolCalls - 工具调用数组
+ * @returns 助手消息参数
+ */
 export function toAssistantConversationMessage(
   message: OpenAI.Chat.Completions.ChatCompletionMessage | undefined,
   assistantText: string,
@@ -29,6 +42,10 @@ export function toAssistantConversationMessage(
   }
 }
 
+/**
+ * 持久化提供者消息快照到存储
+ * @param input - 包含消息存储、助手消息和提供者消息的输入对象
+ */
 export async function persistProviderMessageSnapshot(input: {
   messageStore: StudioMessageStore
   assistantMessage: StudioAssistantMessage
@@ -49,6 +66,11 @@ export async function persistProviderMessageSnapshot(input: {
   })
 }
 
+/**
+ * 构建存储的提供者消息载荷
+ * @param providerMessage - OpenAI 提供者消息
+ * @returns 存储格式的载荷
+ */
 export function buildStoredProviderMessagePayload(
   providerMessage: OpenAI.Chat.Completions.ChatCompletionMessage
 ): StudioStoredAssistantPayload {
@@ -58,6 +80,12 @@ export function buildStoredProviderMessagePayload(
     tool_calls: toolCalls
   }
 }
+
+/**
+ * 规范化存储的工具调用数组
+ * @param toolCalls - 工具调用数组
+ * @returns 规范化后的工具调用数组
+ */
 function normalizeStoredToolCalls(
   toolCalls: readonly OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
 ): StudioStoredAssistantToolCall[] | undefined {
@@ -73,6 +101,11 @@ function normalizeStoredToolCalls(
   }))
 }
 
+/**
+ * 总结对话尾部用于调试
+ * @param conversation - 对话消息数组
+ * @returns 尾部消息的摘要数组
+ */
 export function summarizeConversationTailForDebug(
   conversation: OpenAI.Chat.Completions.ChatCompletionMessageParam[]
 ): Array<Record<string, unknown>> {
@@ -83,6 +116,11 @@ export function summarizeConversationTailForDebug(
   }))
 }
 
+/**
+ * 总结单条消息用于调试
+ * @param message - 对话消息
+ * @returns 消息摘要
+ */
 export function summarizeConversationMessageForDebug(
   message: OpenAI.Chat.Completions.ChatCompletionMessageParam | undefined
 ): Record<string, unknown> {
@@ -104,6 +142,11 @@ export function summarizeConversationMessageForDebug(
   }
 }
 
+/**
+ * 总结助手消息用于调试
+ * @param message - 助手消息
+ * @returns 消息摘要
+ */
 export function summarizeAssistantMessageForDebug(
   message: OpenAI.Chat.Completions.ChatCompletionMessage | undefined
 ): Record<string, unknown> {
@@ -120,6 +163,11 @@ export function summarizeAssistantMessageForDebug(
   }
 }
 
+/**
+ * 总结内容用于调试
+ * @param content - 内容对象
+ * @returns 内容摘要
+ */
 function summarizeContentForDebug(content: unknown): Record<string, unknown> {
   if (content === null) {
     return { kind: 'null' }
@@ -147,6 +195,12 @@ function summarizeContentForDebug(content: unknown): Record<string, unknown> {
   }
 }
 
+/**
+ * 总结内容块用于调试
+ * @param block - 内容块
+ * @param index - 索引
+ * @returns 内容块摘要
+ */
 function summarizeContentBlockForDebug(block: unknown, index: number): Record<string, unknown> {
   if (!block || typeof block !== 'object' || Array.isArray(block)) {
     return {
@@ -168,6 +222,11 @@ function summarizeContentBlockForDebug(block: unknown, index: number): Record<st
   }
 }
 
+/**
+ * 总结工具调用用于调试
+ * @param toolCall - 工具调用对象
+ * @returns 工具调用摘要
+ */
 function summarizeToolCallForDebug(toolCall: unknown): Record<string, unknown> {
   if (!toolCall || typeof toolCall !== 'object' || Array.isArray(toolCall)) {
     return {
@@ -197,6 +256,11 @@ function summarizeToolCallForDebug(toolCall: unknown): Record<string, unknown> {
   }
 }
 
+/**
+ * 读取对象的键名
+ * @param value - 对象值
+ * @returns 键名数组
+ */
 function readObjectKeys(value: unknown): string[] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return []

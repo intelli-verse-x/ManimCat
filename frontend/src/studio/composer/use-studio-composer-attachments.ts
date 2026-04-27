@@ -3,6 +3,7 @@ import { useI18n } from '../../i18n'
 import { uploadReferenceImage } from '../../lib/api'
 import type { ReferenceImage } from '../../types/api'
 import { MAX_IMAGE_SIZE, MAX_IMAGES } from '../../components/input-form/constants'
+import { debugStudioMessages } from '../agent-response/debug'
 import { createComposerImageAttachment, extractNameFromUrl } from './attachments'
 import type { StudioComposerAttachment } from './types'
 
@@ -32,19 +33,37 @@ export function useStudioComposerAttachments(): UseStudioComposerAttachmentsResu
   const addImageFiles = useCallback(async (files: FileList | File[]) => {
     setAttachmentError(null)
     const fileArray = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    debugStudioMessages('composer-image-files-received', {
+      incomingCount: Array.from(files).length,
+      imageCount: fileArray.length,
+      existingAttachmentCount: attachments.length,
+      names: fileArray.map((file) => file.name),
+    })
 
     if (fileArray.length === 0) {
       setAttachmentError(t('reference.invalidFile'))
+      debugStudioMessages('composer-image-files-rejected', {
+        reason: 'no-image-files',
+      })
       return []
     }
 
     const remaining = MAX_IMAGES - attachments.length
     if (remaining <= 0) {
       setAttachmentError(t('reference.limit', { count: MAX_IMAGES }))
+      debugStudioMessages('composer-image-files-rejected', {
+        reason: 'limit-reached',
+        maxImages: MAX_IMAGES,
+      })
       return []
     }
 
     const toAdd = fileArray.slice(0, remaining)
+    debugStudioMessages('composer-image-files-queued', {
+      queuedCount: toAdd.length,
+      remainingSlots: remaining,
+      names: toAdd.map((file) => file.name),
+    })
 
     try {
       for (const file of toAdd) {
@@ -55,7 +74,18 @@ export function useStudioComposerAttachments(): UseStudioComposerAttachmentsResu
 
       const uploadedAttachments = await Promise.all(
         toAdd.map(async (file) => {
+          debugStudioMessages('composer-image-upload-start', {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+          })
           const uploaded = await uploadReferenceImage(file)
+          debugStudioMessages('composer-image-upload-complete', {
+            name: file.name,
+            url: uploaded.url,
+            mimeType: uploaded.mimeType,
+            size: uploaded.size,
+          })
           return createComposerImageAttachment({
             url: uploaded.url,
             name: file.name,
@@ -66,9 +96,16 @@ export function useStudioComposerAttachments(): UseStudioComposerAttachmentsResu
       )
 
       setAttachments((current) => appendWithinLimit(current, uploadedAttachments))
+      debugStudioMessages('composer-image-attachments-appended', {
+        attachmentCount: uploadedAttachments.length,
+        names: uploadedAttachments.map((attachment) => attachment.name),
+      })
       return uploadedAttachments
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : t('reference.processFailed'))
+      debugStudioMessages('composer-image-upload-failed', {
+        message: error instanceof Error ? error.message : t('reference.processFailed'),
+      })
       return []
     }
   }, [attachments.length, t])

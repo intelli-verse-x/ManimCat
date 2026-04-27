@@ -27,7 +27,7 @@ import {
   selectWorkResult,
 } from '../store/studio-selectors'
 import {
-  clearLastStudioSessionId,
+  forgetStudioSessionId,
   readLastStudioSessionId,
   readRecentStudioSessionIds,
   rememberStudioSessionId,
@@ -107,7 +107,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
       title: studioTitle,
       studioKind,
       agentType: 'builder',
-      permissionLevel: 'L2',
+      permissionMode: 'auto',
     })
 
     await loadSnapshot(session.id, mode === 'replace' ? 'replace' : 'merge')
@@ -139,6 +139,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
           try {
             return await getStudioSessionSnapshot(sessionId)
           } catch {
+            forgetStudioSessionId(studioKind, sessionId)
             return null
           }
         }),
@@ -182,7 +183,7 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
             return
           }
 
-          clearLastStudioSessionId(studioKind)
+          forgetStudioSessionId(studioKind, lastSessionId)
         }
 
         await createFreshSession('bootstrap')

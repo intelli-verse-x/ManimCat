@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import type { StudioSession } from '../../domain/types'
+import { logPlotStudioSkillTrace } from '../../observability/plot-studio-skill-trace'
 import { parseSkillDocument } from '../schema/parse-skill-manifest'
 import type { StudioResolvedSkill } from '../schema/skill-types'
 import type { StudioSkillRegistry } from '../registry/skill-registry'
@@ -24,12 +25,22 @@ export function createStudioSkillLoader(input: {
       const parsed = parseSkillDocument(content, path.basename(entry.directory))
       const files = await sampleFiles(entry.directory, maxFiles)
 
-      return {
+      const resolved = {
         ...entry,
         content,
         body: parsed.body,
         files
       }
+
+      logPlotStudioSkillTrace(session.studioKind, 'skill.resolve.completed', {
+        sessionId: session.id,
+        requestedSkillName: name,
+        resolvedSkillName: resolved.name,
+        entryFile: resolved.entryFile,
+        fileCount: resolved.files.length,
+      })
+
+      return resolved
     }
   }
 }

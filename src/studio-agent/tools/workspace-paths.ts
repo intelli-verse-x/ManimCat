@@ -4,8 +4,33 @@ import path from 'node:path'
 const DEFAULT_MAX_OUTPUT_CHARS = 16000
 const DEFAULT_MAX_WALK_FILES = 2000
 
-export async function readWorkspaceFile(baseDirectory: string, targetPath: string): Promise<{ absolutePath: string; content: string }> {
-  const absolutePath = resolveWorkspacePath(baseDirectory, targetPath)
+export class WorkspacePathError extends Error {
+  readonly targetPath: string
+  readonly resolvedPath: string
+  readonly workspaceRoot: string
+  readonly allowedRoots: string[]
+
+  constructor(input: {
+    targetPath: string
+    resolvedPath: string
+    workspaceRoot: string
+    allowedRoots: string[]
+  }) {
+    super(`Path escapes workspace: ${input.targetPath}`)
+    this.name = 'WorkspacePathError'
+    this.targetPath = input.targetPath
+    this.resolvedPath = input.resolvedPath
+    this.workspaceRoot = input.workspaceRoot
+    this.allowedRoots = input.allowedRoots
+  }
+}
+
+export async function readWorkspaceFile(
+  baseDirectory: string,
+  targetPath: string,
+  options?: { allowedRoots?: string[] }
+): Promise<{ absolutePath: string; content: string }> {
+  const absolutePath = resolveWorkspacePath(baseDirectory, targetPath, options)
   const content = await readFile(absolutePath, 'utf8')
   return {
     absolutePath,
@@ -13,8 +38,12 @@ export async function readWorkspaceFile(baseDirectory: string, targetPath: strin
   }
 }
 
-export async function listWorkspaceDirectory(baseDirectory: string, targetPath?: string): Promise<{ absolutePath: string; entries: string[] }> {
-  const absolutePath = resolveWorkspacePath(baseDirectory, targetPath ?? '.')
+export async function listWorkspaceDirectory(
+  baseDirectory: string,
+  targetPath?: string,
+  options?: { allowedRoots?: string[] }
+): Promise<{ absolutePath: string; entries: string[] }> {
+  const absolutePath = resolveWorkspacePath(baseDirectory, targetPath ?? '.', options)
   const entries = await readdir(absolutePath, { withFileTypes: true })
 
   return {
@@ -32,16 +61,28 @@ export async function walkWorkspaceFiles(baseDirectory: string, startPath = '.')
   return results
 }
 
-export function resolveWorkspacePath(baseDirectory: string, targetPath: string): string {
+export function resolveWorkspacePath(
+  baseDirectory: string,
+  targetPath: string,
+  options?: { allowedRoots?: string[] }
+): string {
   const workspaceRoot = path.resolve(baseDirectory)
   const resolved = path.resolve(workspaceRoot, targetPath)
-  const relative = path.relative(workspaceRoot, resolved)
+  const allowedRoots = [workspaceRoot, ...(options?.allowedRoots ?? []).map((root) => path.resolve(root))]
 
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw new Error(`Path escapes workspace: ${targetPath}`)
+  for (const root of allowedRoots) {
+    const relative = path.relative(root, resolved)
+    if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+      return resolved
+    }
   }
 
-  return resolved
+  throw new WorkspacePathError({
+    targetPath,
+    resolvedPath: resolved,
+    workspaceRoot,
+    allowedRoots,
+  })
 }
 
 export function toWorkspaceRelativePath(baseDirectory: string, absolutePath: string): string {

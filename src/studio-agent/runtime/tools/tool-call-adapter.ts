@@ -1,6 +1,5 @@
 import type {
   StudioAssistantMessage,
-  StudioPermissionRequest,
   StudioProcessorStreamEvent,
   StudioRun,
   StudioSession,
@@ -11,9 +10,7 @@ import type {
   StudioWorkStore
 } from '../../domain/types'
 import { evaluatePermission } from '../../permissions/policy'
-import type { StudioPermissionService } from '../../permissions/permission-service'
 import type { StudioToolRegistry } from '../../tools/registry'
-import { createPermissionAskBridge, StudioPermissionRejectedError } from './permission-bridge'
 import type {
   StudioResolvedSkill,
   StudioRuntimeBackedToolContext,
@@ -24,6 +21,8 @@ import type {
 } from './tool-runtime-context'
 import type { CustomApiConfig } from '../../../types'
 import { buildStudioPreToolCommentary } from './pre-tool-commentary'
+import { logPlotStudioTiming, readRunElapsedMs } from '../../observability/plot-studio-timing'
+import { WorkspacePathError } from '../../tools/workspace-paths'
 
 export interface StudioToolCallExecutionOptions {
   projectId: string
@@ -35,12 +34,12 @@ export interface StudioToolCallExecutionOptions {
   toolInput: Record<string, unknown>
   registry: StudioToolRegistry
   eventBus: StudioRuntimeBackedToolContext['eventBus']
-  permissionService?: StudioPermissionService
+  messageStore?: StudioRuntimeBackedToolContext['messageStore']
+  partStore?: StudioRuntimeBackedToolContext['partStore']
   sessionStore?: StudioSessionStore
   taskStore?: StudioTaskStore
   workStore?: StudioWorkStore
   workResultStore?: StudioWorkResultStore
-  askForConfirmation?: (request: StudioPermissionRequest) => Promise<'once' | 'always' | 'reject'>
   runSubagent?: (input: StudioSubagentRunRequest) => Promise<StudioSubagentRunResult>
   resolveSkill?: (name: string, session: StudioSession) => Promise<StudioResolvedSkill>
   listSkills?: (session: StudioSession) => Promise<StudioSkillDiscoveryEntry[]>
@@ -84,7 +83,15 @@ export async function* createStudioToolCallExecutionEvents(
   }
 
   if (!tool) {
-    yield createToolErrorEvent(input.toolCallId, `Tool not found: ${input.toolName}`)
+    logDetectedToolFailure(input, {
+      error: `Tool not found: ${input.toolName}`,
+      failureStage: 'registry',
+      failureKind: 'tool_not_found',
+    })
+    yield createToolErrorEvent(input.toolCallId, `Tool not found: ${input.toolName}`, {
+      failureStage: 'registry',
+      failureKind: 'tool_not_found',
+    })
     return
   }
 
@@ -95,8 +102,16 @@ export async function* createStudioToolCallExecutionEvents(
   )
 
   if (permissionAction === 'deny') {
+    logDetectedToolFailure(input, {
+      error: `Permission denied for tool "${input.toolName}"`,
+      failureStage: 'permission',
+      failureKind: 'permission_denied',
+      permission: tool.permission,
+    })
     yield createToolErrorEvent(input.toolCallId, `Permission denied for tool "${input.toolName}"`, {
-      permission: tool.permission
+      permission: tool.permission,
+      failureStage: 'permission',
+      failureKind: 'permission_denied',
     })
     return
   }
@@ -116,10 +131,25 @@ export async function* createStudioToolCallExecutionEvents(
       attachments: result.attachments
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const pathEscape = toWorkspacePathFailureDetails(error)
+    logDetectedToolFailure(input, {
+      error: message,
+      failureStage: 'execution',
+      failureKind: 'exception',
+      errorName: error instanceof Error ? error.name : undefined,
+      stackPreview: error instanceof Error ? summarizeStack(error.stack) : undefined,
+      ...pathEscape,
+    })
     yield createToolErrorEvent(
       input.toolCallId,
-      error instanceof Error ? error.message : String(error),
-      error instanceof StudioPermissionRejectedError ? { rejected: true } : undefined
+      message,
+      {
+        failureStage: 'execution',
+        failureKind: 'exception',
+        errorName: error instanceof Error ? error.name : undefined,
+        ...pathEscape,
+      }
     )
   }
 }
@@ -128,30 +158,6 @@ async function executeTool(input: {
   tool: StudioToolDefinition
   options: StudioToolCallExecutionOptions
 }) {
-  const ask = createPermissionAskBridge({
-    permissionService: input.options.permissionService,
-    fallback: input.options.askForConfirmation
-      ? async (request) =>
-          input.options.askForConfirmation?.({
-            id: `fallback_${input.options.toolCallId}`,
-            sessionID: input.options.session.id,
-            permission: request.permission,
-            patterns: request.patterns,
-            metadata: request.metadata,
-            always: request.always ?? request.patterns,
-            tool: {
-              messageID: input.options.assistantMessage.id,
-              callID: input.options.toolCallId
-            }
-          }) ?? 'reject'
-      : undefined,
-    session: input.options.session,
-    run: input.options.run,
-    messageId: input.options.assistantMessage.id,
-    toolName: input.options.toolName,
-    callId: input.options.toolCallId
-  })
-
   const toolContext = {
     projectId: input.options.projectId,
     session: input.options.session,
@@ -159,20 +165,15 @@ async function executeTool(input: {
     abortSignal: input.options.abortSignal,
     assistantMessage: input.options.assistantMessage,
     eventBus: input.options.eventBus,
+    messageStore: input.options.messageStore,
+    partStore: input.options.partStore,
     taskStore: input.options.taskStore,
     workStore: input.options.workStore,
     workResultStore: input.options.workResultStore,
-    askForConfirmation: async (request: StudioPermissionRequest) => {
-      if (!input.options.permissionService) {
-        return input.options.askForConfirmation?.(request) ?? 'reject'
-      }
-      return input.options.permissionService.ask(request)
-    },
     setToolMetadata: (metadata: { title?: string; metadata?: Record<string, unknown> }) => {
       input.options.setToolMetadata(input.options.toolCallId, metadata)
     },
     sessionStore: input.options.sessionStore,
-    ask,
     runSubagent: input.options.runSubagent,
     resolveSkill: input.options.resolveSkill,
     listSkills: input.options.listSkills,
@@ -217,8 +218,110 @@ function createToolErrorEvent(
   }
 }
 
+function logDetectedToolFailure(
+  input: StudioToolCallExecutionOptions,
+  details: {
+    error: string
+    failureStage: string
+    failureKind: string
+    permission?: string
+    errorName?: string
+    stackPreview?: string
+    targetPath?: string
+    resolvedPath?: string
+    workspaceRoot?: string
+    allowedRoots?: string[]
+    allowedRootCount?: number
+    allowedSkillRoots?: string[]
+    loadedSkillPartCount?: number
+  }
+): void {
+  logPlotStudioTiming(input.session.studioKind, 'tool.failure.detected', {
+    sessionId: input.session.id,
+    runId: input.run.id,
+    assistantMessageId: input.assistantMessage.id,
+    toolName: input.toolName,
+    callId: input.toolCallId,
+    failureStage: details.failureStage,
+    failureKind: details.failureKind,
+    permission: details.permission,
+    errorName: details.errorName,
+    error: details.error,
+    stackPreview: details.stackPreview,
+    targetPath: details.targetPath,
+    resolvedPath: details.resolvedPath,
+    workspaceRoot: details.workspaceRoot,
+    allowedRoots: details.allowedRoots,
+    allowedRootCount: details.allowedRootCount,
+    allowedSkillRoots: details.allowedSkillRoots,
+    loadedSkillPartCount: details.loadedSkillPartCount,
+    inputSummary: summarizeToolInput(input.toolInput),
+    runElapsedMs: readRunElapsedMs(input.run),
+  }, 'warn')
+}
+
+function toWorkspacePathFailureDetails(error: unknown): {
+  targetPath?: string
+  resolvedPath?: string
+  workspaceRoot?: string
+  allowedRoots?: string[]
+  allowedRootCount?: number
+  allowedSkillRoots?: string[]
+  loadedSkillPartCount?: number
+} {
+  if (!(error instanceof WorkspacePathError)) {
+    return {}
+  }
+
+  const metadata = error as WorkspacePathError & {
+    allowedSkillRoots?: unknown
+    loadedSkillPartCount?: unknown
+  }
+
+  return {
+    targetPath: error.targetPath,
+    resolvedPath: error.resolvedPath,
+    workspaceRoot: error.workspaceRoot,
+    allowedRoots: error.allowedRoots,
+    allowedRootCount: error.allowedRoots.length,
+    allowedSkillRoots: Array.isArray(metadata.allowedSkillRoots)
+      ? metadata.allowedSkillRoots.filter((value): value is string => typeof value === 'string')
+      : undefined,
+    loadedSkillPartCount: typeof metadata.loadedSkillPartCount === 'number'
+      ? metadata.loadedSkillPartCount
+      : undefined,
+  }
+}
+
+function summarizeToolInput(input: Record<string, unknown>): string {
+  try {
+    const serialized = JSON.stringify(input)
+    if (serialized.length <= 300) {
+      return serialized
+    }
+    return `${serialized.slice(0, 297)}...`
+  } catch {
+    return '[unserializable tool input]'
+  }
+}
+
+function summarizeStack(stack?: string): string | undefined {
+  if (!stack?.trim()) {
+    return undefined
+  }
+  const normalized = stack.trim()
+  return normalized.length <= 600 ? normalized : `${normalized.slice(0, 597)}...`
+}
+
 function resolvePermissionPattern(input: Record<string, unknown>): string {
-  const candidate = input as { file?: unknown; path?: unknown; pattern?: unknown; directory?: unknown }
+  const candidate = input as {
+    file?: unknown
+    path?: unknown
+    pattern?: unknown
+    directory?: unknown
+    name?: unknown
+    subagent_type?: unknown
+  }
   if (typeof candidate.file === 'string' && candidate.file) {
     return candidate.file
   }
@@ -230,6 +333,12 @@ function resolvePermissionPattern(input: Record<string, unknown>): string {
   }
   if (typeof candidate.pattern === 'string' && candidate.pattern) {
     return candidate.pattern
+  }
+  if (typeof candidate.name === 'string' && candidate.name) {
+    return candidate.name
+  }
+  if (typeof candidate.subagent_type === 'string' && candidate.subagent_type) {
+    return candidate.subagent_type
   }
   return '*'
 }

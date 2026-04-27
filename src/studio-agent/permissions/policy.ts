@@ -1,7 +1,5 @@
 import type {
-  StudioPermissionDecision,
   StudioPermissionLevel,
-  StudioPermissionRequest,
   StudioPermissionRule
 } from '../domain/types'
 
@@ -20,11 +18,11 @@ export function evaluatePermission(
   rules: StudioPermissionRule[],
   permission: string,
   pattern: string
-): 'allow' | 'ask' | 'deny' {
+): 'allow' | 'deny' {
   const match = rules.find(
     (rule) => (rule.permission === permission || rule.permission === '*') && matchesPattern(rule.pattern, pattern)
   )
-  return match?.action ?? 'ask'
+  return match?.action ?? 'deny'
 }
 
 export function defaultRulesForLevel(level: StudioPermissionLevel): StudioPermissionRule[] {
@@ -37,7 +35,8 @@ export function defaultRulesForLevel(level: StudioPermissionLevel): StudioPermis
         { permission: 'read', pattern: '*', action: 'allow' },
         { permission: 'glob', pattern: '*', action: 'allow' },
         { permission: 'grep', pattern: '*', action: 'allow' },
-        { permission: 'ls', pattern: '*', action: 'allow' }
+        { permission: 'ls', pattern: '*', action: 'allow' },
+        { permission: 'skill', pattern: '*', action: 'allow' }
       ]
     case 'L3':
       return [
@@ -74,7 +73,3 @@ export function buildChildSessionRules(input: {
   rules.push(...input.parentRules)
   return rules
 }
-
-export type StudioPermissionResolver = (
-  request: StudioPermissionRequest
-) => Promise<StudioPermissionDecision>

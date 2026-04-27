@@ -4,9 +4,10 @@ import type {
   StudioToolResult,
   StudioWorkType
 } from '../domain/types'
+import { logPlotStudioSkillTrace } from '../observability/plot-studio-skill-trace'
 import { buildChildSessionRules } from '../permissions/policy'
-import { inheritStudioSessionMetadata } from '../runtime/session-agent-config'
-import type { StudioRuntimeBackedToolContext } from '../runtime/tool-runtime-context'
+import { inheritStudioSessionMetadata } from '../runtime/session/session-agent-config'
+import type { StudioRuntimeBackedToolContext } from '../runtime/tools/tool-runtime-context'
 import { createWorkAndTask, updateTaskAndWork } from '../works/work-lifecycle'
 
 interface TaskToolInput {
@@ -41,15 +42,6 @@ async function executeTaskTool(
     throw new Error('Task tool requires a subagent runner')
   }
 
-  await context.ask?.({
-    permission: 'task',
-    patterns: [input.subagent_type],
-    metadata: {
-      description: input.description,
-      skill: input.skill
-    }
-  })
-
   const childSession = await context.sessionStore.create(
     createStudioSession({
       projectId: context.projectId,
@@ -73,6 +65,17 @@ async function executeTaskTool(
     subagentType: input.subagent_type,
     skill: input.skill,
     files: input.files
+  }
+
+  if (input.skill) {
+    logPlotStudioSkillTrace(context.session.studioKind, 'skill.task.requested', {
+      sessionId: context.session.id,
+      runId: context.run.id,
+      childSessionId: childSession.id,
+      subagentType: input.subagent_type,
+      requestedSkillName: input.skill,
+      files: input.files ?? [],
+    })
   }
 
   const { work, task } = await createWorkAndTask({

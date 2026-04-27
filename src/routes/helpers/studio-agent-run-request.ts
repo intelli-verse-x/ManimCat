@@ -25,6 +25,7 @@ export const studioCreateSessionRequestSchema = z.object({
   studioKind: studioKindSchema.optional(),
   agentType: z.enum(['builder', 'reviewer', 'designer']).optional(),
   permissionLevel: z.enum(['L0', 'L1', 'L2', 'L3', 'L4']).optional(),
+  permissionMode: z.enum(['safe', 'auto', 'full']).optional(),
   workspaceId: z.string().optional(),
   toolChoice: studioToolChoiceSchema.optional(),
 })

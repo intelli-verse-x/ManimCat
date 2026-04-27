@@ -3,7 +3,6 @@ import { authMiddleware } from '../middlewares/auth.middleware'
 import { asyncHandler } from '../middlewares/error-handler'
 import { studioRuntime } from '../studio-agent/runtime/runtime-service'
 import {
-  isStudioPermissionDecision,
   sendStudioError,
   sendStudioSuccess
 } from './helpers/studio-agent-responses'
@@ -21,6 +20,7 @@ import { logPlotStudioTiming, readElapsedMs } from '../studio-agent/observabilit
 
 const router = express.Router()
 const logger = createLogger('StudioAgentRoute')
+const EMPTY_PENDING_PERMISSIONS: [] = []
 
 router.post('/studio-agent/sessions', authMiddleware, asyncHandler(async (req, res) => {
   const parsed = parseStudioCreateSessionRequest(req.body)
@@ -35,6 +35,7 @@ router.post('/studio-agent/sessions', authMiddleware, asyncHandler(async (req, r
     studioKind: parsed.studioKind,
     agentType: parsed.agentType,
     permissionLevel: parsed.permissionLevel,
+    permissionMode: parsed.permissionMode,
     workspaceId: parsed.workspaceId,
     toolChoice: parsed.toolChoice
   })
@@ -68,6 +69,23 @@ router.get('/studio-agent/sessions/:sessionId', authMiddleware, asyncHandler(asy
   ])
 
   sendStudioSuccess(res, { session, messages, runs, sessionEvents, tasks, works, workResults })
+}))
+
+router.get('/studio-agent/sessions/:sessionId/skills', authMiddleware, asyncHandler(async (req, res) => {
+  const skills = await studioRuntime.listSessionSkills(req.params.sessionId)
+  if (!skills) {
+    return sendStudioError(res, 404, 'NOT_FOUND', 'Session not found', { sessionId: req.params.sessionId })
+  }
+
+  sendStudioSuccess(res, { skills })
+}))
+
+router.get('/studio-agent/permissions/pending', authMiddleware, asyncHandler(async (_req, res) => {
+  sendStudioSuccess(res, { requests: EMPTY_PENDING_PERMISSIONS })
+}))
+
+router.post('/studio-agent/permissions/reply', authMiddleware, asyncHandler(async (_req, res) => {
+  sendStudioSuccess(res, { requests: EMPTY_PENDING_PERMISSIONS })
 }))
 
 router.patch('/studio-agent/sessions/:sessionId', authMiddleware, asyncHandler(async (req, res) => {
@@ -232,13 +250,13 @@ router.post('/studio-agent/runs', authMiddleware, asyncHandler(async (req, res) 
     run: started.run,
     assistantMessage: started.assistantMessage,
     text: '',
+    pendingPermissions: EMPTY_PENDING_PERMISSIONS,
     messages,
     runs,
     sessionEvents,
     tasks,
     works,
-    workResults,
-    pendingPermissions: studioRuntime.listPendingPermissions()
+    workResults
   }, 202)
 }))
 
@@ -303,13 +321,13 @@ router.post('/studio-agent/runs/:runId/continue', authMiddleware, asyncHandler(a
     run: continued.run,
     assistantMessage: continuedAssistantMessage,
     text: '',
+    pendingPermissions: EMPTY_PENDING_PERMISSIONS,
     messages,
     runs,
     sessionEvents,
     tasks,
     works,
-    workResults,
-    pendingPermissions: studioRuntime.listPendingPermissions()
+    workResults
   }, 202)
 }))
 
@@ -337,43 +355,5 @@ router.post('/studio-agent/runs/:runId/cancel', authMiddleware, asyncHandler(asy
     message: 'Run cancelled',
   })
 }))
-
-router.get('/studio-agent/permissions/pending', authMiddleware, asyncHandler(async (_req, res) => {
-  sendStudioSuccess(res, { requests: studioRuntime.listPendingPermissions() })
-}))
-
-const replyPermissionHandler = asyncHandler(async (req, res) => {
-  const requestID = typeof req.params.requestID === 'string' && req.params.requestID.trim()
-    ? req.params.requestID.trim()
-    : typeof req.body.requestID === 'string'
-      ? req.body.requestID.trim()
-      : ''
-  const reply = req.body.reply
-
-  if (!requestID || !isStudioPermissionDecision(reply)) {
-    return sendStudioError(
-      res,
-      400,
-      'INVALID_INPUT',
-      'requestID and reply are required; reply must be one of: once, always, reject'
-    )
-  }
-
-  const ok = studioRuntime.replyPermission({
-    requestID,
-    reply,
-    message: typeof req.body.message === 'string' ? req.body.message : undefined,
-    directory: typeof req.body.directory === 'string' ? req.body.directory : undefined
-  })
-
-  if (!ok) {
-    return sendStudioError(res, 404, 'NOT_FOUND', 'Permission request not found', { requestID })
-  }
-
-  sendStudioSuccess(res, { requests: studioRuntime.listPendingPermissions() })
-})
-
-router.post('/studio-agent/permissions/reply', authMiddleware, replyPermissionHandler)
-router.post('/studio-agent/permissions/:requestID/reply', authMiddleware, replyPermissionHandler)
 
 export default router

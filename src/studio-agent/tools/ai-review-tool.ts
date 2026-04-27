@@ -5,8 +5,8 @@ import {
 import { createStudioSession, createStudioWorkResult } from '../domain/factories'
 import type { StudioToolDefinition, StudioToolResult, StudioWorkResult } from '../domain/types'
 import { buildChildSessionRules } from '../permissions/policy'
-import type { StudioRuntimeBackedToolContext } from '../runtime/tool-runtime-context'
-import { inheritStudioSessionMetadata } from '../runtime/session-agent-config'
+import type { StudioRuntimeBackedToolContext } from '../runtime/tools/tool-runtime-context'
+import { inheritStudioSessionMetadata } from '../runtime/session/session-agent-config'
 import { createWorkAndTask, publishWorkUpdated, updateTaskAndWork } from '../works/work-lifecycle'
 import { readWorkspaceFile, toWorkspaceRelativePath, truncateToolText } from './workspace-paths'
 
@@ -57,16 +57,6 @@ async function executeAiReviewTool(
 
   const source = await resolveReviewSource(input, context)
   const workflowInput = buildReviewWorkflowInput(source)
-
-  await context.ask?.({
-    permission: 'ai-review',
-    patterns: [source.path ?? 'inline-review'],
-    metadata: {
-      sourcePath: source.path,
-      sourceLabel: source.label,
-      reviewSourceKind: source.kind
-    }
-  })
 
   const childSession = await context.sessionStore.create(
     createStudioSession({

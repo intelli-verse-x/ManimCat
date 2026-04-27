@@ -9,12 +9,22 @@ import {
 const REFERENCE_IMAGES_START = '[STUDIO_REFERENCE_IMAGES]'
 const REFERENCE_IMAGES_END = '[/STUDIO_REFERENCE_IMAGES]'
 
+/**
+ * 构建 Studio 对话消息数组，用于发送给 OpenAI API
+ * @param input - 包含 Studio 消息数组的输入对象
+ * @returns OpenAI 聊天完成 API 所需格式的消息数组
+ */
 export function buildStudioConversationMessages(input: {
   messages: StudioMessage[]
 }): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
   return input.messages.flatMap(toConversationMessages)
 }
 
+/**
+ * 将单条 Studio 消息转换为 OpenAI 对话消息格式
+ * @param message - Studio 消息对象
+ * @returns OpenAI 格式的消息数组
+ */
 function toConversationMessages(message: StudioMessage): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
   if (message.role === 'user') {
     return [{ role: 'user', content: buildUserMessageContent(message.text) }]
@@ -52,6 +62,11 @@ function toConversationMessages(message: StudioMessage): OpenAI.Chat.Completions
   ]
 }
 
+/**
+ * 构建工具调用结果消息数组
+ * @param message -助手消息对象
+ * @returns 工具调用结果消息数组
+ */
 function buildToolMessages(message: StudioAssistantMessage): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
   return message.parts
     .filter((part): part is StudioToolPart => part.type === 'tool')
@@ -68,6 +83,11 @@ function buildToolMessages(message: StudioAssistantMessage): OpenAI.Chat.Complet
     })
 }
 
+/**
+ * 读取存储的助手消息元数据
+ * @param message -助手消息对象
+ * @returns 存储的提供者消息内容，如果不存在则返回 null
+ */
 function readStoredAssistantPayload(message: StudioAssistantMessage): {
   content: string | Array<Record<string, unknown>> | null
   tool_calls?: StudioStoredAssistantToolCall[]
@@ -88,6 +108,12 @@ function readStoredAssistantPayload(message: StudioAssistantMessage): {
     tool_calls: normalizeStoredToolCalls(payload.tool_calls)
   }
 }
+
+/**
+ * 规范化存储的工具调用数组
+ * @param toolCalls - 存储的工具调用数组
+ * @returns 规范化后的工具调用数组，如果为空则返回 undefined
+ */
 function normalizeStoredToolCalls(
   toolCalls: StudioStoredAssistantToolCall[] | undefined
 ): StudioStoredAssistantToolCall[] | undefined {
@@ -97,6 +123,11 @@ function normalizeStoredToolCalls(
   return toolCalls
 }
 
+/**
+ * 规范化存储的内容
+ * @param content - 存储的内容
+ * @returns 规范化后的内容（字符串、对象数组、null 或 undefined）
+ */
 function normalizeStoredContent(content: unknown): string | Array<Record<string, unknown>> | null | undefined {
   if (content === null) {
     return null
@@ -110,6 +141,11 @@ function normalizeStoredContent(content: unknown): string | Array<Record<string,
   return undefined
 }
 
+/**
+ * 将助手消息的多个部分扁平化为纯文本
+ * @param message -助手消息对象
+ * @returns 合并后的文本内容
+ */
 function flattenAssistantMessage(message: Extract<StudioMessage, { role: 'assistant' }>): string {
   const sections: string[] = []
 
@@ -132,6 +168,11 @@ function flattenAssistantMessage(message: Extract<StudioMessage, { role: 'assist
   return sections.join('\n\n').trim()
 }
 
+/**
+ * 构建用户消息内容，支持文本和参考图片
+ * @param inputText - 输入文本
+ * @returns 纯文本或包含文本和图片的数组
+ */
 function buildUserMessageContent(
   inputText: string,
 ): string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail: VisionImageDetail } }> {
@@ -155,6 +196,11 @@ function buildUserMessageContent(
   ]
 }
 
+/**
+ * 从输入文本中解析参考图片
+ * @param inputText - 输入文本
+ * @returns 包含纯文本和参考图片数组的对象
+ */
 function parseReferenceImagesFromInput(inputText: string): {
   text: string
   referenceImages: ReferenceImage[]
@@ -178,6 +224,11 @@ function parseReferenceImagesFromInput(inputText: string): {
   }
 }
 
+/**
+ * 从文本块中提取参考图片
+ * @param block - 包含图片信息的文本块
+ * @returns 参考图片数组
+ */
 function extractReferenceImages(block: string): ReferenceImage[] {
   return block
     .split(/\r?\n/)
@@ -187,6 +238,11 @@ function extractReferenceImages(block: string): ReferenceImage[] {
     .filter((image): image is ReferenceImage => Boolean(image))
 }
 
+/**
+ * 解析单行参考图片信息
+ * @param line - 包含图片信息的文本行
+ * @returns 参考图片对象，如果解析失败则返回 null
+ */
 function parseReferenceImageLine(line: string): ReferenceImage | null {
   const match = line.match(/^-+\s*[^:]+:\s*(https?:\/\/\S+?)(?:\s+\(detail:\s*(auto|low|high)\))?\s*$/i)
   if (!match) {
@@ -199,6 +255,11 @@ function parseReferenceImageLine(line: string): ReferenceImage | null {
   }
 }
 
+/**
+ * 规范化图片细节参数
+ * @param value - 图片细节字符串
+ * @returns 规范化后的图片细节值（'low'、'high' 或 'auto'）
+ */
 function normalizeDetail(value: string | undefined): VisionImageDetail {
   if (value === 'low' || value === 'high' || value === 'auto') {
     return value

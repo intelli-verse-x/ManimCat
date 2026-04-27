@@ -42,20 +42,32 @@ export function useLightboxCamera({
     onZoomChange(nextZoom)
   }
 
+  const rafZoomRef = useRef<number | null>(null)
+
   const handleViewportWheel = useCallback((event: WheelEvent) => {
     event.preventDefault()
 
-    const nextZoom = roundZoom(clampZoom(zoom + (event.deltaY < 0 ? 0.12 : -0.12), minZoom, maxZoom))
-    if (nextZoom === zoom) {
-      return
+    const rawDelta = event.deltaY < 0 ? 0.06 : -0.06
+
+    if (rafZoomRef.current !== null) {
+      window.cancelAnimationFrame(rafZoomRef.current)
     }
 
-    debugImageLightbox('camera.wheel-zoom', {
-      zoom,
-      nextZoom,
-      deltaY: event.deltaY,
+    rafZoomRef.current = window.requestAnimationFrame(() => {
+      rafZoomRef.current = null
+
+      const nextZoom = roundZoom(clampZoom(zoom + rawDelta, minZoom, maxZoom))
+      if (nextZoom === zoom) {
+        return
+      }
+
+      debugImageLightbox('camera.wheel-zoom', {
+        zoom,
+        nextZoom,
+        deltaY: event.deltaY,
+      })
+      onZoomChange(nextZoom)
     })
-    onZoomChange(nextZoom)
   }, [maxZoom, minZoom, onZoomChange, zoom])
 
   const handlePanStart = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -122,6 +134,45 @@ export function useLightboxCamera({
       panY: panOffset.y,
     })
   }
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!activeImage || !looksLikeSvg(activeImage)) {
+      return undefined
+    }
+
+    void readSvgIntrinsicSize(activeImage).then((svgSize) => {
+      if (!svgSize || cancelled) {
+        return
+      }
+
+      setNaturalSize((current) => {
+        if (
+          current.width === svgSize.width
+          && current.height === svgSize.height
+        ) {
+          return current
+        }
+
+        debugImageLightbox('camera.svg-size-resolved', {
+          activeImage,
+          width: svgSize.width,
+          height: svgSize.height,
+        })
+        return svgSize
+      })
+    }).catch((error) => {
+      debugImageLightbox('camera.svg-size-failed', {
+        activeImage,
+        message: error instanceof Error ? error.message : String(error),
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeImage])
 
   useEffect(() => {
     if (!shouldRender) {
@@ -224,24 +275,26 @@ export function useLightboxCamera({
       return undefined
     }
 
-    const width = naturalSize.width
-    const height = naturalSize.height
+    const imgWidth = naturalSize.width
+    const imgHeight = naturalSize.height
     const availableWidth = Math.max(0, viewportSize.width - 48)
     const availableHeight = Math.max(0, viewportSize.height - 48)
 
-    if (!width || !height || !availableWidth || !availableHeight) {
+    if (!imgWidth || !imgHeight || !availableWidth || !availableHeight) {
       return undefined
     }
 
-    const fitScale = Math.min(availableWidth / width, availableHeight / height)
-    const baseScale = Math.max(0.01, fitScale)
-    const appliedScale = baseScale * Math.max(zoom, 0.01)
+    const stageRatio = 0.85
+    const stageWidth = availableWidth * stageRatio
+    const stageHeight = availableHeight * stageRatio
+
     return {
-      width,
-      height,
-      appliedScale,
+      width: stageWidth,
+      height: stageHeight,
+      imgWidth,
+      imgHeight,
     }
-  }, [activeImage, naturalSize.height, naturalSize.width, viewportSize.height, viewportSize.width, zoom])
+  }, [activeImage, naturalSize.height, naturalSize.width, viewportSize.height, viewportSize.width])
 
   const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
     const target = event.currentTarget
@@ -264,14 +317,14 @@ export function useLightboxCamera({
   const stageStyle: CSSProperties = {
     width: stageMetrics ? `${stageMetrics.width}px` : undefined,
     height: stageMetrics ? `${stageMetrics.height}px` : undefined,
-    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${stageMetrics?.appliedScale ?? Math.max(zoom, 0.01)})`,
+    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${Math.max(zoom, 0.01)})`,
     transformOrigin: 'center center',
     touchAction: 'none',
   }
 
   const imageStyle: CSSProperties = {
     width: '100%',
-    height: '100%',
+    height: 'auto',
     display: 'block',
   }
 
@@ -294,4 +347,90 @@ function clampZoom(value: number, minZoom: number, maxZoom: number) {
 
 function roundZoom(value: number) {
   return Math.round(value * 100) / 100
+}
+
+function looksLikeSvg(source: string) {
+  return source.startsWith('data:image/svg+xml') || /\.svg(?:[?#]|$)/i.test(source)
+}
+
+async function readSvgIntrinsicSize(source: string) {
+  try {
+    const markup = source.startsWith('data:image/svg+xml')
+      ? decodeSvgDataUrl(source)
+      : await fetch(source).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch SVG: ${response.status}`)
+        }
+        return response.text()
+      })
+    return parseSvgIntrinsicSize(markup)
+  } catch {
+    return undefined
+  }
+}
+
+function decodeSvgDataUrl(source: string) {
+  const commaIndex = source.indexOf(',')
+  if (commaIndex < 0) {
+    throw new Error('Invalid SVG data URL')
+  }
+
+  const metadata = source.slice(0, commaIndex)
+  const payload = source.slice(commaIndex + 1)
+  return metadata.includes(';base64')
+    ? atob(payload)
+    : decodeURIComponent(payload)
+}
+
+function parseSvgIntrinsicSize(markup: string) {
+  if (typeof DOMParser === 'undefined') {
+    return undefined
+  }
+
+  const document = new DOMParser().parseFromString(markup, 'image/svg+xml')
+  const root = document.documentElement
+  if (!root || root.nodeName.toLowerCase() !== 'svg') {
+    return undefined
+  }
+
+  const width = parseSvgLength(root.getAttribute('width'))
+  const height = parseSvgLength(root.getAttribute('height'))
+  if (width && height) {
+    return { width, height }
+  }
+
+  const viewBox = root.getAttribute('viewBox')?.trim()
+  if (!viewBox) {
+    return undefined
+  }
+
+  const parts = viewBox.split(/[\s,]+/).map(Number)
+  if (parts.length !== 4 || parts.some((value) => !Number.isFinite(value))) {
+    return undefined
+  }
+
+  const viewBoxWidth = Math.abs(parts[2])
+  const viewBoxHeight = Math.abs(parts[3])
+  if (!viewBoxWidth || !viewBoxHeight) {
+    return undefined
+  }
+
+  return {
+    width: viewBoxWidth,
+    height: viewBoxHeight,
+  }
+}
+
+function parseSvgLength(value: string | null) {
+  if (!value) {
+    return undefined
+  }
+
+  const match = value.trim().match(/^([0-9]*\.?[0-9]+)/)
+  if (!match) {
+    return undefined
+  }
+
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }

@@ -1,7 +1,26 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { createRef } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { StudioCommandPanel } from '../../../studio/components/StudioCommandPanel'
+import { StudioCommandPanel, type StudioCommandPanelHandle } from '../../../studio/components/StudioCommandPanel'
 import type { StudioMessage, StudioSession } from '../../../studio/protocol/studio-agent-types'
+import { getStudioSessionSkills } from '../../../studio/api/studio-agent-api'
+
+const { uploadReferenceImageMock, debugStudioMessagesMock } = vi.hoisted(() => ({
+  uploadReferenceImageMock: vi.fn(),
+  debugStudioMessagesMock: vi.fn(),
+}))
+
+vi.mock('../../../lib/api', () => ({
+  uploadReferenceImage: uploadReferenceImageMock,
+}))
+
+vi.mock('../../../studio/agent-response/debug', () => ({
+  debugStudioMessages: debugStudioMessagesMock,
+}))
+
+vi.mock('../../../studio/api/studio-agent-api', () => ({
+  getStudioSessionSkills: vi.fn(),
+}))
 
 vi.mock('../../../i18n', () => ({
   useI18n: () => ({
@@ -16,6 +35,9 @@ vi.mock('../../../i18n', () => ({
 
 afterEach(() => {
   cleanup()
+  uploadReferenceImageMock.mockReset()
+  debugStudioMessagesMock.mockReset()
+  vi.mocked(getStudioSessionSkills).mockReset()
 })
 
 function createSession(): StudioSession {
@@ -47,6 +69,40 @@ function createAssistantMessage(): Extract<StudioMessage, { role: 'assistant' }>
 }
 
 describe('StudioCommandPanel', () => {
+  it('shows actual skill suggestions for /skill input and completes them with tab', async () => {
+    vi.mocked(getStudioSessionSkills).mockResolvedValue([
+      {
+        name: 'math-education-visualization',
+        description: 'Math teaching visualization skill.',
+        scope: 'common',
+        directory: 'D:/skills/math-education-visualization',
+        entryFile: 'D:/skills/math-education-visualization/SKILL.md',
+        source: 'catalog',
+      },
+    ])
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '/skill math' } })
+
+    await waitFor(() => expect(screen.getByText('math-education-visualization')).toBeInTheDocument())
+
+    fireEvent.keyDown(input, { key: 'Tab' })
+
+    expect(input.value).toBe('/skill math-education-visualization')
+  })
+
   it('restores the input when submit fails', async () => {
     const onRun = vi.fn(async () => {
       throw new Error('submit failed')
@@ -126,6 +182,33 @@ describe('StudioCommandPanel', () => {
     await waitFor(() => expect(onRun).toHaveBeenCalledWith('/new'))
   })
 
+  it('does not submit while a command suggestion is still open before tab completion', async () => {
+    const onRun = vi.fn()
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={onRun}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '/n' } })
+
+    expect(screen.getByText('studio.commandMenu.title')).toBeInTheDocument()
+
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(onRun).not.toHaveBeenCalled())
+    expect(input.value).toBe('/n')
+    expect(screen.getByText('studio.commandMenu.title')).toBeInTheDocument()
+  })
+
   it('hides the autocomplete menu when the input exactly matches a command', () => {
     render(
       <StudioCommandPanel
@@ -203,6 +286,161 @@ describe('StudioCommandPanel', () => {
     await waitFor(() => expect(screen.getByText('canvasMode.title')).toBeInTheDocument())
     expect(onRun).not.toHaveBeenCalled()
     expect(input.value).toBe('')
+  })
+
+  it('forwards the skill command to onRun', async () => {
+    const onRun = vi.fn()
+    vi.mocked(getStudioSessionSkills).mockResolvedValue([
+      {
+        name: 'math-education-visualization',
+        description: 'Math teaching visualization skill.',
+        scope: 'common',
+        directory: 'D:/skills/math-education-visualization',
+        entryFile: 'D:/skills/math-education-visualization/SKILL.md',
+        source: 'catalog',
+      },
+    ])
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={onRun}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    fireEvent.change(input, { target: { value: '/skill math' } })
+    await waitFor(() => expect(screen.getByText('math-education-visualization')).toBeInTheDocument())
+    fireEvent.keyDown(input, { key: 'Tab' })
+    await waitFor(() => expect(input.value).toBe('/skill math-education-visualization'))
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    await waitFor(() => expect(onRun).toHaveBeenCalledWith('/skill math-education-visualization'))
+    expect(input.value).toBe('')
+  })
+
+  it('uploads pasted images into composer attachments', async () => {
+    uploadReferenceImageMock.mockResolvedValue({
+      success: true,
+      url: '/images/pasted.png',
+      relativeUrl: '/images/pasted.png',
+      mimeType: 'image/png',
+      size: 128,
+    })
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    const file = new File(['image'], 'pasted.png', { type: 'image/png' })
+
+    fireEvent.paste(input, {
+      clipboardData: {
+        items: [
+          {
+            kind: 'file',
+            type: 'image/png',
+            getAsFile: () => file,
+          },
+        ],
+      },
+    })
+
+    await waitFor(() => expect(uploadReferenceImageMock).toHaveBeenCalledWith(file))
+    expect(screen.getByRole('img', { name: 'reference.alt' })).toBeInTheDocument()
+    expect(input.value).toContain('@pasted.png')
+  })
+
+  it('uploads pasted images from document scope when composer is not focused', async () => {
+    uploadReferenceImageMock.mockResolvedValue({
+      success: true,
+      url: '/images/document-pasted.png',
+      relativeUrl: '/images/document-pasted.png',
+      mimeType: 'image/png',
+      size: 128,
+    })
+
+    render(
+      <StudioCommandPanel
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const file = new File(['image'], 'document-pasted.png', { type: 'image/png' })
+    const event = new Event('paste', { bubbles: true, cancelable: true }) as ClipboardEvent
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        items: [
+          {
+            kind: 'file',
+            type: 'image/png',
+            getAsFile: () => file,
+          },
+        ],
+      },
+    })
+
+    document.dispatchEvent(event)
+
+    await waitFor(() => expect(uploadReferenceImageMock).toHaveBeenCalledWith(file))
+    expect(screen.getByRole('img', { name: 'reference.alt' })).toBeInTheDocument()
+    expect(debugStudioMessagesMock).toHaveBeenCalledWith('command-panel-document-paste', expect.objectContaining({
+      imageCount: 1,
+    }))
+  })
+
+  it('uploads dropped images into composer attachments', async () => {
+    uploadReferenceImageMock.mockResolvedValue({
+      success: true,
+      url: '/images/dropped.png',
+      relativeUrl: '/images/dropped.png',
+      mimeType: 'image/png',
+      size: 128,
+    })
+
+    const ref = createRef<StudioCommandPanelHandle>()
+
+    render(
+      <StudioCommandPanel
+        ref={ref}
+        session={createSession()}
+        messages={[]}
+        latestAssistantText=""
+        isBusy={false}
+        disabled={false}
+        onRun={vi.fn()}
+        onExit={vi.fn()}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('输入指令...') as HTMLInputElement
+    const file = new File(['image'], 'dropped.png', { type: 'image/png' })
+
+    await ref.current?.ingestImageFiles([file])
+
+    await waitFor(() => expect(uploadReferenceImageMock).toHaveBeenCalledWith(file))
+    expect(screen.getByRole('img', { name: 'reference.alt' })).toBeInTheDocument()
+    expect(input.value).toContain('@dropped.png')
   })
 
   it('does not flash the full assistant text before typing starts', async () => {
