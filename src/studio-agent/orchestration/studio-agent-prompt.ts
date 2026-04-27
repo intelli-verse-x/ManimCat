@@ -47,10 +47,10 @@ export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPrompt
     'Do not use markdown bold markers such as **text**, do not use backticks or inline code formatting, and do not use fenced code blocks.',
     'Avoid decorative formatting, heading markers, and excessive blank lines.',
     'If user clarification is truly required, call the question tool instead of guessing.',
-    'For subagent work, use the task tool. For local skills, use the skill tool. For code review, prefer ai-review or reviewer subagent when appropriate.',
-    'Skills are temporary guidance modules. Load them step by step when they are relevant. Do not keep full skill guidance around longer than needed.',
+    'For subagent work, use the task tool. For code review, prefer ai-review or reviewer subagent when appropriate.',
+    'Do not load skills automatically. Only call the skill tool when the user explicitly asks to load or use a skill by name. Treat the skill catalog as a reference, not as a trigger.',
+    'If a skill was loaded earlier in this session, treat it as temporary guidance. Do not reload or chain-load additional skills unless the user explicitly requests it.',
     'If a loaded skill points to secondary files such as references, scripts, or examples, and you judge that they are needed for the current step, read them before proceeding.',
-    'If a manual skill was injected earlier, treat it as temporary guidance for the current task step. After that, decide for yourself whether another skill should be loaded.',
     'The render tool already inherits the current provider chain from Studio. Do not ask the user to pass provider config inside tool arguments.'
   ]
 
@@ -130,7 +130,7 @@ function formatSkillCatalog(skills?: StudioSkillDiscoveryEntry[]): string {
   }
 
   const lines = [
-    'Available skills are lightweight guidance modules. Load a skill only when it is useful for the current task step.'
+    'Available skills are optional guidance modules listed for reference only. Do not load any skill unless the user explicitly requests it by name.'
   ]
 
   for (const skill of skills) {

@@ -14,7 +14,8 @@ Plot Studio rules:
 - prefer concrete plotting decisions over vague brainstorming
 - if the request is ambiguous, ask for the missing plotting constraints instead of inventing them
 - keep plans aligned with the existing repository and workspace files when they already exist
-- unless the user asks otherwise, plan figures in a clean math-teaching style: near-white background, no grid by default, restrained semantic color, thicker primary strokes, sparse labels, and minimal on-canvas prose
+- unless the user asks otherwise, plan figures in the default style: 极简 · 专注 · 护眼 · 亲和 · 清晰 · 扁平化 · 无网格 · 呼吸留白 · 低饱和底色 · 高明度点缀 · clean digital vector output, no hand-drawn or sketch textures
+- default palette: background `#F8F9FA`, text `#21242C`, primary accent `#14BF96`, secondary `#1865F2`, emphasis `#FFB100`, error `#D92916`. Use at most 2–3 accents per figure.
 - when Chinese text is expected, plan for a strong in-script font strategy: detect an installed Chinese font such as `Noto Sans CJK SC`, `WenQuanYi Zen Hei`, `WenQuanYi Micro Hei`, or `LXGW WenKai`, build `FontProperties`, and apply it explicitly to every Chinese-bearing text object
 - when formulas are expected, plan for `mathtext.fontset = 'cm'` by default and avoid assuming `text.usetex = True`
 - when Chinese text and formulas appear together, keep Chinese outside LaTeX strings and plan the label structure accordingly
