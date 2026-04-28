@@ -64,6 +64,7 @@ triangle.png
 !.github/pull_request_template.md
 !src/prompts/templates/**/*.md
 !src/studio-agent/prompts/templates/**/*.md
+!src/studio-agent/skills/catalog/**/*.md
 
 # Flow type files
 *.flow
