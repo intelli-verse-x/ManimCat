@@ -232,7 +232,7 @@ export function LightboxAnnotator({
   return (
     <>
       {isSubmitting && (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-[#fafaf8]/70">
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-bg-primary/70">
           <span className="text-[12px] text-accent/58">...</span>
         </div>
       )}

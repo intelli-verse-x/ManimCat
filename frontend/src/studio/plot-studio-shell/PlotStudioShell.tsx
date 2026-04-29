@@ -21,7 +21,7 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
     <>
       <div
         {...dragOverlay.shellDragBindings}
-        className={`studio-shell-root relative isolate flex min-h-screen flex-col overflow-y-auto bg-[#fafaf8] px-6 pb-2 pt-7 text-accent antialiased dark:bg-bg-primary dark:text-text-primary sm:px-8 sm:pb-3 sm:pt-8 md:h-screen md:overflow-hidden md:px-10 md:pb-4 md:pt-10 lg:px-12 lg:pb-5 lg:pt-12 ${
+        className={`studio-shell-root relative isolate flex min-h-screen flex-col overflow-y-auto bg-bg-primary px-6 pb-2 pt-7 text-text-primary antialiased sm:px-8 sm:pb-3 sm:pt-8 md:h-screen md:overflow-hidden md:px-10 md:pb-4 md:pt-10 lg:px-12 lg:pb-5 lg:pt-12 ${
           isExiting ? 'animate-studio-exit' : 'animate-studio-entrance'
         }`}
       >

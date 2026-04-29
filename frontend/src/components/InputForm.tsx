@@ -182,14 +182,14 @@ export function InputForm({ concept, onConceptChange, onSecretStudioOpen, onSubm
             value={concept}
             onChange={(e) => handleConceptChange(e.target.value)}
             onKeyDown={handleTextareaKeyDown}
-            className={`w-full px-4 py-4 bg-bg-secondary/50 rounded-2xl text-text-primary placeholder-text-secondary/40 focus:outline-none focus:ring-2 transition-all resize-none ${
+            className={`w-full px-4 py-4 bg-bg-tertiary/30 rounded-2xl text-text-primary placeholder-text-secondary/40 focus:outline-none focus:ring-2 transition-all resize-none ${
               isDragging
                 ? 'ring-2 ring-accent/50 bg-accent/5 border-2 border-dashed border-accent/30'
                 : isRecognizing
                   ? 'ring-2 ring-accent/40 bg-accent/[0.03] animate-pulse'
                   : (localError || derivedError)
                     ? 'focus:ring-red-500/20 bg-red-50/50 dark:bg-red-900/10'
-                    : 'focus:ring-accent/20 focus:bg-bg-secondary/70'
+                    : 'focus:ring-accent/20 focus:bg-bg-tertiary/40'
             }`}
           />
         </div>

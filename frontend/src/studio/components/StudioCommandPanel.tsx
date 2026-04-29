@@ -106,7 +106,7 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
   return (
     <section
       data-variant={variant}
-      className={`studio-terminal relative flex h-full min-h-0 min-w-0 flex-1 flex-col ${isTLayout ? 'bg-white' : ''} ${isMinimal ? 'text-[13px] leading-loose text-accent' : ''}`}
+      className={`studio-terminal relative flex h-full min-h-0 min-w-0 flex-1 flex-col ${isTLayout ? 'bg-white' : ''} ${isMinimal ? 'text-[13px] leading-loose text-text-primary' : ''}`}
     >
       {isMinimal && (
         <div className="mb-4 ml-4 mr-3 h-[1px] bg-accent opacity-[0.08]" />
