@@ -2,19 +2,8 @@ import { createLogger } from '../../utils/logger'
 
 const logger = createLogger('PlotStudioTiming')
 const IMPORTANT_PLOT_STUDIO_EVENTS = new Set([
-  'run.started',
-  'run.completed',
-  'run.failed',
-  'loop.started',
   'provider.completed',
   'provider.failed',
-  'step.started',
-  'step.response',
-  'step.finished',
-  'assistant.text',
-  'tool.started',
-  'tool.completed',
-  'tool.failed',
   'tool.failure.detected',
 ])
 
@@ -41,6 +30,23 @@ const PLOT_STUDIO_EVENT_LABELS: Record<string, string> = {
 
 export function isPlotStudioKind(studioKind?: string | null): boolean {
   return studioKind === 'plot'
+}
+
+/**
+ * 简洁时间线日志 — 一行一个事件，用于快速判断时间花在哪里
+ * 格式：14:32:05.123 ▸ tool.started create_plot
+ */
+export function logTimeline(
+  studioKind: string | null | undefined,
+  event: string,
+  detail?: string
+): void {
+  if (!isPlotStudioKind(studioKind)) {
+    return
+  }
+  const ts = new Date().toISOString().slice(11, 23) // HH:MM:SS.mmm
+  const suffix = detail ? ` ${detail}` : ''
+  console.log(`${ts} ▸ ${event}${suffix}`)
 }
 
 export function logPlotStudioTiming(

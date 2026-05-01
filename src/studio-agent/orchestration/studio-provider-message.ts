@@ -1,5 +1,16 @@
 import type OpenAI from 'openai'
 import type { StudioAssistantMessage, StudioMessageStore } from '../domain/types'
+import { createLogger } from '../../utils/logger'
+
+const logger = createLogger('StudioProviderMessage')
+
+type ChatCompletionMessageWithReasoning = OpenAI.Chat.Completions.ChatCompletionMessage & {
+  reasoning_content?: unknown
+}
+
+type AssistantMessageParamWithReasoning = OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam & {
+  reasoning_content?: unknown
+}
 
 /**
  * 存储的助手工具调用接口
@@ -7,10 +18,7 @@ import type { StudioAssistantMessage, StudioMessageStore } from '../domain/types
 export interface StudioStoredAssistantToolCall {
   id?: string
   type?: 'function'
-  function?: {
-    name?: string
-    arguments?: string
-  }
+  function?: Record<string, unknown>
   [key: string]: unknown
 }
 
@@ -19,6 +27,7 @@ export interface StudioStoredAssistantToolCall {
  */
 export interface StudioStoredAssistantPayload {
   content?: string | Array<Record<string, unknown>> | null
+  reasoning_content?: unknown
   tool_calls?: StudioStoredAssistantToolCall[]
 }
 
@@ -34,12 +43,15 @@ export function toAssistantConversationMessage(
   assistantText: string,
   toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]
 ): OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam {
-  const normalizedToolCalls = normalizeStoredToolCalls(toolCalls)
-  return {
+  const normalizedToolCalls = cloneStoredToolCalls(toolCalls)
+  const providerMessage = message as ChatCompletionMessageWithReasoning | undefined
+  const assistantMessage = {
     role: 'assistant',
     content: message?.content ?? (assistantText || null),
+    reasoning_content: cloneStoredReasoningContent(providerMessage?.reasoning_content),
     tool_calls: normalizedToolCalls as OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
   }
+  return assistantMessage as AssistantMessageParamWithReasoning
 }
 
 /**
@@ -74,11 +86,40 @@ export async function persistProviderMessageSnapshot(input: {
 export function buildStoredProviderMessagePayload(
   providerMessage: OpenAI.Chat.Completions.ChatCompletionMessage
 ): StudioStoredAssistantPayload {
-  const toolCalls = normalizeStoredToolCalls(providerMessage.tool_calls)
+  const providerMessageWithReasoning = providerMessage as ChatCompletionMessageWithReasoning
+  const toolCalls = cloneStoredToolCalls(providerMessage.tool_calls)
+  const reasoningContent = cloneStoredReasoningContent(providerMessageWithReasoning.reasoning_content)
+  logger.debug('buildStoredProviderMessagePayload', {
+    role: providerMessage.role,
+    contentType: typeof providerMessage.content,
+    contentIsArray: Array.isArray(providerMessage.content),
+    hasReasoningContent: Boolean(reasoningContent),
+    reasoningContentType: typeof providerMessageWithReasoning.reasoning_content,
+    reasoningContentIsArray: Array.isArray(providerMessageWithReasoning.reasoning_content),
+    reasoningContentLength: Array.isArray(providerMessageWithReasoning.reasoning_content) ? providerMessageWithReasoning.reasoning_content.length : undefined,
+    hasToolCalls: Boolean(providerMessage.tool_calls?.length),
+    toolCallsLength: providerMessage.tool_calls?.length,
+  })
+  if (reasoningContent && process.env.DEBUG_REASONING_CHAIN === 'true') {
+    logger.info('[reasoning_chain]', JSON.stringify(reasoningContent, null, 2))
+  }
   return {
     content: providerMessage.content ?? null,
+    reasoning_content: reasoningContent,
     tool_calls: toolCalls
   }
+}
+
+function cloneStoredReasoningContent(reasoningContent: unknown): unknown {
+  if (reasoningContent === undefined) {
+    return undefined
+  }
+
+  if (Array.isArray(reasoningContent) && reasoningContent.length === 0) {
+    return undefined
+  }
+
+  return cloneUnknownValue(reasoningContent)
 }
 
 /**
@@ -86,19 +127,13 @@ export function buildStoredProviderMessagePayload(
  * @param toolCalls - 工具调用数组
  * @returns 规范化后的工具调用数组
  */
-function normalizeStoredToolCalls(
+function cloneStoredToolCalls(
   toolCalls: readonly OpenAI.Chat.Completions.ChatCompletionMessageToolCall[] | undefined
 ): StudioStoredAssistantToolCall[] | undefined {
   if (!Array.isArray(toolCalls) || toolCalls.length === 0) {
     return undefined
   }
-  return toolCalls.map((toolCall) => ({
-    ...toolCall,
-    function: {
-      ...toolCall.function,
-      arguments: toolCall.function.arguments
-    }
-  }))
+  return toolCalls.map((toolCall) => cloneUnknownValue(toolCall) as StudioStoredAssistantToolCall)
 }
 
 /**
@@ -157,6 +192,7 @@ export function summarizeAssistantMessageForDebug(
   return {
     role: message.role,
     content: summarizeContentForDebug(message.content),
+    reasoningContent: summarizeContentForDebug((message as { reasoning_content?: unknown }).reasoning_content),
     toolCalls: Array.isArray(message.tool_calls)
       ? message.tool_calls.map(summarizeToolCallForDebug)
       : undefined,
@@ -266,6 +302,20 @@ function readObjectKeys(value: unknown): string[] {
     return []
   }
   return Object.keys(value as Record<string, unknown>)
+}
+
+function cloneUnknownValue<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneUnknownValue(item)) as T
+  }
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, entryValue]) => [key, cloneUnknownValue(entryValue)])
+    ) as T
+  }
+
+  return value
 }
 
 

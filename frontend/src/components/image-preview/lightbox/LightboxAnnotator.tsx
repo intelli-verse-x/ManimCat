@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
-import { eraseStrokeWithCircle } from '../canvas/canvas-geometry'
-import { ERASER_RADIUS } from '../canvas/constants'
-import { drawStroke } from '../canvas/canvas-render'
-import type { Point, StrokeObject } from '../canvas/types'
+import { eraseStrokeWithCircle } from '../../canvas/canvas-geometry'
+import { ERASER_RADIUS } from '../../canvas/constants'
+import { drawStroke } from '../../canvas/canvas-render'
+import type { Point, StrokeObject } from '../../canvas/types'
 
 type AnnotationTool = 'pen' | 'eraser' | 'pan'
 
@@ -232,7 +232,7 @@ export function LightboxAnnotator({
   return (
     <>
       {isSubmitting && (
-        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-[#fafaf8]/70">
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-bg-primary/70">
           <span className="text-[12px] text-accent/58">...</span>
         </div>
       )}

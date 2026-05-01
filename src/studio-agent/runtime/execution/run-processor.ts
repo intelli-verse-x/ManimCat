@@ -10,6 +10,7 @@ import type {
   StudioToolPart,
   StudioToolResult
 } from '../../domain/types'
+import type { ActiveSkillStore } from '../../skills/state/skill-state-store'
 import { isDoomLoop } from './doom-loop'
 import { StudioPartSynchronizer } from './part-synchronizer'
 import { StudioTextStreamAccumulator } from './text-stream-accumulator'
@@ -19,24 +20,27 @@ import {
   mergeToolMetadata,
   mergeToolStateMetadata
 } from '../tools/tool-state'
-import { logPlotStudioTiming, readRunElapsedMs } from '../../observability/plot-studio-timing'
+import { logPlotStudioTiming, logTimeline, readRunElapsedMs } from '../../observability/plot-studio-timing'
 
 export type StudioProcessorOutcome = 'continue' | 'stop' | 'compact'
 
 interface StudioRunProcessorOptions {
   messageStore: StudioMessageStore
   partStore: StudioPartStore
+  activeSkillStore?: ActiveSkillStore
 }
 
 export class StudioRunProcessor {
   private readonly partStore: StudioPartStore
   private readonly sync: StudioPartSynchronizer
   private readonly textStream: StudioTextStreamAccumulator
+  private readonly activeSkillStore?: ActiveSkillStore
 
   constructor(options: StudioRunProcessorOptions) {
     this.partStore = options.partStore
     this.sync = new StudioPartSynchronizer(options.messageStore, options.partStore)
     this.textStream = new StudioTextStreamAccumulator(options.partStore, this.sync)
+    this.activeSkillStore = options.activeSkillStore
   }
 
   async processStream(input: {
@@ -138,6 +142,7 @@ export class StudioRunProcessor {
               runElapsedMs: readRunElapsedMs(input.run),
               processedAt: startedAt,
             }, 'warn')
+            logTimeline(input.session.studioKind, 'tool.failed', `${event.toolName} doom_loop_rejected`)
             toolCalls.delete(event.toolCallId)
             break
           }
@@ -158,6 +163,7 @@ export class StudioRunProcessor {
             inputSummary: summarizeToolInput(event.input),
             runElapsedMs: readRunElapsedMs(input.run),
           })
+          logTimeline(input.session.studioKind, 'tool.started', event.toolName)
           break
         }
 
@@ -223,6 +229,7 @@ export class StudioRunProcessor {
               textLength: text.length,
               runElapsedMs: readRunElapsedMs(input.run),
             })
+            logTimeline(input.session.studioKind, 'assistant.text', `${text.length} chars`)
             input.eventBus?.publish({
               type: 'assistant_text',
               sessionId: input.session.id,
@@ -365,19 +372,28 @@ export class StudioRunProcessor {
         end: Date.now()
       }
     })
+    const durationMs = Math.max(0, Date.now() - getToolTimeStart(runningState))
     logPlotStudioTiming(input.session.studioKind, 'tool.completed', {
       sessionId: input.session.id,
       runId: input.run.id,
       assistantMessageId: match.messageId,
       toolName: match.tool,
       callId: event.toolCallId,
-      durationMs: Math.max(0, Date.now() - getToolTimeStart(runningState)),
+      durationMs,
       title: event.title ?? `Completed ${match.tool}`,
       outputLength: event.output.length,
       attachmentCount: event.attachments?.length ?? 0,
       inputSummary: summarizeToolInput(getToolInput(runningState)),
       runElapsedMs: readRunElapsedMs(input.run),
     })
+    logTimeline(input.session.studioKind, 'tool.completed', `${match.tool} ${durationMs}ms`)
+
+    // Discard all shots after first successful render
+    if (match.tool === 'render' && this.activeSkillStore) {
+      this.activeSkillStore.clearShots(input.session.id)
+      logTimeline(input.session.studioKind, 'shots.discarded', 'after render success')
+    }
+
     toolCalls.delete(event.toolCallId)
   }
 
@@ -405,13 +421,14 @@ export class StudioRunProcessor {
         end: Date.now()
       }
     })
+    const durationMs = Math.max(0, Date.now() - getToolTimeStart(runningState))
     logPlotStudioTiming(input.session.studioKind, 'tool.failed', {
       sessionId: input.session.id,
       runId: input.run.id,
       assistantMessageId: match.messageId,
       toolName: match.tool,
       callId: event.toolCallId,
-      durationMs: Math.max(0, Date.now() - getToolTimeStart(runningState)),
+      durationMs,
       error: event.error,
       failureStage: event.metadata?.failureStage,
       failureKind: event.metadata?.failureKind,
@@ -431,6 +448,7 @@ export class StudioRunProcessor {
       runWillStop: event.metadata?.recoverable !== true,
       runElapsedMs: readRunElapsedMs(input.run),
     }, 'warn')
+    logTimeline(input.session.studioKind, 'tool.failed', `${match.tool} ${durationMs}ms`)
     toolCalls.delete(event.toolCallId)
     return event.metadata?.recoverable !== true
   }

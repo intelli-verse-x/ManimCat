@@ -42,7 +42,7 @@ export function StudioCommandComposer({
         ) : null}
         <div className={`${isMinimal ? 'flex items-baseline gap-4' : 'group flex items-center gap-3'}`}>
           <span
-            className={`${isTLayout ? 'font-mono text-sm text-[#999]' : isMinimal ? 'block w-4 shrink-0 text-center text-[11px] font-semibold leading-loose text-accent' : 'font-mono text-sm text-text-secondary/40'} tracking-widest`}
+            className={`${isTLayout ? 'font-mono text-sm text-[#999]' : isMinimal ? 'block w-4 shrink-0 text-center text-[11px] font-semibold leading-loose text-text-secondary' : 'font-mono text-sm text-text-secondary/40'} tracking-widest`}
           >
             {'>'}
           </span>
@@ -77,12 +77,12 @@ export function StudioCommandComposer({
               placeholder={isMinimal ? '' : effectivePlaceholder}
               disabled={false}
               aria-disabled={disabled}
-              className={`w-full bg-transparent outline-none ${isTLayout ? 'text-[14px] text-[#333] placeholder:text-[#ccc]' : isMinimal ? 'text-[13px] leading-loose text-accent' : 'text-[14px] font-medium leading-relaxed text-text-primary placeholder:text-text-secondary/25'}`}
+              className={`w-full bg-transparent outline-none ${isTLayout ? 'text-[14px] text-[#333] placeholder:text-[#ccc]' : isMinimal ? 'text-[13px] leading-loose text-text-primary' : 'text-[14px] font-medium leading-relaxed text-text-primary placeholder:text-text-secondary/25'}`}
             />
             {isMinimal && (
               <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center">
                 {composer.input.length === 0 && (
-                  <span className="text-[13px] leading-loose text-accent/20">
+                  <span className="text-[13px] leading-loose text-text-secondary/20">
                     {effectivePlaceholder}（{enterToSendLabel}）
                   </span>
                 )}

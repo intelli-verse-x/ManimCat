@@ -7,10 +7,8 @@ interface PlotPreviewLightboxProps {
   activeImage?: string
   activeIndex: number
   total: number
-  zoom: number
   editableFilename?: string
   canNavigate: boolean
-  onZoomChange: (nextZoom: number) => void
   onPrev: () => void
   onNext: () => void
   onClose: () => void
@@ -22,10 +20,8 @@ export function PlotPreviewLightbox({
   activeImage,
   activeIndex,
   total,
-  zoom,
   editableFilename,
   canNavigate,
-  onZoomChange,
   onPrev,
   onNext,
   onClose,
@@ -39,10 +35,14 @@ export function PlotPreviewLightbox({
       activeImage={activeImage}
       activeIndex={activeIndex}
       total={total}
-      zoom={zoom}
+      initialZoom={0.5}
+      baseScaleMode="cover"
+      baseScaleBias={1}
+      minZoom={0.25}
+      maxZoom={4}
+      zoomDisplayScale={2}
       editableFilename={editableFilename ?? t('studio.plot.inlinePreview')}
       appearance="studio"
-      onZoomChange={onZoomChange}
       onPrev={canNavigate ? onPrev : undefined}
       onNext={canNavigate ? onNext : undefined}
       onCommitAnnotatedImage={onSendPreviewToComposer ? async ({ file, filename }) => {

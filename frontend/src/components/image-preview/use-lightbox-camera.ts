@@ -1,15 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject, type SyntheticEvent } from 'react'
-import { debugImageLightbox } from './debug'
 
 interface UseLightboxCameraInput {
   activeImage?: string
   zoom: number
   minZoom: number
   maxZoom: number
+  baseScaleMode: 'fit' | 'cover'
+  baseScaleBias?: number
   shouldRender: boolean
   isAnnotating: boolean
   annotationTool: 'pen' | 'eraser' | 'pan'
   viewportRef: RefObject<HTMLDivElement | null>
+  onZoomTiming?: (payload: {
+    opId: string
+    source: 'wheel' | 'button'
+    startedAt: number
+    wallTime: string
+    fromZoom: number
+    toZoom: number
+  }) => void
   onZoomChange: (nextZoom: number) => void
 }
 
@@ -18,19 +27,25 @@ export function useLightboxCamera({
   zoom,
   minZoom,
   maxZoom,
+  baseScaleMode,
+  baseScaleBias = 1,
   shouldRender,
   isAnnotating,
   annotationTool,
   viewportRef,
+  onZoomTiming,
   onZoomChange,
 }: UseLightboxCameraInput) {
   const panPointerIdRef = useRef<number | null>(null)
   const panOriginRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null)
+  const panAnimationFrameRef = useRef<number | null>(null)
+  const pendingPanOffsetRef = useRef<{ image?: string; x: number; y: number } | null>(null)
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 })
   const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 })
   const [isPanning, setIsPanning] = useState(false)
   const [panState, setPanState] = useState<{ image?: string; x: number; y: number }>({ image: undefined, x: 0, y: 0 })
   const panOffset = panState.image === activeImage ? { x: panState.x, y: panState.y } : { x: 0, y: 0 }
+  const zoomOperationIdRef = useRef(0)
 
   const handleStepZoom = (delta: number) => {
     const nextZoom = roundZoom(clampZoom(zoom + delta, minZoom, maxZoom))
@@ -38,7 +53,16 @@ export function useLightboxCamera({
       return
     }
 
-    debugImageLightbox('camera.step-zoom', { zoom, nextZoom, delta })
+    const startedAt = performance.now()
+    const opId = `zoom-${++zoomOperationIdRef.current}`
+    onZoomTiming?.({
+      opId,
+      source: 'button',
+      startedAt,
+      wallTime: new Date().toISOString(),
+      fromZoom: zoom,
+      toZoom: nextZoom,
+    })
     onZoomChange(nextZoom)
   }
 
@@ -61,21 +85,22 @@ export function useLightboxCamera({
         return
       }
 
-      debugImageLightbox('camera.wheel-zoom', {
-        zoom,
-        nextZoom,
-        deltaY: event.deltaY,
+      const startedAt = performance.now()
+      const opId = `zoom-${++zoomOperationIdRef.current}`
+      onZoomTiming?.({
+        opId,
+        source: 'wheel',
+        startedAt,
+        wallTime: new Date().toISOString(),
+        fromZoom: zoom,
+        toZoom: nextZoom,
       })
       onZoomChange(nextZoom)
     })
-  }, [maxZoom, minZoom, onZoomChange, zoom])
+  }, [maxZoom, minZoom, onZoomChange, onZoomTiming, zoom])
 
   const handlePanStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (isAnnotating && annotationTool !== 'pan') {
-      debugImageLightbox('camera.pan-blocked', {
-        reason: 'annotation-tool',
-        annotationTool,
-      })
       return
     }
 
@@ -90,13 +115,6 @@ export function useLightboxCamera({
 
     event.currentTarget.setPointerCapture(event.pointerId)
     setIsPanning(true)
-    debugImageLightbox('camera.pan-start', {
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-      panX: panOffset.x,
-      panY: panOffset.y,
-    })
   }
 
   const handlePanMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -109,10 +127,23 @@ export function useLightboxCamera({
       x: panOriginRef.current.offsetX + (event.clientX - panOriginRef.current.x),
       y: panOriginRef.current.offsetY + (event.clientY - panOriginRef.current.y),
     }
-    setPanState({
+    pendingPanOffsetRef.current = {
       image: activeImage,
       x: nextPanOffset.x,
       y: nextPanOffset.y,
+    }
+    if (panAnimationFrameRef.current !== null) {
+      return
+    }
+
+    panAnimationFrameRef.current = window.requestAnimationFrame(() => {
+      panAnimationFrameRef.current = null
+      const nextPanState = pendingPanOffsetRef.current
+      if (!nextPanState) {
+        return
+      }
+      pendingPanOffsetRef.current = null
+      setPanState(nextPanState)
     })
   }
 
@@ -128,11 +159,6 @@ export function useLightboxCamera({
     panPointerIdRef.current = null
     panOriginRef.current = null
     setIsPanning(false)
-    debugImageLightbox('camera.pan-end', {
-      pointerId: event.pointerId,
-      panX: panOffset.x,
-      panY: panOffset.y,
-    })
   }
 
   useEffect(() => {
@@ -155,19 +181,9 @@ export function useLightboxCamera({
           return current
         }
 
-        debugImageLightbox('camera.svg-size-resolved', {
-          activeImage,
-          width: svgSize.width,
-          height: svgSize.height,
-        })
         return svgSize
       })
-    }).catch((error) => {
-      debugImageLightbox('camera.svg-size-failed', {
-        activeImage,
-        message: error instanceof Error ? error.message : String(error),
-      })
-    })
+    }).catch(() => undefined)
 
     return () => {
       cancelled = true
@@ -191,7 +207,6 @@ export function useLightboxCamera({
         height: Math.max(0, rect.height),
       }
       setViewportSize(nextSize)
-      debugImageLightbox('camera.viewport-resized', nextSize)
     }
 
     updateViewportSize()
@@ -252,11 +267,6 @@ export function useLightboxCamera({
       panPointerIdRef.current = null
       panOriginRef.current = null
       setIsPanning(false)
-      debugImageLightbox('camera.pan-end-window', {
-        pointerId: event.pointerId,
-        panX: panOffset.x,
-        panY: panOffset.y,
-      })
     }
 
     window.addEventListener('pointermove', handleWindowPointerMove, { passive: false })
@@ -268,7 +278,7 @@ export function useLightboxCamera({
       window.removeEventListener('pointerup', handleWindowPointerEnd)
       window.removeEventListener('pointercancel', handleWindowPointerEnd)
     }
-  }, [activeImage, annotationTool, isAnnotating, isPanning, panOffset.x, panOffset.y])
+  }, [activeImage, annotationTool, isAnnotating, isPanning])
 
   const stageMetrics = useMemo(() => {
     if (!activeImage) {
@@ -277,24 +287,26 @@ export function useLightboxCamera({
 
     const imgWidth = naturalSize.width
     const imgHeight = naturalSize.height
-    const availableWidth = Math.max(0, viewportSize.width - 48)
-    const availableHeight = Math.max(0, viewportSize.height - 48)
+    const availableWidth = Math.max(0, viewportSize.width)
+    const availableHeight = Math.max(0, viewportSize.height)
 
     if (!imgWidth || !imgHeight || !availableWidth || !availableHeight) {
       return undefined
     }
 
-    const stageRatio = 0.85
-    const stageWidth = availableWidth * stageRatio
-    const stageHeight = availableHeight * stageRatio
+    const fitScale = Math.min(availableWidth / imgWidth, availableHeight / imgHeight)
+    const coverScale = Math.max(availableWidth / imgWidth, availableHeight / imgHeight)
 
     return {
-      width: stageWidth,
-      height: stageHeight,
+      width: imgWidth,
+      height: imgHeight,
+      baseScale: (baseScaleMode === 'cover' ? coverScale : fitScale) * baseScaleBias,
+      fitScale,
+      coverScale,
       imgWidth,
       imgHeight,
     }
-  }, [activeImage, naturalSize.height, naturalSize.width, viewportSize.height, viewportSize.width])
+  }, [activeImage, baseScaleBias, baseScaleMode, naturalSize.height, naturalSize.width, viewportSize.height, viewportSize.width])
 
   const handleImageLoad = (event: SyntheticEvent<HTMLImageElement>) => {
     const target = event.currentTarget
@@ -305,27 +317,36 @@ export function useLightboxCamera({
     setNaturalSize(nextNaturalSize)
     panPointerIdRef.current = null
     panOriginRef.current = null
+    if (panAnimationFrameRef.current !== null) {
+      window.cancelAnimationFrame(panAnimationFrameRef.current)
+      panAnimationFrameRef.current = null
+    }
+    pendingPanOffsetRef.current = null
     setIsPanning(false)
     setPanState({ image: activeImage, x: 0, y: 0 })
-    debugImageLightbox('camera.image-loaded', {
-      activeImage,
-      ...nextNaturalSize,
-    })
-    debugImageLightbox('camera.reset-image', { activeImage })
   }
+
+  useEffect(() => {
+    return () => {
+      if (panAnimationFrameRef.current !== null) {
+        window.cancelAnimationFrame(panAnimationFrameRef.current)
+      }
+    }
+  }, [])
 
   const stageStyle: CSSProperties = {
     width: stageMetrics ? `${stageMetrics.width}px` : undefined,
     height: stageMetrics ? `${stageMetrics.height}px` : undefined,
-    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${Math.max(zoom, 0.01)})`,
+    transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${Math.max((stageMetrics?.baseScale ?? 1) * zoom, 0.01)})`,
     transformOrigin: 'center center',
     touchAction: 'none',
   }
 
   const imageStyle: CSSProperties = {
     width: '100%',
-    height: 'auto',
+    height: '100%',
     display: 'block',
+    objectFit: 'contain',
   }
 
   return {

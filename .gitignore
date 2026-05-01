@@ -12,8 +12,6 @@ dist/
 .motia/
 
 # Environment
-.env
-.env.local
 
 # Generated files
 public/videos/*
@@ -62,8 +60,10 @@ triangle.png
 !CLA.md
 !CONTRIBUTING.md
 !.github/pull_request_template.md
+!BUILDER_ARCHITECTURE.md
 !src/prompts/templates/**/*.md
 !src/studio-agent/prompts/templates/**/*.md
+!src/studio-agent/skills/catalog/**/*.md
 
 # Flow type files
 *.flow
@@ -81,3 +81,4 @@ dist-tests/
 public/assets/
 public/index.html
 
+config.bat

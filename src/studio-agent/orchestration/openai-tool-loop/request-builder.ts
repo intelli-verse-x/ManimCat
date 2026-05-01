@@ -1,6 +1,8 @@
 import type { StudioAssistantMessage } from '../../domain/types'
+import type OpenAI from 'openai'
 import { createCustomOpenAIClient } from '../../../services/openai-client-factory'
 import { logPlotStudioSkillTrace } from '../../observability/plot-studio-skill-trace'
+import { logTimeline } from '../../observability/plot-studio-timing'
 import { readStudioRunAutonomyMetadata } from '../../runs/autonomy-policy'
 import { buildStudioAgentSystemPrompt } from '../studio-agent-prompt'
 import { buildStudioConversationMessages } from '../studio-message-history'
@@ -38,6 +40,7 @@ export async function createStudioLoopRuntime(input: StudioOpenAIToolLoopInput):
     input.listSkills?.(input.session) ?? Promise.resolve([]),
     input.listSkillSummaries?.(input.session) ?? Promise.resolve([])
   ])
+  const activeSkills = input.activeSkillStore?.get(input.session.id) ?? []
   logPlotStudioSkillTrace(input.session.studioKind, 'skill.discovery.completed', {
     sessionId: input.session.id,
     runId: input.run.id,
@@ -70,7 +73,8 @@ export async function createStudioLoopRuntime(input: StudioOpenAIToolLoopInput):
       session: input.session,
       workContext: input.workContext,
       availableSkills,
-      skillSummaries
+      skillSummaries,
+      activeSkills
     }),
     maxSteps: input.maxSteps ?? readStudioRunAutonomyMetadata(input.run.metadata).maxSteps ?? DEFAULT_MAX_STEPS,
     toolChoice: input.toolChoice ?? 'auto',
@@ -105,6 +109,7 @@ export async function requestStudioLoopStep(input: {
     request: input.request,
     step: input.step
   })
+  logTimeline(input.loopInput.session.studioKind, 'step.started', `step ${input.step + 1}, ${input.runtime.conversation.length} msgs`)
 
   const completion = await requestStudioChatCompletion({
     client: input.runtime.client,
@@ -139,6 +144,11 @@ export async function requestStudioLoopStep(input: {
     step: input.step,
     stepStartedAt: input.stepStartedAt
   })
+  logTimeline(
+    input.loopInput.session.studioKind,
+    'step.response',
+    `${choice?.finish_reason ?? 'unknown'}, ${result.toolCalls.length} toolCalls`
+  )
 
   return result
 }

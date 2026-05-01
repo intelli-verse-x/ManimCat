@@ -11,7 +11,6 @@ export const ImagePreview = memo(function ImagePreview({ imageUrls }: ImagePrevi
   const { t } = useI18n();
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const [zoom, setZoom] = useState(1);
   const { isDownloadingSingle, isDownloadingAll, handleDownloadAll, handleDownloadSingle } = useImageDownload(imageUrls);
   const safeActiveIndex = Math.min(activeIndex, Math.max(0, imageUrls.length - 1));
   const activeImage = imageUrls[safeActiveIndex];
@@ -110,12 +109,10 @@ export const ImagePreview = memo(function ImagePreview({ imageUrls }: ImagePrevi
         activeImage={activeImage}
         activeIndex={safeActiveIndex}
         total={imageUrls.length}
-        zoom={zoom}
+        initialZoom={1}
         maxZoom={3}
-        onZoomChange={setZoom}
         onClose={() => {
           setIsLightboxOpen(false);
-          setZoom(1);
         }}
       />
     </div>
