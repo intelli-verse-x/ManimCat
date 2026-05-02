@@ -4,7 +4,6 @@ import { StudioImageInputCommandUI } from '../../commands/ui/image-input/StudioI
 import type { useStudioCommandComposerController } from './use-studio-command-composer-controller'
 
 interface StudioCommandComposerProps {
-  variant: 'default' | 't-layout-bottom' | 'pure-minimal-bottom'
   isFrameless: boolean
   isTLayout: boolean
   isMinimal: boolean
@@ -17,7 +16,6 @@ interface StudioCommandComposerProps {
 }
 
 export function StudioCommandComposer({
-  variant,
   isFrameless,
   isTLayout,
   isMinimal,

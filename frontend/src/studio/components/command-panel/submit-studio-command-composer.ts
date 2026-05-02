@@ -1,8 +1,9 @@
 import { appendStudioReferenceImages } from '../../composer/attachments'
 import { resolveStudioCommand } from '../../commands/resolve-studio-command'
 import type { StudioSession } from '../../protocol/studio-agent-types'
+import type { StudioComposerAttachment } from '../../composer/types'
 
-interface SubmitStudioCommandComposerOptions<TAttachment> {
+interface SubmitStudioCommandComposerOptions<TAttachment extends StudioComposerAttachment> {
   input: string
   disabled: boolean
   session: StudioSession | null
@@ -16,7 +17,7 @@ interface SubmitStudioCommandComposerOptions<TAttachment> {
   openImageInputMode: () => void
 }
 
-export async function submitStudioCommandComposer<TAttachment>({
+export async function submitStudioCommandComposer<TAttachment extends StudioComposerAttachment>({
   input,
   disabled,
   session,

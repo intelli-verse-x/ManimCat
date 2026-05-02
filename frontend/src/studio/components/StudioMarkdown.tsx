@@ -123,7 +123,7 @@ function createMarkdownComponents(isDark: boolean): Components {
         loading="lazy"
       />
     ),
-    pre: ({ node: _node, ...props }) => <div {...props} className="overflow-x-auto" />,
+    pre: ({ node: _node, children }) => <div className="overflow-x-auto">{children}</div>,
     table: ({ node: _node, ...props }) => (
       <div className="overflow-x-auto">
         <table {...props} className="min-w-full border-collapse text-left text-[0.95em]" />

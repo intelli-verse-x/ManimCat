@@ -72,7 +72,7 @@ async function readImageAsset(source: string): Promise<ImageAsset> {
     const [header, base64Part = ''] = source.split(',', 2)
     const mimeType = header.match(/^data:([^;]+)/)?.[1] || 'image/png'
     const bytes = Uint8Array.from(atob(base64Part), (char) => char.charCodeAt(0))
-    const blob = new Blob([bytes], { type: mimeType })
+    const blob = new Blob([toArrayBuffer(bytes)], { type: mimeType })
     return { blob, mimeType, dataUrl: source }
   }
 
@@ -187,7 +187,10 @@ async function createPdfBlob(asset: Pick<ImageAsset, 'dataUrl'>, dimensions: Ima
   const xref = encodeText(`${xrefLines.join('\n')}\n`)
   const trailer = encodeText(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`)
 
-  return new Blob([...bodyParts, xref, trailer], { type: 'application/pdf' })
+  return new Blob(
+    [...bodyParts, xref, trailer].map((part) => toArrayBuffer(part)),
+    { type: 'application/pdf' },
+  )
 }
 
 function buildExportFilename(source: string, index: number, format: ExportFormat, fallbackName?: string) {
@@ -299,6 +302,10 @@ function concatUint8Arrays(parts: Uint8Array[]) {
     offset += part.length
   }
   return merged
+}
+
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
 }
 
 function escapeXmlAttribute(value: string) {

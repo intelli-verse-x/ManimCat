@@ -111,7 +111,7 @@ export function useZoomTimingLogger({
     const loadedAt = performance.now()
     console.info('[image-lightbox] image-loaded', {
       activeIndex,
-      imageSource: summarizeImageSource(activeImage),
+      imageSource: activeImage ? summarizeImageSource(activeImage) : null,
       durationMs: startedAt === null ? null : Math.round(loadedAt - startedAt),
       naturalWidth: event.currentTarget.naturalWidth,
       naturalHeight: event.currentTarget.naturalHeight,

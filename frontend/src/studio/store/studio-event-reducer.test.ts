@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { studioEventReducer } from './studio-event-reducer'
 import { createInitialStudioState } from './studio-session-store'
-import type { StudioUserMessage } from '../protocol/studio-agent-types'
+import type { StudioAssistantMessage, StudioUserMessage } from '../protocol/studio-agent-types'
 import { createSessionMessage, createAssistantMessageMessage, createRunMessage, readFirstAssistantText } from './studio-event-reducer.factories'
 
 describe('studioEventReducer', () => {
@@ -179,30 +179,32 @@ describe('studioEventReducer', () => {
   })
 
   it('keeps existing tool parts when assistant text streams after tool events', () => {
+    const assistantWithToolPart: StudioAssistantMessage = {
+      ...createAssistantMessageMessage(),
+      parts: [
+        {
+          id: 'tool-1',
+          messageId: 'local-assistant-1',
+          sessionId: 'session-1',
+          type: 'tool',
+          tool: 'write',
+          callId: 'call-1',
+          state: {
+            status: 'running',
+            input: { path: 'heart.py' },
+            time: { start: 1 },
+          },
+        },
+      ],
+    }
+
     const state = {
       ...createInitialStudioState(),
       entities: {
         ...createInitialStudioState().entities,
         session: createSessionMessage(),
         messagesById: {
-          'local-assistant-1': {
-            ...createAssistantMessageMessage(),
-            parts: [
-              {
-                id: 'tool-1',
-                messageId: 'local-assistant-1',
-                sessionId: 'session-1',
-                type: 'tool' as const,
-                tool: 'write',
-                callId: 'call-1',
-                state: {
-                  status: 'running',
-                  input: { path: 'heart.py' },
-                  time: { start: 1 },
-                },
-              },
-            ],
-          },
+          'local-assistant-1': assistantWithToolPart,
         },
         messageOrder: ['local-assistant-1'],
       },

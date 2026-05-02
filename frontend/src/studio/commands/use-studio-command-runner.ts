@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import type { StudioCommandContext } from './types'
 import { resolveStudioCommand } from './resolve-studio-command'
 
-interface UseStudioCommandRunnerInput extends StudioCommandContext {
+interface UseStudioCommandRunnerInput extends Omit<StudioCommandContext, 'runCommandInput'> {
   onRun: (inputText: string) => Promise<void>
 }
 

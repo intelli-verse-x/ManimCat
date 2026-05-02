@@ -152,13 +152,6 @@ export function preferNewerRun(current: StudioRun, incoming: StudioRun): StudioR
   return incoming
 }
 
-function mergeRecord<T extends { id: string }>(current: Record<string, T>, items: T[]): Record<string, T> {
-  return items.reduce<Record<string, T>>((next, item) => {
-    next[item.id] = item
-    return next
-  }, { ...current })
-}
-
 function mergeMessageRecord(current: Record<string, StudioMessage>, items: StudioMessage[]): Record<string, StudioMessage> {
   return items.reduce<Record<string, StudioMessage>>((next, item) => {
     const existing = next[item.id]

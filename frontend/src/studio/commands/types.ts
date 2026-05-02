@@ -59,11 +59,13 @@ export type StudioParsedCommand =
   | StudioImageInputCommand
   | StudioSkillCommand
 
-export interface StudioCommandDefinition<TCommand extends StudioParsedCommand = StudioParsedCommand> {
+export interface StudioCommandDefinition<TCommand extends StudioParsedCommand = any> {
   id: TCommand['id']
   group: StudioCommandGroup
   scope: StudioCommandScope
   presentation: StudioCommandPresentation
   matches: (input: string) => TCommand | null
-  execute: (command: TCommand, context: StudioCommandContext) => Promise<void> | void
+  execute: {
+    bivarianceHack: (command: TCommand, context: StudioCommandContext) => Promise<void> | void
+  }['bivarianceHack']
 }
