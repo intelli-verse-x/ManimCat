@@ -87,7 +87,7 @@ export function StudioComposerAttachmentList({
         activeIndex={activeIndex}
         total={attachments.length}
         initialZoom={1}
-        variant="studio-light"
+        appearance="studio"
         onPrev={attachments.length > 1 ? () => {
           setActiveIndex((current) => (current <= 0 ? attachments.length - 1 : current - 1))
         } : undefined}

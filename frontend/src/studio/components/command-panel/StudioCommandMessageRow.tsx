@@ -102,7 +102,7 @@ const UserMessageItem = memo(function UserMessageItem({
     return (
       <div className={`${shouldAnimateEnter ? 'animate-message-enter ' : ''}mb-1`}>
         <div className="flex items-baseline gap-4">
-          <span className="block w-4 shrink-0 text-center text-[11px] font-semibold leading-loose text-text-secondary">{'>'}</span>
+          <span className="block w-4 shrink-0 text-center text-[11px] font-semibold leading-loose text-text-secondary/90">{'>'}</span>
           <StudioMarkdown
             content={stripStudioReferenceImages(message.text)}
             className="studio-markdown-inline min-w-0 flex-1 text-[13px] leading-loose text-text-primary"
@@ -153,7 +153,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
     return (
       <div className={`${!isStreamingTarget && shouldAnimateEnter ? 'animate-message-enter ' : ''}mb-1`}>
         <div className="flex items-baseline gap-4">
-          <span className="block w-4 shrink-0 text-center text-[10px] font-semibold leading-loose text-text-secondary">{'•'}</span>
+          <span className="block w-4 shrink-0 text-center text-[10px] font-semibold leading-loose text-text-secondary/90">{'•'}</span>
           <div className="min-w-0 flex-1 space-y-2">
             {isStreamingTarget && hasStreamedText ? (
               <StudioMarkdown
@@ -163,7 +163,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
               />
             ) : isStreamingTarget && !hasRenderableText ? (
               <div className="flex items-center gap-3">
-                <span className="text-[12px] uppercase tracking-[0.2em] text-text-tertiary">{t('studio.thinking')}</span>
+                <span className="text-[12px] uppercase tracking-[0.2em] text-text-secondary/80">{t('studio.thinking')}</span>
                 <span className="studio-thinking-dots" aria-hidden="true">
                   <span />
                   <span />
@@ -183,7 +183,7 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
             })}
 
             {!isStreamingTarget && !hasRenderableText && (
-              <div className="text-[12px] text-text-tertiary">
+              <div className="text-[12px] text-text-secondary/72">
                 {t('studio.noResponseOutput')}
               </div>
             )}
@@ -196,9 +196,9 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
                   return (
                     <div key={i} className="space-y-1">
                       <div className={`flex items-center gap-3 font-mono text-[10px] tracking-tight ${neutralToolTone(part.state.status)}`}>
-                        <span className="w-4 shrink-0 text-center opacity-75">{status}</span>
-                        <span className="uppercase tracking-[0.18em] opacity-72">{part.tool}</span>
-                        <span className="truncate opacity-28">({args})</span>
+                        <span className="w-4 shrink-0 text-center opacity-90">{status}</span>
+                        <span className="uppercase tracking-[0.18em] opacity-90">{part.tool}</span>
+                        <span className="truncate opacity-60">({args})</span>
                       </div>
                       {part.state.status === 'error' && (
                         <div className="pl-7 text-[11px] leading-5 text-rose-600/85 dark:text-rose-300/85 break-words">
@@ -289,11 +289,11 @@ const AssistantMessageItem = memo(function AssistantMessageItem({
 function neutralToolTone(status: string) {
   switch (status) {
     case 'error':
-      return 'text-rose-500/70'
+      return 'text-rose-600/85 dark:text-rose-300/85'
     case 'completed':
-      return 'text-text-primary/40'
+      return 'text-text-secondary/88'
     default:
-      return 'text-amber-500/70'
+      return 'text-amber-600/85 dark:text-amber-300/85'
   }
 }
 
