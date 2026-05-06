@@ -3,12 +3,11 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { I18nProvider } from '../../i18n'
 import { useStudioSession } from './use-studio-session'
-import { createStudioSession, getPendingStudioPermissions, getStudioSessionSnapshot } from '../api/studio-agent-api'
-import type { StudioPermissionRequest, StudioSession, StudioSessionSnapshot } from '../protocol/studio-agent-types'
+import { createStudioSession, getStudioSessionSnapshot } from '../api/studio-agent-api'
+import type { StudioSession, StudioSessionSnapshot } from '../protocol/studio-agent-types'
 
 vi.mock('../api/studio-agent-api', () => ({
   createStudioSession: vi.fn(),
-  getPendingStudioPermissions: vi.fn(),
   getStudioSessionSnapshot: vi.fn(),
 }))
 
@@ -16,18 +15,11 @@ vi.mock('./use-studio-events', () => ({
   useStudioEvents: vi.fn(),
 }))
 
-vi.mock('./use-studio-permissions', () => ({
-  useStudioPermissions: vi.fn(() => ({
-    replyPermission: vi.fn(),
-  })),
-}))
-
 vi.mock('./use-studio-run', () => ({
   useStudioRun: vi.fn(() => vi.fn()),
 }))
 
 const mockedCreateStudioSession = vi.mocked(createStudioSession)
-const mockedGetPendingStudioPermissions = vi.mocked(getPendingStudioPermissions)
 const mockedGetStudioSessionSnapshot = vi.mocked(getStudioSessionSnapshot)
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -69,21 +61,10 @@ function createSnapshot(session: StudioSession, taskStatus?: 'queued' | 'running
   }
 }
 
-function createPermission(sessionId: string): StudioPermissionRequest {
-  return {
-    id: 'perm-1',
-    sessionID: sessionId,
-    permission: 'render',
-    patterns: ['**/*'],
-    always: [],
-  }
-}
-
 describe('useStudioSession', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.useFakeTimers()
-    mockedGetPendingStudioPermissions.mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -93,7 +74,6 @@ describe('useStudioSession', () => {
   it('bootstraps a session and polls quietly only while a render task is active', async () => {
     const session = createSession()
     mockedCreateStudioSession.mockResolvedValue(session)
-    mockedGetPendingStudioPermissions.mockResolvedValue([createPermission(session.id)])
     mockedGetStudioSessionSnapshot.mockResolvedValue(createSnapshot(session, 'running'))
 
     const { result } = renderHook(() => useStudioSession(), { wrapper })
@@ -112,7 +92,6 @@ describe('useStudioSession', () => {
     })
 
     expect(mockedGetStudioSessionSnapshot).toHaveBeenCalledTimes(3)
-    expect(result.current.pendingPermissions).toEqual([expect.objectContaining({ id: 'perm-1' })])
   })
 
   it('does not start background polling when there is no active render task', async () => {

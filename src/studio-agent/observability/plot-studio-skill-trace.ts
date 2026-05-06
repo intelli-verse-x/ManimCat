@@ -17,9 +17,9 @@ const PLOT_STUDIO_SKILL_EVENT_LABELS: Record<string, string> = {
   'skill.source.scan': '绘图工作室：技能源扫描完成',
   'skill.tool.called': '绘图工作室：skill 工具开始执行',
   'skill.tool.completed': '绘图工作室：skill 工具执行完成',
-  'skill.task.requested': '绘图工作室：任务工具请求了技能子代理',
-  'skill.subagent.requested': '绘图工作室：子代理技能注入开始',
-  'skill.subagent.resolved': '绘图工作室：子代理技能注入完成',
+  'skill.task.requested': '绘图工作室：旧任务式 skill 请求',
+  'skill.subagent.requested': '绘图工作室：旧多阶段 skill 注入开始',
+  'skill.subagent.resolved': '绘图工作室：旧多阶段 skill 注入完成',
 }
 
 export function logPlotStudioSkillTrace(

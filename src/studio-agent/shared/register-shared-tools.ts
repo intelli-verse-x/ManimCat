@@ -1,5 +1,4 @@
 import type { StudioToolDefinition } from '../domain/types'
-import { createStudioAiReviewTool } from '../tools/ai-review-tool'
 import { createStudioApplyPatchTool } from '../tools/apply-patch-tool'
 import { createStudioEditTool } from '../tools/edit-tool'
 import { createStudioGlobTool } from '../tools/glob-tool'
@@ -9,7 +8,6 @@ import { createStudioQuestionTool } from '../tools/question-tool'
 import { createStudioReadTool } from '../tools/read-tool'
 import { createStudioSkillTool } from '../tools/skill-tool'
 import { createStudioStaticCheckTool } from '../tools/static-check-tool'
-import { createStudioTaskTool } from '../tools/task-tool'
 import { createStudioWriteTool } from '../tools/write-tool'
 import type { StudioToolRegistry } from '../tools/registry'
 
@@ -29,9 +27,7 @@ export function createSharedStudioTools(): StudioToolDefinition[] {
     createStudioEditTool() as StudioToolDefinition,
     createStudioApplyPatchTool() as StudioToolDefinition,
     createStudioQuestionTool() as StudioToolDefinition,
-    createStudioTaskTool() as StudioToolDefinition,
     createStudioSkillTool() as StudioToolDefinition,
     createStudioStaticCheckTool() as StudioToolDefinition,
-    createStudioAiReviewTool() as StudioToolDefinition,
   ]
 }

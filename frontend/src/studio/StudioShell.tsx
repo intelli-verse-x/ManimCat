@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { StudioPermissionModeModal } from './commands/ui/StudioPermissionModeModal'
 import { StudioAssetsPanel } from './components/StudioAssetsPanel'
 import { StudioCommandPanel } from './components/StudioCommandPanel'
 import { StudioPipelinePanel } from './components/StudioPipelinePanel'
@@ -66,20 +65,16 @@ export function StudioShell({ onExit, isExiting, studioKind = 'manim' }: StudioS
             result={selected.result}
             tasks={selected.tasks}
             review={review}
-            requests={studio.pendingPermissions}
-            replyingPermissionIds={studio.replyingPermissionIds}
             latestAssistantText={studio.latestAssistantText}
             latestQuestion={studio.latestQuestion}
             snapshotStatus={studio.state.connection.snapshotStatus}
             eventStatus={studio.state.connection.eventStatus}
             errorMessage={studio.state.error ?? studio.state.connection.eventError}
-            onReply={studio.replyPermission}
             onRefresh={studio.refresh}
           />
         </div>
       </div>
 
-      <StudioPermissionModeModal {...studio.permissionModeModal} />
       <StudioSessionHistoryModal {...studio.historyModal} />
     </>
   )

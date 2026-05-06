@@ -13,7 +13,7 @@ export function createStudioLsTool(): StudioToolDefinition<LsToolInput> {
     description: 'List directory contents.',
     category: 'safe-read',
     permission: 'ls',
-    allowedAgents: ['builder', 'reviewer', 'designer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeLsTool(input, context as StudioRuntimeBackedToolContext)
   }

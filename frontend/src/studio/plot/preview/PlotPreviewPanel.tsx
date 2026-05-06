@@ -3,8 +3,6 @@ import { copyImageAssetToClipboard, exportImageAsset } from '../../../components
 import { useI18n } from '../../../i18n'
 import type {
   StudioFileAttachment,
-  StudioPermissionDecision,
-  StudioPermissionRequest,
   StudioRun,
   StudioSession,
   StudioTask,
@@ -27,13 +25,10 @@ interface PlotPreviewPanelProps {
   result: StudioWorkResult | null
   latestRun: StudioRun | null
   tasks: StudioTask[]
-  requests: StudioPermissionRequest[]
-  replyingPermissionIds: Record<string, boolean>
   latestAssistantText: string
   errorMessage?: string | null
   onSelectWork: (workId: string) => void
   onReorderWorks: (workIds: string[]) => void
-  onReply: (requestId: string, reply: StudioPermissionDecision) => Promise<void> | void
   onSendPreviewToComposer?: (attachment: { url: string; name: string; mimeType?: string }) => void
   variant?: PlotPreviewVariant
 }

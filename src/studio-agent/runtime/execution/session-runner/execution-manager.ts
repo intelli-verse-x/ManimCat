@@ -6,7 +6,7 @@ import type {
   StudioPreparedRunExecution,
   StudioSessionRunnerDependencies
 } from './dependency-center'
-import type { StudioSubagentRunResult } from '../../tools/tool-runtime-context'
+import type { StudioRunExecutionResult } from '../../tools/tool-runtime-context'
 import { handleCancelledRun, handleFailedRun, finalizeSuccessfulRun } from './result-handler'
 
 export async function executePreparedStream(
@@ -14,7 +14,7 @@ export async function executePreparedStream(
   prepared: StudioPreparedRunContext,
   execution: StudioPreparedRunExecution,
   abortSignal: AbortSignal,
-): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
+): Promise<StudioRunExecutionResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
   try {
     throwIfStudioRunCancelled(abortSignal)
     if (execution.startLog) {

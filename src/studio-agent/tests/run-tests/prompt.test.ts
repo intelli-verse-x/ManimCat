@@ -47,12 +47,13 @@ export async function runPromptTests() {
       session
     })
 
-    assert.match(prompt, /Workspace root:/)
-    assert.match(prompt, /Do not call render until the target code has been written or updated in the workspace and checked with static-check/)
-    assert.match(prompt, /use the question tool to ask for confirmation first/)
-    assert.match(prompt, /prefer the smallest local edit or apply_patch change/)
+    assert.match(prompt, /工作目录：/)
+    assert.match(prompt, /完成 static-check，才能渲染/)
+    assert.match(prompt, /ask for confirmation with the question tool/)
+    assert.match(prompt, /Prefer one small safe step at a time: inspect, edit, check, confirm, then render\./)
     assert.match(prompt, /If the task is not finished, do not end the turn without a tool call\./)
     assert.match(prompt, /When any error happens, you must either call another tool to investigate or repair it, or call the question tool to ask the user how to proceed\./)
+    assert.doesNotMatch(prompt, /subagent/i)
   })
 
   await run('plot builder prompt does not require static-check by default', async () => {
@@ -70,9 +71,9 @@ export async function runPromptTests() {
       session
     })
 
-    assert.match(prompt, /Do not call render until the target code has been written or updated in the workspace\./)
-    assert.match(prompt, /Use static-check only when the code is unusually complex, the risk is high, or repeated failures suggest it is needed\./)
-    assert.match(prompt, /prefer the smallest local edit or apply_patch change/)
+    assert.match(prompt, /Before rendering, make sure the target Python code already exists and is ready\./)
+    assert.match(prompt, /Add static-check only when the code is unusually complex, high-risk, or repeated failures suggest it is worth the cost\./)
+    assert.match(prompt, /When fixing an existing file after a render failure, prefer a small local patch or targeted replacement over rewriting the whole file\./)
     assert.match(prompt, /If the task is not finished, do not end the turn without a tool call\./)
     assert.doesNotMatch(prompt, /checked with static-check/)
   })

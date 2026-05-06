@@ -6,8 +6,7 @@ import type {
   StudioResolvedSkill,
   StudioSkillDiscoveryEntry,
   StudioSkillUsageSummary,
-  StudioSubagentRunRequest,
-  StudioSubagentRunResult
+  StudioRunExecutionResult
 } from '../../tools/tool-runtime-context'
 import type {
   StudioAssistantMessage,
@@ -82,7 +81,7 @@ export interface StudioBackgroundRunHandle {
   run: StudioRun
   assistantMessage: StudioAssistantMessage
   abort: (reason?: string) => void
-  completion: Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }>
+  completion: Promise<StudioRunExecutionResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }>
 }
 
 export interface StudioSessionRunnerDependencies {
@@ -106,7 +105,6 @@ export interface StudioSessionRunnerDependencies {
   createRun: (session: StudioSession, inputText: string, metadata?: Record<string, unknown>) => StudioRun
   createAssistantMessage: (session: StudioSession, runId?: string) => Promise<StudioAssistantMessage>
   buildWorkContext: (input: { session: StudioSession; inputText: string }) => Promise<StudioWorkContext>
-  runSubagent: (input: StudioSubagentRunRequest) => Promise<StudioSubagentRunResult>
 }
 
 export function createDependencyCenter(
@@ -116,7 +114,6 @@ export function createDependencyCenter(
     createRun: StudioSessionRunnerDependencies['createRun']
     createAssistantMessage: StudioSessionRunnerDependencies['createAssistantMessage']
     buildWorkContext: StudioSessionRunnerDependencies['buildWorkContext']
-    runSubagent: StudioSessionRunnerDependencies['runSubagent']
   },
 ): StudioSessionRunnerDependencies {
   return {
@@ -139,7 +136,6 @@ export function createDependencyCenter(
     resolveTurnPlan: options.resolveTurnPlan,
     createRun: input.createRun,
     createAssistantMessage: input.createAssistantMessage,
-    buildWorkContext: input.buildWorkContext,
-    runSubagent: input.runSubagent
+    buildWorkContext: input.buildWorkContext
   }
 }

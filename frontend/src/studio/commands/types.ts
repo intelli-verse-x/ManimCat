@@ -1,4 +1,4 @@
-import type { StudioPermissionMode, StudioSession } from '../protocol/studio-agent-types'
+import type { StudioSession } from '../protocol/studio-agent-types'
 
 export type StudioCommandGroup = 'basic' | 'feature' | 'advanced'
 export type StudioCommandScope = 'global' | 'local'
@@ -15,7 +15,6 @@ export interface StudioCommandContext {
   session: StudioSession | null
   openHistory: () => void
   createSession: () => Promise<void>
-  setPendingMode: (mode: StudioPermissionMode) => void
   openImageInputMode?: () => void
   runCommandInput: (inputText: string) => Promise<void>
 }
@@ -24,12 +23,6 @@ export interface StudioParsedCommandBase {
   id: string
   group: StudioCommandGroup
   raw: string
-}
-
-export interface StudioPermissionModeCommand extends StudioParsedCommandBase {
-  id: 'permission-mode'
-  group: 'advanced'
-  mode: StudioPermissionMode
 }
 
 export interface StudioHistoryCommand extends StudioParsedCommandBase {
@@ -53,7 +46,6 @@ export interface StudioSkillCommand extends StudioParsedCommandBase {
 }
 
 export type StudioParsedCommand =
-  | StudioPermissionModeCommand
   | StudioHistoryCommand
   | StudioNewSessionCommand
   | StudioImageInputCommand

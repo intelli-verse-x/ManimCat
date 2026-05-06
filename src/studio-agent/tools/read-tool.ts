@@ -13,7 +13,7 @@ export function createStudioReadTool(): StudioToolDefinition<ReadToolInput> {
     description: 'Read a file from the current workspace.',
     category: 'safe-read',
     permission: 'read',
-    allowedAgents: ['builder', 'reviewer', 'designer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeReadTool(input, context as StudioRuntimeBackedToolContext)
   }

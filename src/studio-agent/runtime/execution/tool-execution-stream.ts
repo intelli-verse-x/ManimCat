@@ -15,9 +15,7 @@ import type {
   StudioResolvedSkill,
   StudioRuntimeBackedToolContext,
   StudioSkillDiscoveryEntry,
-  StudioSkillUsageSummary,
-  StudioSubagentRunRequest,
-  StudioSubagentRunResult
+  StudioSkillUsageSummary
 } from '../tools/tool-runtime-context'
 import type { CustomApiConfig } from '../../../types'
 import { throwIfStudioRunCancelled } from './run-cancellation'
@@ -36,7 +34,6 @@ interface StudioTurnExecutionOptions {
   taskStore?: StudioTaskStore
   workStore?: StudioWorkStore
   workResultStore?: StudioWorkResultStore
-  runSubagent?: (input: StudioSubagentRunRequest) => Promise<StudioSubagentRunResult>
   resolveSkill?: (name: string, session: StudioSession) => Promise<StudioResolvedSkill>
   listSkills?: (session: StudioSession) => Promise<StudioSkillDiscoveryEntry[]>
   listSkillSummaries?: (session: StudioSession) => Promise<StudioSkillUsageSummary[]>
@@ -76,7 +73,6 @@ export async function* createStudioTurnExecutionStream(
       taskStore: input.taskStore,
       workStore: input.workStore,
       workResultStore: input.workResultStore,
-      runSubagent: input.runSubagent,
       resolveSkill: input.resolveSkill,
       listSkills: input.listSkills,
       listSkillSummaries: input.listSkillSummaries,

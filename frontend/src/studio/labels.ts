@@ -44,10 +44,6 @@ export function translateWorkType(type: string, t: Translate) {
       return t('studio.workType.video')
     case 'plot':
       return t('studio.workType.plot')
-    case 'review':
-      return t('studio.workType.review')
-    case 'design':
-      return t('studio.workType.design')
     case 'edit':
       return t('studio.workType.edit')
     case 'render-fix':
@@ -82,12 +78,8 @@ export function translateTaskType(type: string, t: Translate) {
   switch (type) {
     case 'tool-execution':
       return t('studio.taskType.toolExecution')
-    case 'subagent-run':
-      return t('studio.taskType.subagentRun')
     case 'static-check':
       return t('studio.taskType.staticCheck')
-    case 'ai-review':
-      return t('studio.taskType.aiReview')
     case 'render':
       return t('studio.taskType.render')
     default:
@@ -127,10 +119,6 @@ export function translateResultKind(kind: string, t: Translate) {
   switch (kind) {
     case 'render-output':
       return t('studio.resultKind.renderOutput')
-    case 'review-report':
-      return t('studio.resultKind.reviewReport')
-    case 'design-plan':
-      return t('studio.resultKind.designPlan')
     case 'edit-result':
       return t('studio.resultKind.editResult')
     case 'failure-report':

@@ -1,7 +1,7 @@
 import type { CustomApiConfig } from '../../types/api'
 import type { StudioReviewMetadata } from './studio-review-types'
 
-export type StudioAgentType = 'builder' | 'reviewer' | 'designer'
+export type StudioAgentType = 'builder'
 export type StudioKind = 'manim' | 'plot'
 export type StudioPermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4'
 export type StudioPermissionMode = 'safe' | 'auto' | 'full'
@@ -14,10 +14,10 @@ export type StudioTaskStatus =
   | 'completed'
   | 'failed'
   | 'cancelled'
-export type StudioTaskType = 'tool-execution' | 'subagent-run' | 'static-check' | 'ai-review' | 'render'
-export type StudioWorkType = 'video' | 'plot' | 'review' | 'design' | 'edit' | 'render-fix'
+export type StudioTaskType = 'tool-execution' | 'static-check' | 'render'
+export type StudioWorkType = 'video' | 'plot' | 'edit' | 'render-fix'
 export type StudioWorkStatus = 'proposed' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
-export type StudioWorkResultKind = 'render-output' | 'review-report' | 'design-plan' | 'edit-result' | 'failure-report'
+export type StudioWorkResultKind = 'render-output' | 'edit-result' | 'failure-report'
 export type StudioPermissionDecision = 'once' | 'always' | 'reject'
 
 export interface StudioPermissionRule {

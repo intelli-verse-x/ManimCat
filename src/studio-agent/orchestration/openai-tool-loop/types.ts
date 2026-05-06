@@ -17,9 +17,7 @@ import type {
   StudioResolvedSkill,
   StudioRuntimeBackedToolContext,
   StudioSkillDiscoveryEntry,
-  StudioSkillUsageSummary,
-  StudioSubagentRunRequest,
-  StudioSubagentRunResult
+  StudioSkillUsageSummary
 } from '../../runtime/tools/tool-runtime-context'
 import type { CustomApiConfig } from '../../../types'
 import type { buildStudioChatTools } from '../studio-tool-schema'
@@ -47,7 +45,6 @@ export interface StudioOpenAIToolLoopInput {
   workStore?: StudioWorkStore
   workResultStore?: StudioWorkResultStore
   workContext?: StudioWorkContext
-  runSubagent?: (input: StudioSubagentRunRequest) => Promise<StudioSubagentRunResult>
   resolveSkill?: (name: string, session: StudioSession) => Promise<StudioResolvedSkill>
   listSkills?: (session: StudioSession) => Promise<StudioSkillDiscoveryEntry[]>
   listSkillSummaries?: (session: StudioSession) => Promise<StudioSkillUsageSummary[]>

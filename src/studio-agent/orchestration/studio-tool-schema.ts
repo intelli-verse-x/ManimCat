@@ -91,26 +91,6 @@ const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
     required: ['question'],
     additionalProperties: false
   },
-  task: {
-    type: 'object',
-    properties: {
-      subagent_type: {
-        type: 'string',
-        enum: ['reviewer', 'designer'],
-        description: 'Child agent role.'
-      },
-      description: { type: 'string', description: 'Short child task title.' },
-      input: { type: 'string', description: 'Detailed instruction for the child agent.' },
-      skill: { type: 'string', description: 'Optional local skill to load.' },
-      files: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'Relevant workspace-relative files.'
-      }
-    },
-    required: ['subagent_type', 'description', 'input'],
-    additionalProperties: false
-  },
   skill: {
     type: 'object',
     properties: {
@@ -130,17 +110,6 @@ const TOOL_PARAMETER_SCHEMAS: Record<string, Record<string, unknown>> = {
       }
     },
     required: ['path'],
-    additionalProperties: false
-  },
-  'ai-review': {
-    type: 'object',
-    properties: {
-      path: { type: 'string', description: 'Workspace-relative file path to review.' },
-      text: { type: 'string', description: 'Inline text to review when no path is provided.' },
-      before: { type: 'string', description: 'Optional pre-change content.' },
-      after: { type: 'string', description: 'Optional post-change content.' },
-      diff: { type: 'string', description: 'Optional unified diff for change-set review.' }
-    },
     additionalProperties: false
   },
   render: {

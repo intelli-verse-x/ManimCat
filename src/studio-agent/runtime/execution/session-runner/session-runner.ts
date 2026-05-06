@@ -7,7 +7,7 @@ import type {
   StudioToolChoice,
 } from '../../../domain/types'
 import type { CustomApiConfig } from '../../../../types'
-import type { StudioSubagentRunRequest, StudioSubagentRunResult } from '../../tools/tool-runtime-context'
+import type { StudioRunExecutionResult } from '../../tools/tool-runtime-context'
 import type {
   StudioBackgroundRunHandle,
   StudioPreparedRunContext,
@@ -21,7 +21,6 @@ import { routePreparedRun } from './router'
 import { createResolvedPlanExecution } from './execution-factories'
 import { executePreparedStream } from './execution-manager'
 import { createDependencyCenter } from './dependency-center'
-import { runSubagent as executeSubagent } from './subagent-manager'
 
 export class StudioSessionRunner {
   private readonly deps: StudioSessionRunnerDependencies
@@ -41,8 +40,7 @@ export class StudioSessionRunner {
         workResultStore: options.workResultStore,
         taskStore: options.taskStore,
         sessionEventStore: options.sessionEventStore
-      }, input),
-      runSubagent: (input) => this.runSubagent(input)
+      }, input)
     })
   }
 
@@ -54,7 +52,7 @@ export class StudioSessionRunner {
     return createRun(session, inputText, metadata)
   }
 
-  async run(input: StudioRunRequestInput): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
+  async run(input: StudioRunRequestInput): Promise<StudioRunExecutionResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
     const handle = await this.startBackgroundRun(input)
     return handle.completion
   }
@@ -77,7 +75,7 @@ export class StudioSessionRunner {
     plan: StudioRuntimeTurnPlan
     customApiConfig?: CustomApiConfig
     toolChoice?: StudioToolChoice
-  }): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
+  }): Promise<StudioRunExecutionResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
     const prepared = await prepareRun(this.deps, input)
     const abortController = new AbortController()
     return executePreparedStream(this.deps, prepared, createResolvedPlanExecution(this.deps, {
@@ -87,10 +85,6 @@ export class StudioSessionRunner {
       toolChoice: input.toolChoice,
       abortSignal: abortController.signal,
     }), abortController.signal)
-  }
-
-  async runSubagent(input: StudioSubagentRunRequest): Promise<StudioSubagentRunResult> {
-    return executeSubagent(this.deps, input, (request) => this.run(request))
   }
 
   private async executePreparedRun(prepared: StudioPreparedRunContext, abortSignal: AbortSignal) {

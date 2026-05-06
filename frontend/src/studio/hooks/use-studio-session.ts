@@ -2,14 +2,12 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import {
   cancelStudioRun,
   createStudioSession,
-  getPendingStudioPermissions,
   getStudioSessionSnapshot,
 } from '../api/studio-agent-api'
 import { useStudioCommandControls } from '../commands/use-studio-command-controls'
-import type { StudioKind, StudioMessage, StudioPermissionRequest, StudioTask } from '../protocol/studio-agent-types'
+import type { StudioKind, StudioMessage, StudioTask } from '../protocol/studio-agent-types'
 import type { StudioSessionState } from '../store/studio-types'
 import { useStudioEvents } from './use-studio-events'
-import { useStudioPermissions } from './use-studio-permissions'
 import { useStudioRun } from './use-studio-run'
 import { studioEventReducer } from '../store/studio-event-reducer'
 import { createInitialStudioState } from '../store/studio-session-store'
@@ -21,7 +19,6 @@ import {
   selectLatestTaskForWork,
   selectSelectedWork,
   selectIsBusy,
-  selectStudioPendingPermissions,
   selectTasksForWork,
   selectWorkSummary,
   selectWorkResult,
@@ -70,15 +67,12 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
     }
 
     try {
-      const [snapshot, pendingPermissions] = await Promise.all([
-        getStudioSessionSnapshot(sessionId),
-        getPendingStudioPermissions(),
-      ])
+      const snapshot = await getStudioSessionSnapshot(sessionId)
 
       dispatch({
         type: mode === 'replace' ? 'session_replaced' : 'snapshot_loaded',
         snapshot,
-        pendingPermissions: filterPermissionsForSession(pendingPermissions, sessionId),
+        pendingPermissions: [],
       })
       rememberStudioSessionId(studioKind, snapshot.session.id)
       return snapshot.session
@@ -107,7 +101,6 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
       title: studioTitle,
       studioKind,
       agentType: 'builder',
-      permissionMode: 'auto',
     })
 
     await loadSnapshot(session.id, mode === 'replace' ? 'replace' : 'merge')
@@ -263,21 +256,21 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
         type: 'run_submitting',
       })
     },
-    onRunStarted: (run, pendingPermissions) => {
+    onRunStarted: (run) => {
       dispatch({
         type: 'run_started',
         run,
-        pendingPermissions,
+        pendingPermissions: [],
       })
     },
-    onSnapshotLoaded: (snapshot, pendingPermissions) => {
+    onSnapshotLoaded: (snapshot) => {
       dispatch({
         type: 'snapshot_loaded',
         snapshot: {
           ...snapshot,
           runs: [...viewSelectors.selectStudioRuns(state), ...snapshot.runs],
         },
-        pendingPermissions,
+        pendingPermissions: [],
       })
     },
     onError: (error) => {
@@ -292,9 +285,6 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
   const controls = useStudioCommandControls({
     session: state.entities.session,
     onRun: runCommand,
-    onSessionUpdated: async (session) => {
-      await loadSnapshot(session.id, 'merge', { silent: true })
-    },
     onOpenHistory: openHistory,
     onCreateSession: async () => {
       await createFreshSession('replace')
@@ -302,31 +292,9 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
     },
   })
 
-  const { replyPermission } = useStudioPermissions({
-    sessionId,
-    onReplyStarted: (requestId) => {
-      dispatch({ type: 'permission_reply_started', requestId })
-    },
-    onReplyFinished: (requests) => {
-      dispatch({
-        type: 'permission_reply_finished',
-        requests,
-      })
-    },
-    onError: (error) => {
-      dispatch({
-        type: 'event_status',
-        status: state.connection.eventStatus,
-        error,
-      })
-    },
-    getFallbackRequests: () => selectStudioPendingPermissions(state),
-  })
-
   const messages = viewSelectors.selectStudioMessages(state)
   const runs = viewSelectors.selectStudioRuns(state)
   const works = viewSelectors.selectStudioWorks(state)
-  const pendingPermissions = viewSelectors.selectStudioPendingPermissions(state)
 
   return {
     state,
@@ -334,13 +302,10 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
     messages,
     runs,
     works,
-    pendingPermissions,
     latestRun: selectLatestRun(state),
     latestAssistantText: selectLatestAssistantText(state),
     isBusy: selectIsBusy(state),
-    replyingPermissionIds: state.runtime.replyingPermissionIds,
     latestQuestion: state.runtime.latestQuestion,
-    permissionModeModal: controls.permissionModeModal,
     historyModal: {
       isOpen: isHistoryOpen,
       isLoading: isHistoryLoading,
@@ -385,7 +350,6 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
         }),
       })
     },
-    replyPermission,
     selectWork(workId: string | null) {
       const work = selectSelectedWork(state, workId)
       return {
@@ -425,13 +389,6 @@ function buildInterruptedAssistantMessage(input: {
 
 function getDefaultStudioTitle(studioKind: StudioKind, t: (key: 'studio.plotTitle' | 'studio.manimTitle') => string): string {
   return studioKind === 'plot' ? t('studio.plotTitle') : t('studio.manimTitle')
-}
-
-function filterPermissionsForSession(requests: StudioPermissionRequest[], sessionId?: string | null) {
-  if (!sessionId) {
-    return []
-  }
-  return requests.filter((request) => request.sessionID === sessionId)
 }
 
 function hasActiveRenderTask(state: StudioSessionState): boolean {

@@ -1,13 +1,10 @@
 import { createStudioAssistantMessage, createStudioRun } from '../../domain/factories'
 import type {
-  StudioKind,
   StudioMessagePart,
   StudioRun,
   StudioRuntimeTurnPlan,
   StudioSession
 } from '../../domain/types'
-import { buildStudioSubagentPrompt } from '../../prompts/subagent-prompt'
-import type { StudioResolvedSkill } from '../tools/tool-runtime-context'
 
 export function buildDraftRun(
   session: StudioSession,
@@ -27,24 +24,6 @@ export function buildDraftAssistantMessage(session: StudioSession, runId?: strin
     sessionId: session.id,
     agent: session.agentType,
     metadata: runId ? { runId } : undefined
-  })
-}
-
-export function buildSubagentPrompt(input: {
-  agentType: 'reviewer' | 'designer'
-  inputText: string
-  files?: string[]
-  skillName?: string
-  skill?: StudioResolvedSkill
-  studioKind?: StudioKind
-}): string {
-  return buildStudioSubagentPrompt({
-    agentType: input.agentType,
-    workflowInput: input.inputText,
-    files: input.files,
-    skill: input.skill,
-    requestedSkillName: input.skillName,
-    studioKind: input.studioKind
   })
 }
 

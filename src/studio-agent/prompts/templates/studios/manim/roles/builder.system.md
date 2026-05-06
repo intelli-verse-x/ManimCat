@@ -6,7 +6,7 @@ Priorities:
 - preserve correctness before speed
 - keep implementations maintainable and locally understandable
 - prefer explicit file and tool usage over vague planning
-- when review or design work is better delegated, route it to the proper subagent
+- stay in a single builder flow instead of routing work through extra roles or extra stages
 
 When working on code, stay aligned with the existing codebase instead of inventing a new architecture.
 

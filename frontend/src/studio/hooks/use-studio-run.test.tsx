@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { useStudioRun } from './use-studio-run'
 import { StudioApiRequestError } from '../api/client'
 import type {
-  StudioPermissionRequest,
   StudioRun,
   StudioSession,
   StudioSessionSnapshot,
@@ -48,16 +47,6 @@ function createRun(id: string, sessionId: string): StudioRun {
   }
 }
 
-function createPendingPermission(sessionId: string, id = 'perm-1'): StudioPermissionRequest {
-  return {
-    id,
-    sessionID: sessionId,
-    permission: 'render',
-    patterns: ['**/*'],
-    always: [],
-  }
-}
-
 function createSnapshot(session: StudioSession): StudioSessionSnapshot {
   return {
     session,
@@ -79,7 +68,7 @@ describe('useStudioRun', () => {
     }))
   })
 
-  it('submits a run and filters pending permissions to the active session', async () => {
+  it('submits a run and merges the started run into the snapshot', async () => {
     const session = createSession()
     const onOptimisticMessagesCreated = vi.fn()
     const onRunSubmitting = vi.fn()
@@ -90,10 +79,6 @@ describe('useStudioRun', () => {
     mockedCreateStudioRun.mockResolvedValue({
       ...createSnapshot(session),
       run: createRun('run-1', session.id),
-      pendingPermissions: [
-        createPendingPermission(session.id, 'perm-1'),
-        createPendingPermission('other-session', 'perm-2'),
-      ],
     })
 
     const { result } = renderHook(() => useStudioRun({
@@ -121,16 +106,12 @@ describe('useStudioRun', () => {
       }),
     }))
     expect(onRunSubmitting).toHaveBeenCalledOnce()
-    expect(onRunStarted).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'run-1', sessionId: session.id }),
-      [expect.objectContaining({ id: 'perm-1' })],
-    )
+    expect(onRunStarted).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-1', sessionId: session.id }))
     expect(onSnapshotLoaded).toHaveBeenCalledWith(
       expect.objectContaining({
         session,
         runs: [expect.objectContaining({ id: 'run-1' })],
       }),
-      [expect.objectContaining({ id: 'perm-1' })],
     )
     expect(onError).not.toHaveBeenCalled()
   })
@@ -146,7 +127,6 @@ describe('useStudioRun', () => {
       .mockResolvedValueOnce({
         ...createSnapshot(recoveredSession),
         run: createRun('run-2', recoveredSession.id),
-        pendingPermissions: [createPendingPermission(recoveredSession.id)],
       })
 
     const { result } = renderHook(() => useStudioRun({
@@ -163,10 +143,7 @@ describe('useStudioRun', () => {
 
     expect(recoverSession).toHaveBeenCalledOnce()
     expect(mockedCreateStudioRun).toHaveBeenCalledTimes(2)
-    expect(onRunStarted).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'run-2', sessionId: recoveredSession.id }),
-      [expect.objectContaining({ sessionID: recoveredSession.id })],
-    )
+    expect(onRunStarted).toHaveBeenCalledWith(expect.objectContaining({ id: 'run-2', sessionId: recoveredSession.id }))
   })
 
   it('reports submit errors and rethrows them', async () => {
