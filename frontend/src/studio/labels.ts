@@ -140,16 +140,3 @@ export function translateSeverity(severity: string, t: Translate) {
       return severity
   }
 }
-
-export function translatePermissionDecision(decision: string, t: Translate) {
-  switch (decision) {
-    case 'once':
-      return t('studio.permission.once')
-    case 'always':
-      return t('studio.permission.always')
-    case 'reject':
-      return t('studio.permission.reject')
-    default:
-      return decision
-  }
-}

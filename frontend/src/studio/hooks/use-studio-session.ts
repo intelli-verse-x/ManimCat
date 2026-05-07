@@ -72,7 +72,6 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
       dispatch({
         type: mode === 'replace' ? 'session_replaced' : 'snapshot_loaded',
         snapshot,
-        pendingPermissions: [],
       })
       rememberStudioSessionId(studioKind, snapshot.session.id)
       return snapshot.session
@@ -260,7 +259,6 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
       dispatch({
         type: 'run_started',
         run,
-        pendingPermissions: [],
       })
     },
     onSnapshotLoaded: (snapshot) => {
@@ -270,7 +268,6 @@ export function useStudioSession(options: UseStudioSessionOptions = {}) {
           ...snapshot,
           runs: [...viewSelectors.selectStudioRuns(state), ...snapshot.runs],
         },
-        pendingPermissions: [],
       })
     },
     onError: (error) => {

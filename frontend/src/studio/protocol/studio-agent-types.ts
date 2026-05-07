@@ -4,7 +4,6 @@ import type { StudioReviewMetadata } from './studio-review-types'
 export type StudioAgentType = 'builder'
 export type StudioKind = 'manim' | 'plot'
 export type StudioPermissionLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4'
-export type StudioPermissionMode = 'safe' | 'auto' | 'full'
 export type StudioRunStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type StudioTaskStatus =
   | 'proposed'
@@ -18,7 +17,6 @@ export type StudioTaskType = 'tool-execution' | 'static-check' | 'render'
 export type StudioWorkType = 'video' | 'plot' | 'edit' | 'render-fix'
 export type StudioWorkStatus = 'proposed' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 export type StudioWorkResultKind = 'render-output' | 'edit-result' | 'failure-report'
-export type StudioPermissionDecision = 'once' | 'always' | 'reject'
 
 export interface StudioPermissionRule {
   permission: string
@@ -28,7 +26,6 @@ export interface StudioPermissionRule {
 
 export interface StudioSessionMetadata {
   studioKind?: StudioKind
-  permissionMode?: StudioPermissionMode
   agentConfig?: {
     toolChoice?: 'auto' | 'required' | 'none'
   }
@@ -195,19 +192,6 @@ export interface StudioUserMessage extends StudioMessageBase {
 
 export type StudioMessage = StudioAssistantMessage | StudioUserMessage
 
-export interface StudioPermissionRequest {
-  id: string
-  sessionID: string
-  permission: string
-  patterns: string[]
-  metadata?: Record<string, unknown>
-  always: string[]
-  tool?: {
-    messageID: string
-    callID: string
-  }
-}
-
 export interface StudioWorkResult {
   id: string
   workId: string
@@ -263,7 +247,6 @@ export interface StudioCreateSessionInput {
   studioKind?: StudioKind
   agentType?: StudioAgentType
   permissionLevel?: StudioPermissionLevel
-  permissionMode?: StudioPermissionMode
   workspaceId?: string
 }
 

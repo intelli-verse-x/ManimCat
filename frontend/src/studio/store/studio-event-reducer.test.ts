@@ -256,7 +256,6 @@ describe('studioEventReducer', () => {
     const next = studioEventReducer(state, {
       type: 'run_started',
       run: createRunMessage({ status: 'running' }),
-      pendingPermissions: [],
     })
 
     expect(next.entities.runsById[completedRun.id]?.status).toBe('completed')

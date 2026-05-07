@@ -1,6 +1,5 @@
 import type {
   StudioMessage,
-  StudioPermissionRequest,
   StudioRun,
   StudioSessionSnapshot,
   StudioTask,
@@ -27,7 +26,6 @@ export function createInitialStudioState(): StudioSessionState {
       assistantTextByRunId: {},
       optimisticAssistantMessageIdByRunId: {},
       pendingAssistantMessageId: null,
-      replyingPermissionIds: {},
       latestQuestion: null,
     },
     error: null,
@@ -37,7 +35,6 @@ export function createInitialStudioState(): StudioSessionState {
 export function mergeStudioSnapshot(
   current: StudioSessionState,
   snapshot: StudioSessionSnapshot,
-  pendingPermissions: StudioPermissionRequest[],
 ): StudioSessionState {
   const messagesById = mergeMessages(current.entities.messagesById, snapshot.messages)
   const runsById = mergeRuns(current.entities.runsById, snapshot.runs)
@@ -59,8 +56,6 @@ export function mergeStudioSnapshot(
       workOrder: sortRecordIdsBy(worksById, compareByUpdatedAt),
       workResultsById,
       workResultOrder: sortRecordIdsBy(workResultsById, compareByCreatedAt),
-      pendingPermissionsById: indexById(pendingPermissions),
-      pendingPermissionOrder: pendingPermissions.map((item) => item.id),
     },
     connection: {
       ...current.connection,
@@ -124,17 +119,6 @@ export function upsertWorkResults(state: StudioEntityState, results: StudioWorkR
   }
 }
 
-export function replacePendingPermissions(
-  state: StudioEntityState,
-  requests: StudioPermissionRequest[],
-): StudioEntityState {
-  return {
-    ...state,
-    pendingPermissionsById: indexById(requests),
-    pendingPermissionOrder: requests.map((item) => item.id),
-  }
-}
-
 export function removeMessages(state: StudioEntityState, messageIds: string[]): StudioEntityState {
   if (messageIds.length === 0) {
     return state
@@ -165,8 +149,6 @@ function createEmptyEntityState(): StudioEntityState {
     workOrder: [],
     workResultsById: {},
     workResultOrder: [],
-    pendingPermissionsById: {},
-    pendingPermissionOrder: [],
   }
 }
 

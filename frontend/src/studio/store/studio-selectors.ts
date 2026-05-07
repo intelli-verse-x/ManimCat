@@ -27,12 +27,6 @@ export function selectStudioWorks(state: StudioSessionState): StudioWork[] {
     .filter((work) => (sessionId ? work.sessionId === sessionId : true))
 }
 
-export function selectStudioPendingPermissions(state: StudioSessionState) {
-  return state.entities.pendingPermissionOrder
-    .map((id) => state.entities.pendingPermissionsById[id])
-    .filter(Boolean)
-}
-
 export function selectLatestRun(state: StudioSessionState): StudioRun | null {
   return selectStudioRuns(state)[0] ?? null
 }
@@ -132,7 +126,6 @@ export function createStudioViewSelectors() {
   const messagesCache = createStableSessionListCache<StudioMessage>()
   const runsCache = createStableSessionListCache<StudioRun>()
   const worksCache = createStableSessionListCache<StudioWork>()
-  const pendingPermissionsCache = createStableListCache<StudioSessionState['entities']['pendingPermissionsById'][string]>()
 
   return {
     selectStudioMessages(state: StudioSessionState): StudioMessage[] {
@@ -159,13 +152,6 @@ export function createStudioViewSelectors() {
         cache: worksCache,
       })
     },
-    selectStudioPendingPermissions(state: StudioSessionState) {
-      return selectStableList({
-        order: state.entities.pendingPermissionOrder,
-        getById: (id) => state.entities.pendingPermissionsById[id],
-        cache: pendingPermissionsCache,
-      })
-    },
   }
 }
 
@@ -176,13 +162,6 @@ interface StableListCache<T> {
 
 interface StableSessionListCache<T extends { sessionId: string }> extends StableListCache<T> {
   sessionId: string | null
-}
-
-function createStableListCache<T>(): StableListCache<T> {
-  return {
-    ids: [],
-    items: [],
-  }
 }
 
 function createStableSessionListCache<T extends { sessionId: string }>(): StableSessionListCache<T> {
@@ -220,32 +199,6 @@ function selectStableSessionList<T extends { id: string; sessionId: string }>(in
   }
 
   input.cache.sessionId = sessionId
-  input.cache.ids = nextIds
-  input.cache.items = nextItems
-  return nextItems
-}
-
-function selectStableList<T extends { id: string }>(input: {
-  order: string[]
-  getById: (id: string) => T | undefined
-  cache: StableListCache<T>
-}): T[] {
-  const nextItems: T[] = []
-  const nextIds: string[] = []
-
-  for (const id of input.order) {
-    const item = input.getById(id)
-    if (!item) {
-      continue
-    }
-    nextItems.push(item)
-    nextIds.push(item.id)
-  }
-
-  if (areStableListsEquivalent(input.cache, nextIds, nextItems)) {
-    return input.cache.items
-  }
-
   input.cache.ids = nextIds
   input.cache.items = nextItems
   return nextItems
