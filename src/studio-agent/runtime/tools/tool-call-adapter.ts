@@ -9,16 +9,13 @@ import type {
   StudioWorkResultStore,
   StudioWorkStore
 } from '../../domain/types'
-import { evaluatePermission } from '../../permissions/policy'
 import type { StudioToolRegistry } from '../../tools/registry'
 import type { ActiveSkillStore } from '../../skills/state/skill-state-store'
 import type {
   StudioResolvedSkill,
   StudioRuntimeBackedToolContext,
   StudioSkillDiscoveryEntry,
-  StudioSkillUsageSummary,
-  StudioSubagentRunRequest,
-  StudioSubagentRunResult
+  StudioSkillUsageSummary
 } from './tool-runtime-context'
 import type { CustomApiConfig } from '../../../types'
 import { buildStudioPreToolCommentary } from './pre-tool-commentary'
@@ -41,7 +38,6 @@ export interface StudioToolCallExecutionOptions {
   taskStore?: StudioTaskStore
   workStore?: StudioWorkStore
   workResultStore?: StudioWorkResultStore
-  runSubagent?: (input: StudioSubagentRunRequest) => Promise<StudioSubagentRunResult>
   resolveSkill?: (name: string, session: StudioSession) => Promise<StudioResolvedSkill>
   listSkills?: (session: StudioSession) => Promise<StudioSkillDiscoveryEntry[]>
   listSkillSummaries?: (session: StudioSession) => Promise<StudioSkillUsageSummary[]>
@@ -93,27 +89,6 @@ export async function* createStudioToolCallExecutionEvents(
     yield createToolErrorEvent(input.toolCallId, `Tool not found: ${input.toolName}`, {
       failureStage: 'registry',
       failureKind: 'tool_not_found',
-    })
-    return
-  }
-
-  const permissionAction = evaluatePermission(
-    input.session.permissionRules,
-    tool.permission,
-    resolvePermissionPattern(input.toolInput)
-  )
-
-  if (permissionAction === 'deny') {
-    logDetectedToolFailure(input, {
-      error: `Permission denied for tool "${input.toolName}"`,
-      failureStage: 'permission',
-      failureKind: 'permission_denied',
-      permission: tool.permission,
-    })
-    yield createToolErrorEvent(input.toolCallId, `Permission denied for tool "${input.toolName}"`, {
-      permission: tool.permission,
-      failureStage: 'permission',
-      failureKind: 'permission_denied',
     })
     return
   }
@@ -176,7 +151,6 @@ async function executeTool(input: {
       input.options.setToolMetadata(input.options.toolCallId, metadata)
     },
     sessionStore: input.options.sessionStore,
-    runSubagent: input.options.runSubagent,
     resolveSkill: input.options.resolveSkill,
     listSkills: input.options.listSkills,
     listSkillSummaries: input.options.listSkillSummaries,
@@ -315,37 +289,3 @@ function summarizeStack(stack?: string): string | undefined {
   const normalized = stack.trim()
   return normalized.length <= 600 ? normalized : `${normalized.slice(0, 597)}...`
 }
-
-function resolvePermissionPattern(input: Record<string, unknown>): string {
-  const candidate = input as {
-    file?: unknown
-    path?: unknown
-    pattern?: unknown
-    directory?: unknown
-    name?: unknown
-    subagent_type?: unknown
-  }
-  if (typeof candidate.file === 'string' && candidate.file) {
-    return candidate.file
-  }
-  if (typeof candidate.path === 'string' && candidate.path) {
-    return candidate.path
-  }
-  if (typeof candidate.directory === 'string' && candidate.directory) {
-    return candidate.directory
-  }
-  if (typeof candidate.pattern === 'string' && candidate.pattern) {
-    return candidate.pattern
-  }
-  if (typeof candidate.name === 'string' && candidate.name) {
-    return candidate.name
-  }
-  if (typeof candidate.subagent_type === 'string' && candidate.subagent_type) {
-    return candidate.subagent_type
-  }
-  return '*'
-}
-
-
-
-

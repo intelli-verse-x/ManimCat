@@ -30,11 +30,6 @@ export function createResolvedPlanExecution(
       taskStore: deps.taskStore,
       workStore: deps.workStore,
       workResultStore: deps.workResultStore,
-      runSubagent: (request) => deps.runSubagent({
-        ...request,
-        customApiConfig: input.customApiConfig,
-        toolChoice: input.toolChoice
-      }),
       resolveSkill: deps.resolveSkill,
       listSkills: deps.listSkills,
       listSkillSummaries: deps.listSkillSummaries,
@@ -88,11 +83,6 @@ export function createAgentLoopExecution(
       workStore: deps.workStore,
       workResultStore: deps.workResultStore,
       workContext: input.prepared.workContext,
-      runSubagent: (request) => deps.runSubagent({
-        ...request,
-        customApiConfig: input.customApiConfig,
-        toolChoice: input.toolChoice
-      }),
       resolveSkill: deps.resolveSkill,
       listSkills: deps.listSkills,
       listSkillSummaries: deps.listSkillSummaries,

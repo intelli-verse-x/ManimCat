@@ -32,7 +32,7 @@ export function PlotStudioHistoryAside<TWorkSummary extends {
   return (
     <aside className="flex min-h-0 w-full shrink-0 flex-col md:w-[32rem] lg:w-[35rem] xl:w-[38rem]">
       <div className="mb-3 h-[1px] bg-accent opacity-[0.08] dark:opacity-[0.18]" />
-      <div className="mb-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.4em] opacity-40 dark:opacity-55">
+      <div className="mb-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.4em] text-text-secondary/80">
         <span>{t('studio.plot.history')}</span>
         <span>{historyCountLabel}-{maxHistorySlots}</span>
       </div>
@@ -73,7 +73,7 @@ export function PlotStudioHistoryAside<TWorkSummary extends {
                   </div>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
-                    <span className="font-mono text-[8px] uppercase tracking-[0.22em] opacity-12 dark:opacity-25">IMG</span>
+                    <span className="font-mono text-[8px] uppercase tracking-[0.22em] text-text-secondary/45">IMG</span>
                   </div>
                 )}
                 <span className="pointer-events-none absolute left-2 top-2 font-mono text-[8px] uppercase tracking-[0.24em] text-white/72 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
@@ -84,7 +84,7 @@ export function PlotStudioHistoryAside<TWorkSummary extends {
           })}
           {works.length === 0 && (
             <div className="col-span-3 flex aspect-[3/1] items-center justify-center">
-              <span className="font-mono text-[9px] uppercase tracking-[0.42em] opacity-[0.18]">Null Stack</span>
+              <span className="font-mono text-[9px] uppercase tracking-[0.42em] text-text-secondary/40">Null Stack</span>
             </div>
           )}
         </div>

@@ -12,7 +12,7 @@ export function createStudioQuestionTool(): StudioToolDefinition<QuestionToolInp
     description: 'Ask the user for clarification.',
     category: 'question',
     permission: 'question',
-    allowedAgents: ['builder', 'reviewer', 'designer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeQuestionTool(input, context as StudioRuntimeBackedToolContext)
   }

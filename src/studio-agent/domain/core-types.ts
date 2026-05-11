@@ -1,6 +1,6 @@
 import type { StudioFileAttachment } from './message-types'
 
-export type StudioAgentType = 'builder' | 'reviewer' | 'designer'
+export type StudioAgentType = 'builder'
 export type StudioKind = 'manim' | 'plot'
 export type StudioToolChoice = 'auto' | 'required' | 'none'
 
@@ -19,12 +19,10 @@ export type StudioTaskStatus =
 
 export type StudioTaskType =
   | 'tool-execution'
-  | 'subagent-run'
   | 'static-check'
-  | 'ai-review'
   | 'render'
 
-export type StudioWorkType = 'video' | 'plot' | 'review' | 'design' | 'edit' | 'render-fix'
+export type StudioWorkType = 'video' | 'plot' | 'edit' | 'render-fix'
 
 export type StudioWorkStatus =
   | 'proposed'
@@ -36,8 +34,6 @@ export type StudioWorkStatus =
 
 export type StudioWorkResultKind =
   | 'render-output'
-  | 'review-report'
-  | 'design-plan'
   | 'edit-result'
   | 'failure-report'
 

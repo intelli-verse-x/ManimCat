@@ -10,7 +10,6 @@ describe('getStudioCommandSuggestions', () => {
 
     expect(suggestions.map((item) => item.trigger)).toContain('/history')
     expect(suggestions.map((item) => item.trigger)).toContain('/new')
-    expect(suggestions.map((item) => item.trigger)).toContain('/safe')
     expect(suggestions.map((item) => item.trigger)).toContain('/p')
     expect(suggestions.map((item) => item.trigger)).toContain('/skill')
   })
@@ -21,10 +20,10 @@ describe('getStudioCommandSuggestions', () => {
     expect(suggestions.map((item) => item.trigger)).toEqual(['/new'])
   })
 
-  it('includes separately registered permission mode commands', () => {
+  it('does not surface removed permission mode commands', () => {
     const suggestions = getStudioCommandSuggestions('/a')
 
-    expect(suggestions.map((item) => item.trigger)).toEqual(['/auto'])
+    expect(suggestions).toEqual([])
   })
 
   it('suggests the skill command by prefix', () => {

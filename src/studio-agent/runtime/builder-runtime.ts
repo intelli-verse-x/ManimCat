@@ -24,8 +24,7 @@ import type {
   StudioResolvedSkill,
   StudioSkillDiscoveryEntry,
   StudioSkillUsageSummary,
-  StudioSubagentRunRequest,
-  StudioSubagentRunResult
+  StudioRunExecutionResult
 } from './tools/tool-runtime-context'
 
 interface StudioBuilderRuntimeOptions {
@@ -111,7 +110,7 @@ export class StudioBuilderRuntime {
     customApiConfig?: CustomApiConfig
     toolChoice?: StudioToolChoice
     runMetadata?: Record<string, unknown>
-  }): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
+  }): Promise<StudioRunExecutionResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
     return this.runner.run(input)
   }
 
@@ -128,9 +127,5 @@ export class StudioBuilderRuntime {
 
   abortBackgroundRun(handle: StudioBackgroundRunHandle, reason?: string): void {
     handle.abort(reason)
-  }
-
-  async runSubagent(input: StudioSubagentRunRequest): Promise<StudioSubagentRunResult> {
-    return this.runner.runSubagent(input)
   }
 }

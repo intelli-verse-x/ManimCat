@@ -4,7 +4,6 @@ import { createStudioRun } from '../api/studio-agent-api'
 import { buildStudioCreateRunInput } from '../api/studio-run-request'
 import type {
   StudioAssistantMessage,
-  StudioPermissionRequest,
   StudioRun,
   StudioSession,
   StudioSessionSnapshot,
@@ -15,8 +14,8 @@ interface UseStudioRunInput {
   session: StudioSession | null
   onOptimisticMessagesCreated: (messages: { userMessage: StudioUserMessage; assistantMessage: StudioAssistantMessage }) => void
   onRunSubmitting: () => void
-  onRunStarted: (run: StudioRun, pendingPermissions: StudioPermissionRequest[]) => void
-  onSnapshotLoaded: (snapshot: StudioSessionSnapshot, pendingPermissions: StudioPermissionRequest[]) => void
+  onRunStarted: (run: StudioRun) => void
+  onSnapshotLoaded: (snapshot: StudioSessionSnapshot) => void
   onError: (error: string) => void
   recoverSession: () => Promise<StudioSession>
 }
@@ -57,13 +56,11 @@ export function useStudioRun({ session, onOptimisticMessagesCreated, onRunSubmit
           session: activeSession,
           inputText,
         }))
-
-        const pendingPermissions = filterPermissionsForSession(response.pendingPermissions, activeSession.id)
         const snapshotRuns = response.runs.some((run) => run.id === response.run.id)
           ? response.runs
           : [...response.runs, response.run]
 
-        onRunStarted(response.run, pendingPermissions)
+        onRunStarted(response.run)
         onSnapshotLoaded({
           session: activeSession,
           messages: response.messages,
@@ -71,7 +68,7 @@ export function useStudioRun({ session, onOptimisticMessagesCreated, onRunSubmit
           tasks: response.tasks,
           works: response.works,
           workResults: response.workResults,
-        }, pendingPermissions)
+        })
       } catch (error) {
         if (
           allowRecovery
@@ -95,11 +92,4 @@ export function useStudioRun({ session, onOptimisticMessagesCreated, onRunSubmit
       throw error
     }
   }, [onError, onOptimisticMessagesCreated, onRunStarted, onRunSubmitting, onSnapshotLoaded, recoverSession, session])
-}
-
-function filterPermissionsForSession(requests: StudioPermissionRequest[], sessionId?: string | null) {
-  if (!sessionId) {
-    return []
-  }
-  return requests.filter((request) => request.sessionID === sessionId)
 }

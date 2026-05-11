@@ -12,7 +12,7 @@ export function createStudioSkillTool(): StudioToolDefinition<SkillToolInput> {
     description: 'Activate a Studio skill. The skill content will be injected into the system prompt for subsequent steps.',
     category: 'agent',
     permission: 'skill',
-    allowedAgents: ['builder', 'reviewer', 'designer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeSkillTool(input, context as StudioRuntimeBackedToolContext)
   }

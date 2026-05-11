@@ -1,4 +1,4 @@
-import type { StudioAssistantMessage, StudioRun, StudioSession } from '../protocol/studio-agent-types'
+import type { StudioAssistantMessage, StudioMessage, StudioRun, StudioSession } from '../protocol/studio-agent-types'
 
 export function createSessionMessage(): StudioSession {
   return {
@@ -38,7 +38,7 @@ export function createRunMessage(overrides: Partial<StudioRun> = {}): StudioRun 
   }
 }
 
-export function readFirstAssistantText(message: StudioAssistantMessage | undefined): string {
+export function readFirstAssistantText(message: StudioMessage | undefined): string {
   if (!message || message.role !== 'assistant') {
     return ''
   }

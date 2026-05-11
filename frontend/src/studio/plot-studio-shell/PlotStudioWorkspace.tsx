@@ -29,13 +29,10 @@ export function PlotStudioWorkspace({
             result={shell.selected.result}
             latestRun={shell.studio.latestRun}
             tasks={shell.selected.tasks}
-            requests={shell.studio.pendingPermissions}
-            replyingPermissionIds={shell.studio.replyingPermissionIds}
             latestAssistantText={shell.studio.latestAssistantText}
             errorMessage={shell.studio.state.error ?? shell.studio.state.connection.eventError}
             onSelectWork={shell.setSelectedWorkId}
             onReorderWorks={shell.handleReorderWorks}
-            onReply={shell.studio.replyPermission}
             onSendPreviewToComposer={(attachment) => commandPanelRef.current?.appendPreviewAttachment(attachment)}
             variant="pure-minimal-top"
           />

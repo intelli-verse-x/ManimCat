@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { copyImageAssetToClipboard, exportImageAsset, type ExportFormat } from '../image-asset'
-import { CLOSED_IMAGE_CONTEXT_MENU, type ImageContextMenuState } from '../context-menu-state'
+import { CLOSED_IMAGE_CONTEXT_MENU } from '../context-menu-state'
 
 export function useLightboxExport(activeImage?: string, activeIndex = 0) {
   const [contextMenu, setContextMenu] = useState(CLOSED_IMAGE_CONTEXT_MENU)

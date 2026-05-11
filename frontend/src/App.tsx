@@ -15,7 +15,6 @@ import { Game2048Page } from './pages/Game2048Page';
 import { PlotStudioShell } from './studio/PlotStudioShell';
 import { StudioShell } from './studio/StudioShell';
 import { StudioTransitionOverlay } from './studio/StudioTransitionOverlay';
-import { useI18n } from './i18n';
 
 type Screen = 'classic' | 'manim-studio' | 'plot-studio' | 'game';
 
@@ -31,7 +30,6 @@ function App() {
   const problemFraming = useProblemFraming();
   const game = useGame2048();
   useTabTitle(status, stage);
-  const { t } = useI18n();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [donationOpen, setDonationOpen] = useState(false);

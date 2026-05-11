@@ -16,7 +16,7 @@ export function createStudioStaticCheckTool(): StudioToolDefinition<StaticCheckT
     description: 'Run static checks for Python or Manim code.',
     category: 'review',
     permission: 'static-check',
-    allowedAgents: ['builder', 'reviewer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeStaticCheckTool(input, context as StudioRuntimeBackedToolContext)
   }

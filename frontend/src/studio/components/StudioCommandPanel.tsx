@@ -128,7 +128,6 @@ export const StudioCommandPanel = forwardRef<StudioCommandPanelHandle, StudioCom
       />
 
       <StudioCommandComposer
-        variant={variant}
         isFrameless={isFrameless}
         isTLayout={isTLayout}
         isMinimal={isMinimal}

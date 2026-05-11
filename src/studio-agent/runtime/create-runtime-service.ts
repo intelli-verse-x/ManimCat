@@ -3,7 +3,6 @@ import { createStudioSession } from '../domain/factories'
 import type {
   StudioEventBus,
   StudioKind,
-  StudioPermissionLevel,
   StudioSession,
   StudioTask,
   StudioToolChoice,
@@ -15,7 +14,6 @@ import { adaptStudioEvent, type StudioExternalEvent } from '../events/studio-eve
 import { registerManimStudioTools } from '../manim/register-manim-tools'
 import type { StudioPersistence } from '../persistence/studio-persistence'
 import { registerPlotStudioTools } from '../plot/register-plot-tools'
-import { resolveStudioPermissionMode, type StudioPermissionMode } from '../session-control/permission-modes'
 import { registerSharedStudioTools } from '../shared/register-shared-tools'
 import {
   buildStudioContinueInputText,
@@ -69,15 +67,10 @@ export interface StudioRuntimeService {
     title?: string
     studioKind?: StudioKind
     agentType?: StudioSession['agentType']
-    permissionLevel?: StudioPermissionLevel
-    permissionMode?: StudioPermissionMode
     workspaceId?: string
     toolChoice?: StudioToolChoice
   }) => Promise<StudioSession>
   getSession: (sessionId: string) => Promise<StudioSession | null>
-  updateSession: (sessionId: string, patch: {
-    permissionMode?: StudioPermissionMode
-  }) => Promise<StudioSession | null>
   listSessionSkills: (sessionId: string) => Promise<StudioSkillDiscoveryEntry[] | null>
   startRun: (input: {
     projectId: string
@@ -209,20 +202,6 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
     async createSession(sessionInput) {
       const studioKind = sessionInput.studioKind ?? 'manim'
       const normalizedDirectory = input.workspaceProvider.normalizeDirectory(sessionInput.directory)
-      const permissionMode = sessionInput.permissionMode ?? mapPermissionLevelToMode(sessionInput.permissionLevel) ?? 'auto'
-      const resolvedPermissionMode = resolveStudioPermissionMode(
-        permissionMode,
-        createStudioSession({
-          projectId: sessionInput.projectId,
-          workspaceId: sessionInput.workspaceId,
-          studioKind,
-          agentType: sessionInput.agentType ?? 'builder',
-          title: sessionInput.title ?? getDefaultSessionTitle(studioKind),
-          directory: normalizedDirectory,
-          permissionLevel: 'L3',
-          permissionRules: [],
-        }),
-      )
       const session = createStudioSession({
         projectId: sessionInput.projectId,
         workspaceId: sessionInput.workspaceId,
@@ -230,14 +209,13 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
         agentType: sessionInput.agentType ?? 'builder',
         title: sessionInput.title ?? getDefaultSessionTitle(studioKind),
         directory: normalizedDirectory,
-        permissionLevel: resolvedPermissionMode.permissionLevel,
-        permissionRules: resolvedPermissionMode.permissionRules,
+        permissionLevel: 'L4',
+        permissionRules: [],
         metadata: createStudioSessionMetadata({
           existing: { studioKind },
           agentConfig: {
             toolChoice: sessionInput.toolChoice,
           },
-          permissionMode: resolvedPermissionMode.mode,
         }),
       })
 
@@ -254,23 +232,6 @@ export function createStudioRuntimeService(input: CreateStudioRuntimeServiceInpu
     },
     getSession(sessionId: string) {
       return input.persistence.sessionStore.getById(sessionId)
-    },
-    async updateSession(sessionId, patch) {
-      const session = await input.persistence.sessionStore.getById(sessionId)
-      if (!session) {
-        return null
-      }
-
-      if (patch.permissionMode) {
-        const nextMode = resolveStudioPermissionMode(patch.permissionMode, session)
-        return input.persistence.sessionStore.update(sessionId, {
-          permissionLevel: nextMode.permissionLevel,
-          permissionRules: nextMode.permissionRules,
-          metadata: nextMode.metadata,
-        })
-      }
-
-      return session
     },
     async listSessionSkills(sessionId) {
       const session = await input.persistence.sessionStore.getById(sessionId)
@@ -475,19 +436,4 @@ async function collectWorkResults(works: StudioWork[], persistence: StudioPersis
 
 function getDefaultSessionTitle(studioKind: StudioKind): string {
   return studioKind === 'plot' ? 'Plot Studio Session' : 'Manim Studio Session'
-}
-
-function mapPermissionLevelToMode(level?: StudioPermissionLevel): StudioPermissionMode | undefined {
-  switch (level) {
-    case 'L0':
-    case 'L1':
-    case 'L2':
-      return 'safe'
-    case 'L3':
-      return 'auto'
-    case 'L4':
-      return 'full'
-    default:
-      return undefined
-  }
 }

@@ -33,7 +33,6 @@ export function buildStudioAgentSystemPrompt(input: BuildStudioAgentSystemPrompt
     ...policy.builderRules,
     `工作目录：${input.session.directory}`,
     renderGuardText,
-    '子代理工作使用 task 工具。代码审查优先使用 ai-review 或 reviewer 子代理。',
     '只在用户明确按名称请求时才调用 skill 工具。skill 激活后按其指引执行，不要重复加载。',
     '如果激活的 skill 引用了外部文件，在需要时读取它们。',
   ]

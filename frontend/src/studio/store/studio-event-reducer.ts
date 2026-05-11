@@ -2,14 +2,12 @@ import type { StudioExternalEvent } from '../protocol/studio-agent-events'
 import type {
   StudioAssistantMessage,
   StudioMessage,
-  StudioPermissionRequest,
   StudioRun,
   StudioSessionSnapshot,
 } from '../protocol/studio-agent-types'
 import {
   createInitialStudioState,
   mergeStudioSnapshot,
-  replacePendingPermissions,
   upsertMessages,
   upsertRuns,
   upsertTasks,
@@ -27,19 +25,17 @@ import type { StudioSessionState } from './studio-types'
 
 export type StudioStateAction =
   | { type: 'snapshot_loading' }
-  | { type: 'snapshot_loaded'; snapshot: StudioSessionSnapshot; pendingPermissions: StudioPermissionRequest[] }
+  | { type: 'snapshot_loaded'; snapshot: StudioSessionSnapshot }
   | { type: 'session_replacing' }
-  | { type: 'session_replaced'; snapshot: StudioSessionSnapshot; pendingPermissions: StudioPermissionRequest[] }
+  | { type: 'session_replaced'; snapshot: StudioSessionSnapshot }
   | { type: 'snapshot_failed'; error: string }
   | { type: 'event_status'; status: StudioSessionState['connection']['eventStatus']; error?: string | null }
   | { type: 'event_received'; event: StudioExternalEvent }
   | { type: 'optimistic_messages_created'; userMessage: StudioMessage; assistantMessage: StudioAssistantMessage }
   | { type: 'run_submitting' }
-  | { type: 'run_started'; run: StudioRun; pendingPermissions: StudioPermissionRequest[] }
+  | { type: 'run_started'; run: StudioRun }
   | { type: 'run_submit_failed'; error: string }
   | { type: 'local_assistant_message'; message: StudioAssistantMessage }
-  | { type: 'permission_reply_started'; requestId: string }
-  | { type: 'permission_reply_finished'; requests: StudioPermissionRequest[] }
 
 export function studioEventReducer(
   state: StudioSessionState = createInitialStudioState(),
@@ -57,7 +53,7 @@ export function studioEventReducer(
       }
     case 'snapshot_loaded':
       {
-        const merged = mergeStudioSnapshot(state, action.snapshot, action.pendingPermissions)
+        const merged = mergeStudioSnapshot(state, action.snapshot)
         return {
           ...merged,
           runtime: {
@@ -79,7 +75,7 @@ export function studioEventReducer(
       }
     case 'session_replaced':
       {
-        const merged = mergeStudioSnapshot(createInitialStudioState(), action.snapshot, action.pendingPermissions)
+        const merged = mergeStudioSnapshot(createInitialStudioState(), action.snapshot)
         return {
           ...merged,
           connection: {
@@ -149,10 +145,7 @@ export function studioEventReducer(
       })
       return {
         ...state,
-        entities: replacePendingPermissions(
-          upsertRuns(state.entities, [action.run]),
-          action.pendingPermissions,
-        ),
+        entities: upsertRuns(state.entities, [action.run]),
         runtime: {
           ...state.runtime,
           activeRunId: action.run.id,
@@ -187,26 +180,6 @@ export function studioEventReducer(
       return {
         ...state,
         entities: upsertMessages(state.entities, [action.message]),
-      }
-    case 'permission_reply_started':
-      return {
-        ...state,
-        runtime: {
-          ...state.runtime,
-          replyingPermissionIds: {
-            ...state.runtime.replyingPermissionIds,
-            [action.requestId]: true,
-          },
-        },
-      }
-    case 'permission_reply_finished':
-      return {
-        ...state,
-        entities: replacePendingPermissions(state.entities, action.requests),
-        runtime: {
-          ...state.runtime,
-          replyingPermissionIds: {},
-        },
       }
     default:
       return state
@@ -256,28 +229,6 @@ function applyStudioExternalEvent(state: StudioSessionState, event: StudioExtern
       return applyToolCallEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties.input, event.properties.messageId)
     case 'tool.result':
       return applyToolResultEvent(nextBase, event.properties.runId, event.properties.callId, event.properties.toolName, event.properties, event.properties.messageId)
-    case 'permission.asked': {
-      const requests = [
-        ...nextBase.entities.pendingPermissionOrder
-          .map((id) => nextBase.entities.pendingPermissionsById[id])
-          .filter(Boolean),
-        event.properties,
-      ]
-      return {
-        ...nextBase,
-        entities: replacePendingPermissions(nextBase.entities, uniqPermissions(requests)),
-      }
-    }
-    case 'permission.replied': {
-      const requests = nextBase.entities.pendingPermissionOrder
-        .map((id) => nextBase.entities.pendingPermissionsById[id])
-        .filter((request): request is StudioPermissionRequest => Boolean(request))
-        .filter((request) => request.id !== event.properties.requestID)
-      return {
-        ...nextBase,
-        entities: replacePendingPermissions(nextBase.entities, requests),
-      }
-    }
     case 'question.requested':
       return {
         ...nextBase,
@@ -347,13 +298,5 @@ function buildFailedAssistantMessage(
       },
     ],
   }
-}
-
-function uniqPermissions(requests: StudioPermissionRequest[]): StudioPermissionRequest[] {
-  const byId = new Map<string, StudioPermissionRequest>()
-  for (const request of requests) {
-    byId.set(request.id, request)
-  }
-  return [...byId.values()]
 }
 

@@ -1,7 +1,5 @@
 import type {
   StudioFileAttachment,
-  StudioPermissionDecision,
-  StudioPermissionRequest,
   StudioRun,
   StudioTask,
   StudioWork,
@@ -93,20 +91,6 @@ export interface StudioToolResultExternalEvent {
   }
 }
 
-export interface StudioPermissionAskedExternalEvent {
-  type: 'permission.asked'
-  properties: StudioPermissionRequest
-}
-
-export interface StudioPermissionRepliedExternalEvent {
-  type: 'permission.replied'
-  properties: {
-    sessionID: string
-    requestID: string
-    reply: StudioPermissionDecision
-  }
-}
-
 export interface StudioQuestionRequestedExternalEvent {
   type: 'question.requested'
   properties: {
@@ -140,8 +124,6 @@ export type StudioExternalEvent =
   | StudioToolInputStartExternalEvent
   | StudioToolCallExternalEvent
   | StudioToolResultExternalEvent
-  | StudioPermissionAskedExternalEvent
-  | StudioPermissionRepliedExternalEvent
   | StudioQuestionRequestedExternalEvent
   | StudioConnectedExternalEvent
   | StudioHeartbeatExternalEvent

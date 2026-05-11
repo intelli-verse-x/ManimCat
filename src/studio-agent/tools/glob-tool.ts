@@ -18,7 +18,7 @@ export function createStudioGlobTool(): StudioToolDefinition<GlobToolInput> {
     description: 'Find files by glob pattern.',
     category: 'safe-read',
     permission: 'glob',
-    allowedAgents: ['builder', 'reviewer', 'designer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeGlobTool(input, context as StudioRuntimeBackedToolContext)
   }

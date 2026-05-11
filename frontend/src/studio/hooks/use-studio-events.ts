@@ -63,9 +63,6 @@ function resolveEventSessionId(event: StudioExternalEvent): string | null {
     case 'tool.result':
     case 'question.requested':
       return event.properties.sessionId
-    case 'permission.asked':
-    case 'permission.replied':
-      return event.properties.sessionID
     case 'run.updated':
       return event.properties.run.sessionId
     case 'studio.connected':

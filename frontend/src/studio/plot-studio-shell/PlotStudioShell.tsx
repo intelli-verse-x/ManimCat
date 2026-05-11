@@ -1,6 +1,5 @@
 import { useRef } from 'react'
 import { useI18n } from '../../i18n'
-import { StudioPermissionModeModal } from '../commands/ui/StudioPermissionModeModal'
 import { StudioSessionHistoryModal } from '../commands/ui/StudioSessionHistoryModal'
 import type { StudioCommandPanelHandle } from '../components/StudioCommandPanel'
 import { PlotStudioDragOverlay } from './components/PlotStudioDragOverlay'
@@ -45,7 +44,6 @@ export function PlotStudioShell({ onExit, isExiting }: PlotStudioShellProps) {
         />
       </div>
 
-      <StudioPermissionModeModal {...shell.studio.permissionModeModal} />
       <StudioSessionHistoryModal {...shell.studio.historyModal} />
       <PlotStudioExitConfirmModal
         isOpen={shell.confirmExitOpen}

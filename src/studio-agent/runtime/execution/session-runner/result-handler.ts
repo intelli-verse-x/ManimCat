@@ -7,7 +7,7 @@ import type {
   StudioSession
 } from '../../../domain/types'
 import type { StudioSessionRunnerDependencies } from './dependency-center'
-import type { StudioSubagentRunResult } from '../../tools/tool-runtime-context'
+import type { StudioRunExecutionResult } from '../../tools/tool-runtime-context'
 
 export async function handleCancelledRun(
   deps: StudioSessionRunnerDependencies,
@@ -36,7 +36,7 @@ export async function finalizeSuccessfulRun(
     outcome: 'continue' | 'stop' | 'compact'
     eventBus: StudioEventBus
   },
-): Promise<StudioSubagentRunResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
+): Promise<StudioRunExecutionResult & { run: StudioRun; assistantMessage: StudioAssistantMessage }> {
   const finishedRun = finalizeRunState({ run: input.run, outcome: input.outcome })
   await deps.runStore?.update(input.run.id, finishedRun)
   input.eventBus.publish({

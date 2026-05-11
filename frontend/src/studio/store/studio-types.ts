@@ -1,6 +1,5 @@
 import type {
   StudioMessage,
-  StudioPermissionRequest,
   StudioRun,
   StudioSession,
   StudioTask,
@@ -20,8 +19,6 @@ export interface StudioEntityState {
   workOrder: string[]
   workResultsById: Record<string, StudioWorkResult>
   workResultOrder: string[]
-  pendingPermissionsById: Record<string, StudioPermissionRequest>
-  pendingPermissionOrder: string[]
 }
 
 export interface StudioConnectionState {
@@ -39,7 +36,6 @@ export interface StudioRuntimeState {
   assistantTextByRunId: Record<string, string>
   optimisticAssistantMessageIdByRunId: Record<string, string>
   pendingAssistantMessageId: string | null
-  replyingPermissionIds: Record<string, boolean>
   latestQuestion: {
     runId: string
     question: string

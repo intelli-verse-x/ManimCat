@@ -1,6 +1,4 @@
 import type {
-  StudioPermissionDecision,
-  StudioPermissionRequest,
   StudioRun,
   StudioTask,
   StudioWork,
@@ -9,7 +7,6 @@ import type {
 import type { StudioReviewViewModel } from '../store/studio-selectors'
 import { formatStudioTime, studioSeverityBadge, truncateStudioText } from '../theme'
 import { translateEventStatus, translateResultKind, translateRunStatus, translateSeverity, translateSnapshotStatus } from '../labels'
-import { StudioPermissionPanel } from './StudioPermissionPanel'
 import { StudioTaskTimeline } from './StudioTaskTimeline'
 import { useI18n } from '../../i18n'
 
@@ -19,14 +16,11 @@ interface StudioPipelinePanelProps {
   result: StudioWorkResult | null
   tasks: StudioTask[]
   review: StudioReviewViewModel | null
-  requests: StudioPermissionRequest[]
-  replyingPermissionIds: Record<string, boolean>
   latestAssistantText: string
   latestQuestion: { question: string; details?: string } | null
   snapshotStatus: 'idle' | 'loading' | 'ready' | 'error'
   eventStatus: 'idle' | 'connecting' | 'connected' | 'reconnecting' | 'disconnected'
   errorMessage?: string | null
-  onReply: (requestId: string, reply: StudioPermissionDecision) => Promise<void> | void
   onRefresh: () => Promise<void> | void
 }
 
@@ -36,14 +30,11 @@ export function StudioPipelinePanel({
   result,
   tasks,
   review,
-  requests,
-  replyingPermissionIds,
   latestAssistantText,
   latestQuestion,
   snapshotStatus,
   eventStatus,
   errorMessage,
-  onReply,
   onRefresh,
 }: StudioPipelinePanelProps) {
   const { t } = useI18n()
@@ -158,14 +149,6 @@ export function StudioPipelinePanel({
             <SectionDivider />
           </>
         )}
-
-        <div className="min-h-0 flex-1">
-          <StudioPermissionPanel
-            requests={requests}
-            replyingPermissionIds={replyingPermissionIds}
-            onReply={onReply}
-          />
-        </div>
       </div>
     </aside>
   )

@@ -18,7 +18,7 @@ export function createStudioGrepTool(): StudioToolDefinition<GrepToolInput> {
     description: 'Search for text in the workspace.',
     category: 'safe-read',
     permission: 'grep',
-    allowedAgents: ['builder', 'reviewer', 'designer'],
+    allowedAgents: ['builder'],
     requiresTask: false,
     execute: async (input, context) => executeGrepTool(input, context as StudioRuntimeBackedToolContext)
   }

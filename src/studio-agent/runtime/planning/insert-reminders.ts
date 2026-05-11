@@ -30,10 +30,6 @@ function buildReminders(input: InsertStudioRemindersInput): string[] {
   const reminders: string[] = []
   const policy = getStudioExecutionPolicy(input.studioKind ?? 'manim')
 
-  if (input.agentType === 'builder' && input.policyDecision.mode === 'continue-current-work' && input.workContext?.currentWork) {
-    reminders.push(policy.builderReminderTexts.runningWork(input.workContext.currentWork.title))
-  }
-
   if (input.agentType === 'builder' && input.workContext?.lastRender?.status === 'failed') {
     reminders.push(policy.builderReminderTexts.failedRender)
   }
