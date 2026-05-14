@@ -39,7 +39,7 @@ Requested change: {{instructions}}
 - Start with `### START ###`
 - End with `### END ###`
 - Use `from manim import *`
-- Keep `MainScene` unless true 3D is required
+- Name your class `MainScene` and inherit from `Scene`. Only use `ThreeDScene` when true 3D is required
 {{/if}}
 {{#if isImage}}
 - Output only `YON_IMAGE` anchor blocks

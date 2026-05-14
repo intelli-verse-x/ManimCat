@@ -44,15 +44,20 @@ export function executeManimCommand(
   const normalizedOptions = normalizeExecuteOptions(options)
   const args = buildManimArgs(codeFile, normalizedOptions)
 
+  // Use custom MANIM_PATH if provided, otherwise use 'manim' from PATH
+  // If MANIM_PATH is 'py' or 'python', prepend '-m manim' to args
+  const manimCommand = process.env.MANIM_PATH || 'manim'
+  const finalArgs = ['py', 'python'].includes(manimCommand) ? ['-m', 'manim', ...args] : args
+
   logger.info(`Job ${normalizedOptions.jobId}: starting manim process`, {
-    command: `manim ${args.join(' ')}`,
+    command: `${manimCommand} ${finalArgs.join(' ')}`,
     cwd: normalizedOptions.tempDir
   })
 
   return new Promise((resolve) => {
     const startTime = Date.now()
     const state = createExecutionState()
-    const proc = spawn('manim', args, { cwd: normalizedOptions.tempDir })
+    const proc = spawn(manimCommand, finalArgs, { cwd: normalizedOptions.tempDir })
 
     registerManimProcess(normalizedOptions.jobId, proc)
 

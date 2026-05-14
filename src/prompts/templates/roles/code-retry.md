@@ -32,7 +32,7 @@ Error: {{errorMessage}}
 - Preserve Manim structure compatibility.
 - If the patch touches on-screen text, preserve the current locale language and do not introduce mixed-language text.
 {{#if isVideo}}
-- In video mode, preserve a renderable `MainScene`.
+- In video mode, preserve a renderable `MainScene` class that inherits from `Scene` (or `ThreeDScene` for 3D).
 {{/if}}
 {{#if isImage}}
 - In image mode, preserve the existing `YON_IMAGE` anchor structure and continuous numbering.

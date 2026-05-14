@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { createLogger } from '../../../utils/logger'
-import { cleanManimCode } from '../../../utils/manim-code-cleaner'
+import { cleanManimCode, getSceneClassName } from '../../../utils/manim-code-cleaner'
 import { executeManimCommand, type ManimExecuteOptions } from '../../../utils/manim-executor'
 import { findVideoFile } from '../../../utils/file-utils'
 import { addBackgroundMusic } from '../../../audio/bgm-mixer'
@@ -141,12 +141,13 @@ export async function renderVideo(
 
     fs.writeFileSync(codeFile, cleaned.code, 'utf-8')
 
+    const sceneName = getSceneClassName(cleaned.code)
     const options: ManimExecuteOptions = {
       jobId,
       quality,
       frameRate,
       format: 'mp4',
-      sceneName: 'MainScene',
+      sceneName,
       tempDir,
       mediaDir,
       timeoutMs
