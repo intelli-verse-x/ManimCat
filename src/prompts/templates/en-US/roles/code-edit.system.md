@@ -40,7 +40,7 @@ You modify existing code according to the user's editing instruction and return 
 {{#if isVideo}}
 - Start with `### START ###` and end with `### END ###`.
 - Use `from manim import *`.
-- Keep `MainScene` unless true 3D is required.
+- Name your class `MainScene` and inherit from `Scene`. Only use `ThreeDScene` when true 3D is required.
 {{/if}}
 {{#if isImage}}
 - Output only `YON_IMAGE` anchor blocks.

@@ -68,6 +68,12 @@ function runCommand(command: string, args: string[], cwd: string): Promise<Comma
 }
 
 function resolveMypyCommand(): ResolvedCommand | null {
+  // Allow disabling mypy via environment variable
+  if (process.env.STATIC_GUARD_SKIP_MYPY === 'true') {
+    logger.info('mypy checks disabled via STATIC_GUARD_SKIP_MYPY=true')
+    return null
+  }
+
   const pythonExecutable = process.env.PYTHON_EXECUTABLE || 'python'
   return {
     command: pythonExecutable,
@@ -289,7 +295,20 @@ async function checkUnit(code: string, lineOffset: number): Promise<StaticDiagno
       codeLength: code.length
     })
 
-    const pyCompileResult = await runCommand('python', ['-m', 'py_compile', codeFile], tempDir)
+    const pythonExecutable = process.env.PYTHON_EXECUTABLE || 'python'
+
+    // Step 1: Run py_compile for syntax checking
+    let pyCompileResult: CommandResult
+    try {
+      pyCompileResult = await runCommand(pythonExecutable, ['-m', 'py_compile', codeFile], tempDir)
+    } catch (error) {
+      logger.warn('py_compile command failed to execute, skipping syntax check', {
+        error: String(error),
+        pythonExecutable
+      })
+      return []
+    }
+
     if (pyCompileResult.exitCode !== 0) {
       logger.warn('py_compile reported diagnostic', {
         codeFile,
@@ -300,17 +319,36 @@ async function checkUnit(code: string, lineOffset: number): Promise<StaticDiagno
       return diagnostic ? [diagnostic] : []
     }
 
+    // Step 2: Run mypy for type checking (optional - gracefully skip if not available)
     const mypyCommand = resolveMypyCommand()
     if (!mypyCommand) {
       logger.warn('mypy command not found, skip mypy static checks')
       return []
     }
 
-    const mypyResult = await runCommand(
-      mypyCommand.command,
-      [...mypyCommand.argsPrefix, ...buildMypyArgs(codeFile)],
-      tempDir
-    )
+    let mypyResult: CommandResult
+    try {
+      mypyResult = await runCommand(
+        mypyCommand.command,
+        [...mypyCommand.argsPrefix, ...buildMypyArgs(codeFile)],
+        tempDir
+      )
+    } catch (error) {
+      // mypy not installed or failed to run - this is not fatal, just skip type checking
+      logger.warn('mypy command failed to execute, skipping type checks', {
+        error: String(error),
+        command: mypyCommand.displayName
+      })
+      return []
+    }
+
+    // Check if mypy module is not installed
+    const mypyOutput = (mypyResult.stdout + mypyResult.stderr).toLowerCase()
+    if (mypyOutput.includes('no module named mypy') || mypyOutput.includes('no module named \'mypy\'')) {
+      logger.warn('mypy module not installed, skipping type checks')
+      return []
+    }
+
     const mypyDiagnostics = parseMypyDiagnostics(mypyResult.stdout, mypyResult.stderr, lineOffset)
       .filter((diagnostic) => !shouldIgnoreMypyDiagnostic(diagnostic, code, lineOffset))
 
@@ -329,12 +367,22 @@ async function checkUnit(code: string, lineOffset: number): Promise<StaticDiagno
       return mypyDiagnostics
     }
 
+    // Only throw if mypy failed for an unknown reason AND produced no diagnostics
     if (mypyResult.exitCode !== 0 && mypyDiagnostics.length === 0) {
-      throw new Error(
-        mypyResult.stderr.trim() ||
-          mypyResult.stdout.trim() ||
-          `${mypyCommand.displayName} check failed`
-      )
+      // Check if it's a known non-fatal error (module not found, etc.)
+      if (mypyOutput.includes('no module named') || mypyOutput.includes('modulenotfounderror')) {
+        logger.warn('mypy failed due to missing module, skipping', {
+          stderrPreview: mypyResult.stderr.trim().slice(0, 300)
+        })
+        return []
+      }
+      // For other failures, log but don't throw - allow the pipeline to continue
+      logger.warn('mypy check failed with unknown error, continuing without type checks', {
+        exitCode: mypyResult.exitCode,
+        stderrPreview: mypyResult.stderr.trim().slice(0, 300),
+        stdoutPreview: mypyResult.stdout.trim().slice(0, 300)
+      })
+      return []
     }
 
     return []

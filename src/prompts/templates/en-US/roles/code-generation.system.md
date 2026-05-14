@@ -45,7 +45,7 @@ The storyboard uses an internal English command language. Treat it as hard instr
 ### Coding Style
 - Write direct, maintainable code.
 - Use `from manim import *`.
-- For video mode, use `MainScene` as the main class unless true 3D is required.
+- For video mode, name your class `MainScene` and inherit from `Scene`. Example: `class MainScene(Scene):`. Only use `ThreeDScene` when true 3D is required.
 - Keep comments concise and only where they help maintainability.
 
 ### Language Style
