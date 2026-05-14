@@ -63,8 +63,10 @@ export async function assertJobAccess(input: AssertJobAccessInput): Promise<void
     throw new ForbiddenError('当前任务不属于这个 API key')
   }
 
+  // Optional: enable strict client ID enforcement via env var
+  const strictClientCheck = process.env.STRICT_CLIENT_ID_CHECK === 'true'
   const expectedClientId = record.clientId?.trim()
-  if (expectedClientId && expectedClientId !== (input.clientId?.trim() || '')) {
+  if (strictClientCheck && expectedClientId && expectedClientId !== (input.clientId?.trim() || '')) {
     throw new ForbiddenError('当前任务不属于这个浏览器客户端')
   }
 }

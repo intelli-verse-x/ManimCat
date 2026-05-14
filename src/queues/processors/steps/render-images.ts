@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { createLogger } from '../../../utils/logger'
-import { cleanManimCode } from '../../../utils/manim-code-cleaner'
+import { cleanManimCode, getSceneClassName } from '../../../utils/manim-code-cleaner'
 import { executeManimCommand, type ManimExecuteOptions } from '../../../utils/manim-executor'
 import { findImageFile } from '../../../utils/file-utils'
 import { ensureJobNotCancelled } from '../../../services/job-cancel'
@@ -87,11 +87,7 @@ function parseImageCodeBlocks(code: string): ImageCodeBlock[] {
 }
 
 function detectSceneName(code: string): string {
-  const match = code.match(/class\s+([A-Za-z_]\w*)\s*\([^)]*Scene[^)]*\)\s*:/)
-  if (match?.[1]) {
-    return match[1]
-  }
-  throw new Error('Image code block is missing a renderable Scene class')
+  return getSceneClassName(code)
 }
 
 function clearPreviousImages(outputDir: string, jobId: string): void {
