@@ -8,6 +8,7 @@ Notes:
 2) Index sets only use abbreviations
 3) ThreeDVMobject inherits VMobject base args via @VMobject
 4) Low-level rendering/cache args are intentionally omitted
+5) ImageMobject requires valid file paths - DO NOT USE placeholder paths like "document.png", "essay.jpg", etc. If the concept mentions images/photos/documents but no actual image files are provided, use geometric shapes, text, or icons instead to represent the concept visually.
 
 ### Core Methods
 method_codebook = {
@@ -269,7 +270,9 @@ args_codebook = {
   lag_ratio: lag_r,
   n_times: n_t,
   flash_radius: fl_r,
-  line_length: ln_l
+  line_length: ln_l,
+  filename: fname,
+  image_mode: img_mode
 }
 
 ### Args Index Sets (abbr only)
@@ -345,6 +348,9 @@ unique_args_index = {
     Text: [text, fs, ls, font, slant, wgt, t2c, t2f, t2g, t2s, t2w, grad, tab_w, hgt, wid, sh_ctr, dis_lig, wmf, usc],
     Title: [t_parts, inc_ul, muwtt, ul_buf],
     DecimalNumber: [ndp, inc_s, gwc, fs, unit]
+  },
+  media: {
+    ImageMobject: [fname, img_mode, hgt, wid]
   },
   coordinate: {
     Axes: [x_r, y_r, x_l, y_l, ax_cfg, xax_cfg, yax_cfg, tips],
