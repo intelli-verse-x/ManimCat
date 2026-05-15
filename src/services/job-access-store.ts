@@ -55,7 +55,7 @@ export async function assertJobAccess(input: AssertJobAccessInput): Promise<void
   let record: StoredJobAccessRecord
   try {
     record = JSON.parse(raw) as StoredJobAccessRecord
-  } catch {
+  } catch (err) {
     throw new ForbiddenError('当前任务的访问元数据无效')
   }
 
@@ -63,7 +63,6 @@ export async function assertJobAccess(input: AssertJobAccessInput): Promise<void
     throw new ForbiddenError('当前任务不属于这个 API key')
   }
 
-  // Optional: enable strict client ID enforcement via env var
   const strictClientCheck = process.env.STRICT_CLIENT_ID_CHECK === 'true'
   const expectedClientId = record.clientId?.trim()
   if (strictClientCheck && expectedClientId && expectedClientId !== (input.clientId?.trim() || '')) {

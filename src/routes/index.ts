@@ -12,6 +12,7 @@ import jobStatusRouter from './job-status.route'
 import jobCancelRouter from './job-cancel.route'
 import promptsRouter from './prompts.route'
 import healthRouter from './health.route'
+import diagnosticsRouter from './diagnostics.route'
 import metricsRouter from './metrics.route'
 import aiTestRouter from './ai-test.route'
 import aiModelsRouter from './ai-models.route'
@@ -25,6 +26,7 @@ const router = express.Router()
 
 // 鎸傝浇鍋ュ悍妫€鏌ヨ矾鐢憋紙涓嶄娇鐢?/api 鍓嶇紑锛?
 router.use(healthRouter)
+router.use(diagnosticsRouter)
 
 // 鎸傝浇 API 璺敱锛堜娇鐢?/api 鍓嶇紑锛?
 router.use('/api', generateRouter)
