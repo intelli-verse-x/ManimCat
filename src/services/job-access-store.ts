@@ -41,8 +41,9 @@ export async function storeJobAccess(input: StoreJobAccessInput): Promise<void> 
     createdAt: Date.now(),
   }
 
-  await redisClient.set(key, JSON.stringify(payload))
-  await redisClient.expire(key, getRetentionSeconds())
+  await redisClient.set(key, JSON.stringify(payload), {
+    EX: getRetentionSeconds()
+  })
 }
 
 export async function assertJobAccess(input: AssertJobAccessInput): Promise<void> {
