@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { spawn } from 'node:child_process'
+import { buildInheritedChildEnv } from '../../utils/inherited-process-env'
 import { StudioRunCancelledError, readAbortReason } from '../../studio-agent/runtime/execution/run-cancellation'
 
 export interface MatplotlibExecutionResult {
@@ -96,7 +97,7 @@ function spawnProcess(
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: {
-        ...process.env,
+        ...buildInheritedChildEnv(),
         MPLCONFIGDIR: matplotlibConfigDir ?? process.env.MPLCONFIGDIR,
       },
     })

@@ -9,6 +9,8 @@
 - **Animation syntax**: ALL animations require a mobject argument. Examples: `Create(circle)`, `FadeIn(text)`, `Write(label)`. NEVER use `Create()`, `FadeIn()`, or `Write()` without passing the object to animate
 - **No invented classes**: do not invent classes like `SinFunction`, `CosFunction`, `ParabolaFunction`, etc. Use `axes.plot(lambda x: ...)` to draw mathematical functions. Do not import or use any class not explicitly mentioned in the API index
 - **Import statement rules**: ONLY import class names, constants, and function names. NEVER put function calls, expressions, or code execution in import statements. Valid: `from manim import Scene, Circle, BLUE`. Invalid: `from manim import Circle().set_color(BLUE)` or `from manim import Axes.plot(...)`. Imports must be simple identifiers only
+- **Standard library imports**: NEVER import standard library modules like `os`, `sys`, `math`, `random`, `time` from manim. These must be imported separately: `import os` or `import math`. The manim package only contains manim classes and functions.
+- **ImageMobject restriction**: ImageMobject requires valid file paths to existing image files. DO NOT use placeholder or non-existent file paths like "document.png", "essay.jpg", "photo.png", etc. If a concept mentions images/photos/documents but no actual image files are provided, represent the concept visually using geometric shapes (Rectangle with rounded corners for documents, Circle with decorations for photos), text labels, or icons instead. NEVER attempt to load images that don't exist.
 
 ### Error Correction
 
@@ -30,3 +32,115 @@
 - **Coordinate-system consistency**: all graphics must be mapped through `axes.c2p` onto the coordinate axes. Free positioning detached from the axis system is forbidden
 - **Collision avoidance and alignment**: text, labels, and formulas must have explicit positional offsets, preferably using `next_to`, `shift`, or `buff`. Multiple text elements may not overlap in the same position
 - **Function plotting**: to draw mathematical functions, use `axes.plot(lambda x: expression, color=COLOR)`. Examples: `axes.plot(lambda x: np.sin(x))`, `axes.plot(lambda x: x**2)`, `axes.plot(lambda x: np.exp(x))`. Never invent function classes
+
+### Code Examples (Reference Patterns)
+
+**Axes and coordinate systems** - Use `Axes` or `NumberPlane` for grids:
+```python
+from manim import *
+class MainScene(Scene):
+    def construct(self):
+        # Basic axes (NO grid_lines attribute - use NumberPlane for grids)
+        axes = Axes(
+            x_range=[-3, 3, 1],
+            y_range=[-2, 2, 1],
+            x_length=6,
+            y_length=4,
+            axis_config={"include_tip": True, "include_numbers": True}
+        )
+        self.play(Create(axes))
+        
+        # Plot a function
+        graph = axes.plot(lambda x: x**2, color=BLUE)
+        self.play(Create(graph))
+        
+        # Add a point on the graph
+        dot = Dot(axes.c2p(1, 1), color=RED)
+        self.play(FadeIn(dot))
+        
+        # Add label at a point
+        label = MathTex("(1, 1)").next_to(dot, UP)
+        self.play(Write(label))
+```
+
+**NumberPlane for grid backgrounds**:
+```python
+from manim import *
+class MainScene(Scene):
+    def construct(self):
+        # Use NumberPlane when you need a grid background
+        plane = NumberPlane(
+            x_range=[-4, 4, 1],
+            y_range=[-3, 3, 1],
+            background_line_style={"stroke_opacity": 0.5}
+        )
+        self.play(Create(plane))
+        
+        # Draw on the plane
+        circle = Circle(radius=1, color=YELLOW)
+        self.play(Create(circle))
+```
+
+**Vertical and horizontal lines on axes**:
+```python
+from manim import *
+class MainScene(Scene):
+    def construct(self):
+        axes = Axes(x_range=[-3, 3], y_range=[-2, 2])
+        self.play(Create(axes))
+        
+        # Vertical line at x=1 (use Line, not get_vertical_line)
+        v_line = Line(axes.c2p(1, -2), axes.c2p(1, 2), color=RED)
+        self.play(Create(v_line))
+        
+        # Horizontal line at y=0.5
+        h_line = Line(axes.c2p(-3, 0.5), axes.c2p(3, 0.5), color=GREEN)
+        self.play(Create(h_line))
+        
+        # Dashed line
+        dashed = DashedLine(axes.c2p(0, 0), axes.c2p(2, 1), color=YELLOW)
+        self.play(Create(dashed))
+```
+
+**Matrix operations** - Use `Matrix`, `IntegerMatrix`, or `DecimalMatrix`:
+```python
+from manim import *
+class MainScene(Scene):
+    def construct(self):
+        # Create a matrix
+        matrix = Matrix([[1, 2], [3, 4]], left_bracket="(", right_bracket=")")
+        self.play(Write(matrix))
+        self.wait(0.5)
+        
+        # Highlight matrix entries - use get_entries() for individual elements
+        entries = matrix.get_entries()
+        self.play(entries[0].animate.set_color(YELLOW))  # Highlight first entry
+        
+        # Transform to another matrix
+        matrix2 = Matrix([[5, 6], [7, 8]], left_bracket="(", right_bracket=")")
+        self.play(Transform(matrix, matrix2))
+        
+        # Matrix with brackets and labels
+        m = IntegerMatrix([[1, 0], [0, 1]], left_bracket="[", right_bracket="]")
+        label = MathTex("I = ").next_to(m, LEFT)
+        self.play(FadeIn(VGroup(label, m)))
+```
+
+**Matrix multiplication visualization**:
+```python
+from manim import *
+class MainScene(Scene):
+    def construct(self):
+        m1 = Matrix([[1, 2], [3, 4]])
+        m2 = Matrix([[5, 6], [7, 8]])
+        equals = MathTex("\\times")
+        result = Matrix([[19, 22], [43, 50]])
+        
+        group = VGroup(m1, equals, m2).arrange(RIGHT, buff=0.3)
+        self.play(Write(group))
+        self.wait(0.5)
+        
+        equals2 = MathTex("=").next_to(m2, RIGHT)
+        result.next_to(equals2, RIGHT)
+        self.play(Write(equals2), Write(result))
+```

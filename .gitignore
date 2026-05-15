@@ -12,6 +12,7 @@ dist/
 .motia/
 
 # Environment
+.env.*.local
 
 # Generated files
 public/videos/*

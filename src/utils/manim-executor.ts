@@ -15,6 +15,7 @@ import {
   normalizeExecuteOptions,
   startMemoryMonitor
 } from './manim-executor-runtime'
+import { buildInheritedChildEnv } from './inherited-process-env'
 
 const logger = createLogger('ManimExecutor')
 
@@ -57,7 +58,11 @@ export function executeManimCommand(
   return new Promise((resolve) => {
     const startTime = Date.now()
     const state = createExecutionState()
-    const proc = spawn(manimCommand, finalArgs, { cwd: normalizedOptions.tempDir })
+    const proc = spawn(manimCommand, finalArgs, {
+      cwd: normalizedOptions.tempDir,
+      env: buildInheritedChildEnv(),
+      shell: process.platform === 'win32'
+    })
 
     registerManimProcess(normalizedOptions.jobId, proc)
 
@@ -135,7 +140,27 @@ export function executeManimCommand(
         stderrPreview: state.stderr.slice(-500),
         peakMemoryMB: state.peakMemoryMB
       })
-      settle(buildResult(false, state, undefined, code ?? undefined))
+      let stderrFinal = state.stderr
+      
+      // Enhanced error messages for missing dependencies
+      if (stderrFinal.includes('FileNotFoundError')) {
+        // Windows-specific subprocess errors
+        if (stderrFinal.includes('WinError 2') || stderrFinal.includes('[WinError 2]')) {
+          stderrFinal += `\n\nManimCat: Windows failed to start a subprocess dependency (often ffmpeg, LaTeX, or dvisvgm). The Node dev server may be using a PATH that does not include your User install. Set MANIMCAT_FFMPEG_PATH to the full path of ffmpeg.exe (and MANIMCAT_TEX_BIN to your TeX bin if you use MathTex), or MANIMCAT_PATH_PREPEND with semicolon-separated folders, then restart the backend.\n`
+        }
+        // Linux/Mac subprocess errors
+        else if (stderrFinal.includes('No such file or directory')) {
+          if (stderrFinal.toLowerCase().includes('latex') || stderrFinal.toLowerCase().includes('dvisvgm')) {
+            stderrFinal += `\n\nManimCat: LaTeX/dvisvgm not found in PATH. For production Docker: ensure texlive-latex-extra and dvisvgm are installed in Dockerfile. For local development: install TeX Live and ensure binaries are in PATH or set MANIMCAT_TEX_BIN environment variable.\n`
+          } else if (stderrFinal.toLowerCase().includes('ffmpeg')) {
+            stderrFinal += `\n\nManimCat: FFmpeg not found in PATH. For production Docker: ensure ffmpeg is installed in Dockerfile. For local development: install FFmpeg and ensure it's in PATH or set MANIMCAT_FFMPEG_PATH environment variable.\n`
+          } else {
+            stderrFinal += `\n\nManimCat: A required dependency is missing from PATH. For production: verify all dependencies are installed in Dockerfile (ffmpeg, texlive, perl, dvisvgm). For local development: check your PATH or use MANIMCAT_PATH_PREPEND to add required directories.\n`
+          }
+        }
+      }
+      
+      settle(buildResult(false, state, stderrFinal, code ?? undefined))
     })
 
     proc.on('error', (error) => {

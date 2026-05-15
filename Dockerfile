@@ -13,15 +13,28 @@ USER root
 COPY --from=node_base /usr/local/bin /usr/local/bin
 COPY --from=node_base /usr/local/lib/node_modules /usr/local/lib/node_modules
 
-# 2. 【关键】安装 Redis 和中文字体，并刷新字体缓存
+# 2. 【关键】安装 Redis、中文字体、LaTeX、Perl，并刷新字体缓存
 # 使用阿里云源加速
+# Note: manimcommunity/manim:stable already includes texlive-latex-base and texlive-fonts-recommended
+# We add texlive-latex-extra for additional LaTeX packages needed by MathTex/Tex
+# Perl is required by TeX Live for running LaTeX scripts
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources && \
     apt-get update && \
-    apt-get install -y redis-server fontconfig \
+    apt-get install -y \
+    redis-server \
+    fontconfig \
     fonts-noto-cjk fonts-noto-cjk-extra \
     fonts-wqy-zenhei fonts-wqy-microhei fonts-lxgw-wenkai \
-    ffmpeg curl ca-certificates && \
-    fc-cache -f -v
+    ffmpeg \
+    curl \
+    ca-certificates \
+    texlive-latex-extra \
+    texlive-fonts-extra \
+    perl \
+    dvisvgm && \
+    fc-cache -f -v && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # 2.1 安装 Python 运行时与静态检查依赖
 #     显式声明 matplotlib，避免依赖基础镜像的隐式预装状态。
@@ -79,5 +92,14 @@ RUN npm run build
 
 ENV PORT=7860
 EXPOSE 7860
+
+# Environment variables for production (binaries are in system PATH in Docker)
+# These paths are set to standard locations in the Docker image
+# Note: In production Docker, ffmpeg, latex, and dvisvgm are already in PATH
+# so these explicit paths are not needed, but we document them for clarity
+ENV PYTHON_EXECUTABLE=python3
+ENV MANIM_PATH=manim
+# Skip mypy in production for faster startup (optional - can be enabled if needed)
+ENV STATIC_GUARD_SKIP_MYPY=false
 
 CMD ["node", "start-with-redis-hf.cjs"]
