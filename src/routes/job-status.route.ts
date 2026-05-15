@@ -40,9 +40,19 @@ router.get(
     }
 
     logger.debug('检查任务状态', { jobId })
+    
+    const manimcatApiKey = res.locals.manimcatApiKey as string | undefined
+    if (!manimcatApiKey) {
+      logger.error('检查任务状态时未提供 API key', { jobId })
+      return res.status(401).json({
+        error: '未授权：缺少 API key',
+        details: { jobId }
+      })
+    }
+    
     await assertJobAccess({
       jobId,
-      apiKey: res.locals.manimcatApiKey as string,
+      apiKey: manimcatApiKey,
       clientId: getRequestClientId(req),
     })
     const tracking = await getJobTrackingState(jobId)
