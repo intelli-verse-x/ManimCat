@@ -108,6 +108,14 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
     renderCacheKey: stableRenderCacheKey
   })
 
+  if (authenticatedManimcatApiKey) {
+    await storeJobAccess({
+      jobId,
+      apiKey: authenticatedManimcatApiKey,
+      clientId,
+    })
+  }
+
   // 设置初始阶段
   await storeJobStage(jobId, code ? 'rendering' : 'analyzing', {
     status: 'queued',
@@ -137,14 +145,6 @@ async function handleGenerateRequest(req: express.Request, res: express.Response
       timeout: resolveJobTimeoutMs(videoConfig as any)
     }
   )
-
-  if (authenticatedManimcatApiKey) {
-    await storeJobAccess({
-      jobId,
-      apiKey: authenticatedManimcatApiKey,
-      clientId,
-    })
-  }
 
   await recordUsageSubmission('generate', outputMode)
 

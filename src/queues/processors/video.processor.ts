@@ -220,3 +220,13 @@ videoQueue.process(async (job) => {
     }
   )
 })
+
+// Verify worker initialized successfully
+;(async () => {
+  try {
+    await videoQueue.isReady()
+    logger.info('Worker initialized and ready to process jobs')
+  } catch (error: any) {
+    logger.error('CRITICAL: Worker failed to initialize', { error: error.message })
+  }
+})()
