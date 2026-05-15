@@ -2,6 +2,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { spawn } from 'child_process'
+import { buildInheritedChildEnv } from '../../utils/inherited-process-env'
 import { createLogger } from '../../utils/logger'
 import type { OutputMode } from '../../types'
 import type { StaticCheckBatch, StaticDiagnostic } from './types'
@@ -37,7 +38,11 @@ function runCommand(command: string, args: string[], cwd: string): Promise<Comma
       args,
       cwd
     })
-    const proc = spawn(command, args, { cwd, windowsHide: true })
+    const proc = spawn(command, args, {
+      cwd,
+      windowsHide: true,
+      env: buildInheritedChildEnv()
+    })
     let stdout = ''
     let stderr = ''
 

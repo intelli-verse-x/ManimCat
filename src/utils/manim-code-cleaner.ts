@@ -30,6 +30,24 @@ function fixBadImports(code: string): { code: string; fixed: boolean } {
     fixed = true
   }
 
+  // Fix: from manim import os, sys, math, etc. -> import os; import sys; etc.
+  // Standard library modules should not be imported from manim
+  const stdlibModules = ['os', 'sys', 'math', 'random', 'time', 'json', 're', 'typing', 'pathlib', 'datetime', 'collections']
+  for (const mod of stdlibModules) {
+    const pattern = new RegExp(`from\\s+manim\\s+import\\s+${mod}\\b`, 'g')
+    if (pattern.test(cleaned)) {
+      cleaned = cleaned.replace(pattern, `import ${mod}`)
+      fixed = true
+    }
+  }
+
+  // Also fix cases like: from manim import *, os -> from manim import * \n import os
+  const wildcardWithStdlib = /from\s+manim\s+import\s+\*\s*,\s*(os|sys|math|random|time|json|re|typing|pathlib|datetime|collections)\b/g
+  if (wildcardWithStdlib.test(cleaned)) {
+    cleaned = cleaned.replace(wildcardWithStdlib, 'from manim import *\nimport $1')
+    fixed = true
+  }
+
   return { code: cleaned, fixed }
 }
 
