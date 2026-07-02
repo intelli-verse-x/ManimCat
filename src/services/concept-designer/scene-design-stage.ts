@@ -15,6 +15,15 @@ import {
 import { createChatCompletionText } from '../openai-stream'
 import { buildTokenParams } from '../../utils/reasoning-model'
 import { JobCancelledError } from '../../utils/errors'
+import {
+  computeOutputBudget,
+  estimateMessagesTokens,
+  getMinOutputTokens,
+  getModelMaxContext,
+  getSafetyMargin,
+  isContextLengthError,
+  logBudgetDecision,
+} from '../../utils/token-budget'
 
 const logger = createLogger('SceneDesignStage')
 
@@ -65,20 +74,55 @@ export async function generateSceneDesignStage(params: SceneDesignStageParams): 
     let fallbackResponse: OpenAI.Chat.Completions.ChatCompletion | undefined
     if (onCheckpoint) await onCheckpoint()
 
-    try {
-      const completion = await createChatCompletionText(
+    // ---- Token budget guard (vision-aware) ----
+    const modelMaxContext = getModelMaxContext()
+    const safetyMargin = getSafetyMargin()
+    const visionMessages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: buildVisionUserMessage(userPrompt, referenceImages) },
+    ]
+    const estimatedInput = estimateMessagesTokens(visionMessages)
+    const designBudget = computeOutputBudget(
+      estimatedInput,
+      designerMaxTokens + designerThinkingTokens,
+      { modelMaxContext, safetyMargin }
+    )
+    logBudgetDecision('scene-design', designerMaxTokens + designerThinkingTokens, designBudget)
+    const dThinking = Math.min(
+      designerThinkingTokens,
+      Math.max(0, designBudget.maxOutputTokens - getMinOutputTokens())
+    )
+    const dOutput = Math.max(getMinOutputTokens(), designBudget.maxOutputTokens - dThinking)
+
+    const sendVision = async () =>
+      createChatCompletionText(
+        client,
+        {
+          model,
+          messages: visionMessages,
+          temperature: designerTemperature,
+          ...buildTokenParams(dThinking, dOutput),
+        },
+        { fallbackToNonStream: true, usageLabel: 'scene-design' }
+      )
+
+    const sendTextOnly = async (label: string, opts: { thinking: number; output: number }) =>
+      createChatCompletionText(
         client,
         {
           model,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: buildVisionUserMessage(userPrompt, referenceImages) }
+            { role: 'user', content: userPrompt },
           ],
           temperature: designerTemperature,
-          ...buildTokenParams(designerThinkingTokens, designerMaxTokens)
+          ...buildTokenParams(opts.thinking, opts.output),
         },
-        { fallbackToNonStream: true, usageLabel: 'scene-design' }
+        { fallbackToNonStream: true, usageLabel: label }
       )
+
+    try {
+      const completion = await sendVision()
       content = completion.content
       mode = completion.mode
       fallbackResponse = completion.response
@@ -89,19 +133,34 @@ export async function generateSceneDesignStage(params: SceneDesignStageParams): 
           seed,
           error: error instanceof Error ? error.message : String(error)
         })
-        const completion = await createChatCompletionText(
-          client,
-          {
-            model,
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            temperature: designerTemperature,
-            ...buildTokenParams(designerThinkingTokens, designerMaxTokens)
-          },
-          { fallbackToNonStream: true, usageLabel: 'scene-design-text-fallback' }
-        )
+        const completion = await sendTextOnly('scene-design-text-fallback', {
+          thinking: dThinking,
+          output: dOutput,
+        })
+        content = completion.content
+        mode = completion.mode
+        fallbackResponse = completion.response
+      } else if (isContextLengthError(error)) {
+        // Drop reference images + thinking budget, retry lean once.
+        logger.warn('Server reported context overflow on scene design; retrying lean (text-only, lower budget)', {
+          concept,
+          seed,
+          estimatedInput,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        })
+        const leanInput = estimateMessagesTokens([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ])
+        const leanBudget = computeOutputBudget(leanInput, getMinOutputTokens() * 2, {
+          modelMaxContext,
+          safetyMargin: safetyMargin + 64,
+        })
+        logBudgetDecision('scene-design-retry', getMinOutputTokens() * 2, leanBudget)
+        const completion = await sendTextOnly('scene-design-retry', {
+          thinking: 0,
+          output: leanBudget.maxOutputTokens,
+        })
         content = completion.content
         mode = completion.mode
         fallbackResponse = completion.response
