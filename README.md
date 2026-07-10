@@ -329,3 +329,7 @@ If this project gave you useful ideas or helped you in some way, that is already
 
 
 
+
+## SEO
+
+See [Backlink Strategy](docs/seo/backlinks.md) for SEO and link-building guidance.
