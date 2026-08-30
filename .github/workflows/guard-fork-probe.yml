@@ -1,0 +1,31 @@
+name: remote-eval guard (fork probe)
+
+# Probe, not a permanent workflow. The reusable-workflow route
+# (`uses: .../remote-eval-guard.yml@main`) fails on a fork as an Actions startup
+# failure -- no job, no log. This asks the narrower question: can a fork resolve
+# a composite ACTION from the same private repository? Actions and reusable
+# workflows are fetched by different parts of the runtime, so the answer is not
+# implied by the first result.
+
+on:
+  push:
+    branches: ['security/guard-fork-probe']
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch the guard as a composite action
+        uses: intelli-verse-x/intelli-verse-kube-infra/.github/actions/provide-remote-eval-guard@main
+        with:
+          dest: .remote-eval-guard/check-remote-eval.py
+
+      - name: Scan
+        run: python3 .remote-eval-guard/check-remote-eval.py --root .
